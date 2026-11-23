@@ -1,6 +1,7 @@
 import { toALabel, isAscii } from "@/rpp/core/idn";
 import type {
   Availability,
+  DnsData,
   DomainName,
   DomainNameCreate,
   Period,
@@ -50,8 +51,26 @@ const periodOf = ({ value, unit }: PeriodInput): Period => ({ "@type": "period",
 /** The roles a contact of a domain can have besides the registrant. */
 export const CONTACT_ROLES = ["admin", "billing", "tech"] as const;
 
+/** The RDATA of a DS record (RFC 4034 §5) and of a DNSKEY record (§2), as presentation-format strings. */
+export type DsRdata = Record<"keyTag" | "algorithm" | "digestType" | "digest", string>;
+export type DnskeyRdata = Record<"flags" | "protocol" | "algorithm" | "publicKey", string>;
+
+export type DnssecInput =
+  | { type: "ds"; records: readonly DsRdata[] }
+  | { type: "dnskey"; records: readonly DnskeyRdata[] };
+
+function dnsDataOf({ type, records }: DnssecInput): DnsData | undefined {
+  if (records.length === 0) return undefined;
+  return {
+    "@type": "dnsData",
+    records: records.map((rdata) => ({ "@type": "dnsRecord", name: "@", type, rdata: { ...rdata } })),
+  };
+}
+
 export interface RegisterInput {
   name: string;
+  /** DNSSEC data for the DNS Data element: DS records or DNSKEY records, whose values are sent as the strings given. */
+  dnssec?: DnssecInput;
   /** The Unicode name, when given apart from `name`; it must be the Unicode form of `name`. */
   uName?: string;
   /** Names the Label Generation Ruleset of a Unicode name; the draft requires it with `uName`. */
@@ -107,9 +126,11 @@ export function registerBody(input: RegisterInput): DomainNameCreate {
     if (!(CONTACT_ROLES as readonly string[]).includes(label)) throw invalidRequest(`A contact role is admin, billing or tech, not ${label}`);
   }
   const nameservers = present(input.nameservers);
+  const dns = input.dnssec && dnsDataOf(input.dnssec);
   return {
     "@type": "domainName",
     name: ref.name,
+    ...(dns && { dns }),
     ...(ref.unicode !== undefined && { uName: ref.unicode.normalize("NFC"), lgr: input.lgr }),
     ...(input.registrant && { registrant: { "@type": "contact", id: input.registrant } }),
     ...(contacts && { contacts: contacts.map(({ label, id }) => ({ label, object: { "@type": "contact", id } })) }),

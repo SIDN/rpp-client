@@ -321,6 +321,24 @@ describe("check and register", () => {
     expect(panel().getByRole("button", { name: "Look up the registrant" })).toBeDisabled();
   });
 
+  it("sends DS records entered as DNSSEC data", async () => {
+    const { calls } = renderPage(() => answer(DOMAIN, { status: 201 }));
+    openTab("Register");
+    typeName("example.test");
+    fireEvent.click(panel().getByRole("button", { name: "Add a DS record" }));
+    const record = within(panel().getByRole("group", { name: "DS record 1" }));
+    fireEvent.change(record.getByLabelText("Key tag"), { target: { value: "12345" } });
+    fireEvent.change(record.getByLabelText("Algorithm"), { target: { value: "13" } });
+    fireEvent.change(record.getByLabelText("Digest type"), { target: { value: "2" } });
+    fireEvent.change(record.getByLabelText("Digest"), { target: { value: "ABCD" } });
+    expect(panel().getByRole("button", { name: "Add a DNSKEY record" })).toBeDisabled();
+    fireEvent.click(panel().getByRole("button", { name: "Register domain" }));
+    await waitFor(() => expect(calls).toHaveLength(1));
+    expect(calls[0]?.body).toMatchObject({
+      dns: { records: [{ type: "ds", rdata: { keyTag: "12345", algorithm: "13", digestType: "2", digest: "ABCD" } }] },
+    });
+  });
+
   it("disables the Unicode name and ruleset when the server lists no IDN rulesets", () => {
     renderPage(() => answer(DOMAIN));
     openTab("Register");

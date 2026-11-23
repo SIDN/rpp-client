@@ -7,6 +7,7 @@ import { Callout } from "@/components/ui/callout";
 import { Field, Input, Select } from "@/components/ui/field";
 import { useDomainStore } from "./domainCache";
 import { DomainDetails } from "./DomainDetails";
+import { DnssecFields, DNSSEC_DEFAULTS, dnssecOf, type DnssecValues } from "./DnssecFields";
 import { domainDataOf, periodOf } from "./formValues";
 import { OperationOutcome } from "../shared/OperationOutcome";
 import { DomainDataFields, NameField, PeriodFields, type DomainDataValues, type PanelProps, type PeriodValues } from "./parts";
@@ -15,13 +16,13 @@ import { SubmitButton } from "../shared/SubmitButton";
 import { useOperation } from "../shared/useOperation";
 import type { RegisterInput } from "@/application/domains/domainWorkflows";
 
-interface RegisterValues extends PeriodValues, DomainDataValues {
+interface RegisterValues extends PeriodValues, DomainDataValues, DnssecValues {
   authInfo: string;
   uName: string;
   lgr: string;
 }
 
-const DEFAULTS: RegisterValues = { periodValue: "", periodUnit: "y", registrant: "", contacts: [], nameservers: [], authInfo: "", uName: "", lgr: "" };
+const DEFAULTS: RegisterValues = { periodValue: "", periodUnit: "y", registrant: "", contacts: [], nameservers: [], authInfo: "", uName: "", lgr: "", ...DNSSEC_DEFAULTS };
 
 export function RegisterPanel({ name, onNameChange }: PanelProps) {
   const workflows = useDomainWorkflows();
@@ -51,6 +52,7 @@ export function RegisterPanel({ name, onNameChange }: PanelProps) {
       lgr: values.lgr.trim() || undefined,
       period: periodOf(values),
       authInfo: values.authInfo || undefined,
+      dnssec: dnssecOf(values),
       ...domainDataOf(values),
     });
   });
@@ -84,6 +86,7 @@ export function RegisterPanel({ name, onNameChange }: PanelProps) {
           </Field>
           <PeriodFields label="Registration period" />
           <DomainDataFields />
+          <DnssecFields />
           <Field label="Transfer password" hint="Set now, or later in Change. Another registrar needs it to take the domain over.">
             {(control) => <Input {...control} type="password" autoComplete="off" className="max-w-64" {...form.register("authInfo")} />}
           </Field>

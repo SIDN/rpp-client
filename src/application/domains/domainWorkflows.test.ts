@@ -107,6 +107,16 @@ describe("register", () => {
     expect(() => registerBody({ name: "bücher.example" })).toThrow("Label Generation Ruleset");
   });
 
+  it("puts DNSSEC data in the DNS Data as DS or DNSKEY records", () => {
+    const ds = { keyTag: "12345", algorithm: "13", digestType: "2", digest: "ABCDEF" };
+    expect(registerBody({ name: "example.test", dnssec: { type: "ds", records: [ds] } })).toMatchObject({
+      dns: { "@type": "dnsData", records: [{ "@type": "dnsRecord", name: "@", type: "ds", rdata: ds }] },
+    });
+    const key = { flags: "257", protocol: "3", algorithm: "13", publicKey: "AAAA" };
+    expect(registerBody({ name: "example.test", dnssec: { type: "dnskey", records: [key] } })).toMatchObject({ dns: { records: [{ type: "dnskey", rdata: key }] } });
+    expect(registerBody({ name: "example.test", dnssec: { type: "ds", records: [] } })).not.toHaveProperty("dns");
+  });
+
   it("creates with POST", async () => {
     const { workflows, last } = setup();
     const result = await workflows.register({ name: "example.test" });

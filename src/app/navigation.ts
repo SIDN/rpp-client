@@ -1,6 +1,5 @@
 import {
   ArrowLeftRight,
-  Boxes,
   Braces,
   Building2,
   Cable,
@@ -58,13 +57,6 @@ export const NAVIGATION: readonly NavGroup[] = [
       { to: "/organisations", label: "Organisations", icon: Building2, requires: "organisation", purpose: "Manage organisations and users." },
       { to: "/messages", label: "Messages", icon: Inbox, requires: "message", purpose: "Read and acknowledge message." },
       { to: "/processes", label: "Processes", icon: ListChecks, purpose: "Transfers, restores and other processes of the objects you have worked with." },
-    ],
-  },
-  {
-    id: "extensions",
-    label: "Extensions",
-    items: [
-      { to: "/extensions", label: "Extensions", icon: Boxes, purpose: "The extensions the server offers, and which of them this client supports." },
     ],
   },
   {

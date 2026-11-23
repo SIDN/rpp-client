@@ -3,6 +3,7 @@ import { useFormContext, useFieldArray } from "react-hook-form";
 import { CONTACT_ROLES, tryParseDomainName } from "@/application/domains/domainWorkflows";
 import { Button } from "@/components/ui/button";
 import { Field, Input, Select } from "@/components/ui/field";
+import { ContactLookup } from "../shared/ContactLookup";
 
 /** What every workflow panel receives: the name being worked on, which the panels share. */
 export interface PanelProps {
@@ -84,6 +85,7 @@ function ContactFields() {
   const {
     control,
     register,
+    setValue,
     formState: { errors },
   } = useFormContext<DomainDataValues>();
   const { fields, append, remove } = useFieldArray({ control, name: "contacts" });
@@ -124,6 +126,7 @@ function ContactFields() {
                   validate: (id, values) => id.trim() !== "" || values.contacts[index]?.label === "" || "Enter the contact identifier",
                 })}
               />
+              <ContactLookup label={`Look up contact ${index + 1}`} onSelect={(id) => setValue(`contacts.${index}.id`, id, { shouldDirty: true, shouldValidate: true })} />
               <Button variant="ghost" size="icon" aria-label={`Remove contact ${index + 1}`} onClick={() => remove(index)}>
                 <X aria-hidden />
               </Button>
@@ -169,11 +172,16 @@ function NameserverFields() {
 
 /** The registrant, the other contacts and the name servers: what a registration and a change have in common. */
 export function DomainDataFields() {
-  const { register } = useFormContext<DomainDataValues>();
+  const { register, setValue } = useFormContext<DomainDataValues>();
   return (
     <div className="flex flex-col gap-6">
-      <Field label="Registrant" hint="The identifier of an existing contact.">
-        {(control) => <Input {...control} spellCheck={false} className="max-w-64 font-mono" {...register("registrant")} />}
+      <Field label="Registrant" hint="The identifier of an existing contact. Look it up to fill it in.">
+        {(control) => (
+          <div className="flex flex-wrap items-center gap-2">
+            <Input {...control} spellCheck={false} className="max-w-64 font-mono" {...register("registrant")} />
+            <ContactLookup label="Look up the registrant" onSelect={(id) => setValue("registrant", id, { shouldDirty: true })} />
+          </div>
+        )}
       </Field>
       <ContactFields />
       <NameserverFields />

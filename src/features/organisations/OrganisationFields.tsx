@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Choice } from "@/components/ui/choice";
 import { Field, Input } from "@/components/ui/field";
+import { ContactLookup } from "../shared/ContactLookup";
 import { CardFields } from "./parts";
 import type { OrganisationValues } from "./organisationValues";
 
@@ -81,6 +82,7 @@ function Contacts() {
   const {
     control,
     register,
+    setValue,
     formState: { errors },
   } = useFormContext<OrganisationValues>();
   const { fields, append, remove } = useFieldArray({ control, name: "contacts" });
@@ -125,6 +127,9 @@ function Contacts() {
               />
             )}
           </Field>
+          <div className="mt-7">
+            <ContactLookup label={`Look up contact ${index + 1}`} onSelect={(id) => setValue(`contacts.${index}.id`, id, { shouldDirty: true, shouldValidate: true })} />
+          </div>
           <Button variant="ghost" size="icon" aria-label={`Remove contact ${index + 1}`} className="mt-7" onClick={() => remove(index)}>
             <X aria-hidden />
           </Button>

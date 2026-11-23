@@ -188,20 +188,25 @@ function Document({ snapshot, warnings }: { snapshot: CapabilitySnapshot; warnin
         {extensions.advertised.length === 0 ? (
           <None>None advertised</None>
         ) : (
-          <ul className="divide-y divide-border border-y border-border">
+          <ul className="flex flex-col gap-6">
             {extensions.advertised.map(({ status, advertised }) => (
-              <li key={referenceLabel(advertised)} className="flex flex-col gap-1 py-3">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-semibold">{advertised.name ?? advertised.id}</span>
-                  <code>{referenceLabel(advertised)}</code>
-                  <Badge tone={status === "available" ? "success" : "neutral"}>
-                    {status === "available" ? "supported by this client" : "not supported by this client"}
-                  </Badge>
-                </div>
-                {advertised.url && <code className="break-all text-xs text-muted-foreground">{advertised.url}</code>}
-                <p className="text-sm text-muted-foreground">
-                  In preset: {presetsUsing(snapshot, advertised).join(", ") || "none of the presets"}
-                </p>
+              <li key={referenceLabel(advertised)}>
+                <article aria-label={`Extension ${referenceLabel(advertised)}`} className="flex flex-col gap-2">
+                  <h3 className="flex flex-wrap items-center gap-2">
+                    <span>{advertised.name ?? advertised.id}</span>
+                    <Badge tone={status === "available" ? "success" : "neutral"}>
+                      {status === "available" ? "supported by this client" : "not supported by this client"}
+                    </Badge>
+                  </h3>
+                  <Rows>
+                    <Row term="Identifier">
+                      <code className="break-all">{advertised.id}</code>
+                    </Row>
+                    <Row term="Version">{advertised.version}</Row>
+                    <Row term="Address">{advertised.url ? <code className="break-all">{advertised.url}</code> : <None>Not given</None>}</Row>
+                    <Row term="In presets">{presetsUsing(snapshot, advertised).join(", ") || <None>None of the presets</None>}</Row>
+                  </Rows>
+                </article>
               </li>
             ))}
           </ul>

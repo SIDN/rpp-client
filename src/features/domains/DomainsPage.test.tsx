@@ -20,7 +20,7 @@ const SOURCE = {
   correlation: { clientTransactionId: null, serverTransactionId: null, resultCode: null },
 };
 
-const discoveryWith = (objects: string[]): DiscoveryState => ({
+const discoveryWith = (objects: string[], idnLgr: unknown[] = []): DiscoveryState => ({
   status: "ready",
   snapshot: parseDiscoveryDocument(
     {
@@ -31,6 +31,7 @@ const discoveryWith = (objects: string[]): DiscoveryState => ({
       presets: [{ id: "p", version: "1.0", defaultPreset: true, extensions: [] }],
       objects,
       datetime: "2026-01-01T00:00:00Z",
+      ...(idnLgr.length > 0 && { idnLgr }),
     },
     SOURCE,
   ).snapshot,
@@ -293,13 +294,46 @@ describe("check and register", () => {
     expect(calls).toHaveLength(0);
   });
 
-  it("asks for the ruleset of a Unicode name", () => {
+  it("looks up the registrant by identifier and uses what is found", async () => {
+    const contact = {
+      "@type": "contact",
+      id: "C-7",
+      provMetadata: { "@type": "provMetadata", spClientId: "REG-1", crDate: "2024-01-01T00:00:00Z" },
+      status: [{ "@type": "contactStatus", label: "ok" }],
+      contactInfo: { "@type": "Card", version: "2.0", kind: "individual", name: { full: "John Doe" } },
+    };
+    const { calls } = renderPage(() => answer(contact), discoveryWith(["domainName", "contact"]));
+    openTab("Register");
+    fireEvent.click(panel().getByRole("button", { name: "Look up the registrant" }));
+    const dialog = within(screen.getByRole("dialog"));
+    expect(dialog.getByText(/more advanced search options/)).toBeInTheDocument();
+    fireEvent.change(dialog.getByLabelText("Contact identifier"), { target: { value: "C-7" } });
+    fireEvent.click(dialog.getByRole("button", { name: "Search" }));
+    fireEvent.click(await dialog.findByRole("button", { name: "Use C-7" }));
+    expect(calls[0]?.path).toContain("/contacts/C-7");
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(panel().getByLabelText("Registrant")).toHaveValue("C-7");
+  });
+
+  it("disables the lookup when the server offers no contacts", () => {
     renderPage(() => answer(DOMAIN));
     openTab("Register");
-    expect(panel().queryByLabelText("Label Generation Ruleset")).toBeNull();
-    typeName("bücher.example");
-    expect(panel().getByLabelText("Label Generation Ruleset")).toBeInTheDocument();
-    expect(panel().getByText("xn--bcher-kva.example")).toBeInTheDocument();
+    expect(panel().getByRole("button", { name: "Look up the registrant" })).toBeDisabled();
+  });
+
+  it("disables the Unicode name and ruleset when the server lists no IDN rulesets", () => {
+    renderPage(() => answer(DOMAIN));
+    openTab("Register");
+    expect(panel().getByLabelText("Unicode name")).toBeDisabled();
+    expect(panel().getByLabelText("Label Generation Ruleset")).toBeDisabled();
+  });
+
+  it("offers the Unicode name and the listed rulesets, the default preselected", () => {
+    const lgr = [{ "@type": "discoveryIdnLgr", tld: ["test"], name: "de", url: "https://example.test/de", default: true }];
+    renderPage(() => answer(DOMAIN), discoveryWith(["domainName"], lgr));
+    openTab("Register");
+    expect(panel().getByLabelText("Unicode name")).toBeEnabled();
+    expect(panel().getByLabelText("Label Generation Ruleset")).toHaveValue("de");
   });
 });
 

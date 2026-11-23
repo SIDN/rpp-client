@@ -61,7 +61,7 @@ describe("application shell", () => {
     expect(screen.getByRole("main")).toHaveFocus();
     expect(within(nav).getByRole("link", { name: /Domain names/ })).toHaveAttribute("aria-current", "page");
 
-    for (const label of ["Contacts", "Hosts", "Organisations", "Messages", "Processes", "Extensions", "Capabilities", "Exchanges", "Schemas", "Settings", "Connection"]) {
+    for (const label of ["Contacts", "Hosts", "Organisations", "Messages", "Processes", "Capabilities", "Exchanges", "Schemas", "Settings", "Connection"]) {
       fireEvent.click(screen.getByRole("link", { name: new RegExp(`^${label}`) }));
       expect(screen.getByRole("heading", { level: 1, name: label })).toBeInTheDocument();
     }

@@ -52,6 +52,8 @@ export const CONTACT_ROLES = ["admin", "billing", "tech"] as const;
 
 export interface RegisterInput {
   name: string;
+  /** The Unicode name, when given apart from `name`; it must be the Unicode form of `name`. */
+  uName?: string;
   /** Names the Label Generation Ruleset of a Unicode name; the draft requires it with `uName`. */
   lgr?: string;
   period?: PeriodInput;
@@ -93,7 +95,12 @@ function restoreReportOf(input: RestoreReportInput): RestoreReport {
 }
 
 export function registerBody(input: RegisterInput): DomainNameCreate {
-  const ref = parseDomainName(input.name);
+  const uName = input.uName?.trim();
+  const ref = parseDomainName(input.name.trim() === "" && uName ? uName : input.name);
+  if (uName && !isAscii(uName) && ref.unicode === undefined) {
+    if (toALabel(uName) !== ref.name) throw invalidRequest(`${uName} is not the Unicode form of ${ref.name}`);
+    ref.unicode = uName;
+  }
   if (ref.unicode !== undefined && !input.lgr) throw invalidRequest("A Unicode name needs the name of its Label Generation Ruleset");
   const contacts = present(input.contacts);
   for (const { label } of contacts ?? []) {

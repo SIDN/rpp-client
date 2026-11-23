@@ -96,7 +96,7 @@ describe("capabilities screen", () => {
     const extensions = screen.getByRole("region", { name: "Extensions" });
     expect(extensions).toHaveTextContent("DNSSEC");
     expect(extensions).toHaveTextContent("not supported by this client");
-    expect(extensions).toHaveTextContent("In preset: planets 1.0");
+    expect(extensions).toHaveTextContent("In presetsplanets 1.0");
     expect(extensions.querySelector("a")).toBeNull();
   });
 

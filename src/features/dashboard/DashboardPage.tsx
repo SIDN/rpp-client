@@ -3,8 +3,7 @@ import { PageHeader, Section } from "@/components/common/layout";
 
 const START_POINTS = [
   { to: "/domains", name: "Registry", text: "Register and maintain domain names, contacts, hosts and organisations, and read your messages." },
-  { to: "/extensions", name: "Extensions", text: "See which extensions the server offers and use the ones this client supports." },
-  { to: "/developer/capabilities", name: "Developer", text: "Inspect capabilities, schemas and every request and response, with secrets removed." },
+  { to: "/developer/capabilities", name: "Developer", text: "Inspect capabilities and the extensions the server offers, schemas and every request and response, with secrets removed." },
 ] as const;
 
 export function DashboardPage() {

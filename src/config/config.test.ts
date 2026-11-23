@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readEnv } from "./env";
 import {
+  buildBaseUrl,
   connectionFormSchema,
   DEFAULT_PRESET_SETTINGS,
   loadProfile,
@@ -12,7 +13,8 @@ import {
 } from "./connectionProfile";
 
 const form = (overrides: Partial<ConnectionFormValues> = {}): ConnectionFormValues => ({
-  baseUrl: "https://rpp.example.test/rpp",
+  host: "rpp.example.test",
+  port: "443",
   allowInsecureHttp: false,
   authType: "none",
   username: "",
@@ -42,16 +44,22 @@ describe("connection form", () => {
   });
 
   it("explains each way an address can be wrong", () => {
-    expect(messages(form({ baseUrl: "" }))).toHaveProperty("baseUrl", "Enter the address of the RPP server");
-    expect(messages(form({ baseUrl: "rpp.example.test" })).baseUrl).toContain("https://");
-    expect(messages(form({ baseUrl: "ftp://rpp.example.test" })).baseUrl).toContain("https://");
-    expect(messages(form({ baseUrl: "http://rpp.example.test" })).baseUrl).toContain("Plain HTTP");
-    expect(messages(form({ baseUrl: "https://user:pw@rpp.example.test" })).baseUrl).toContain("user name or password");
-    expect(messages(form({ baseUrl: "https://rpp.example.test/rpp?x=1" })).baseUrl).toContain("query");
+    expect(messages(form({ host: "" }))).toHaveProperty("host", "Enter the host name of the RPP server");
+    expect(messages(form({ host: "https://rpp.example.test" })).host).toContain("only the host name");
+    expect(messages(form({ host: "rpp.example.test:8443" })).host).toContain("only the host name");
+    expect(messages(form({ host: "user:pw@rpp.example.test" })).host).toContain("only the host name");
+    expect(messages(form({ host: "rpp.example.test/rpp" })).host).toContain("only the host name");
+    expect(messages(form({ port: "" }))).toHaveProperty("port");
+    expect(messages(form({ port: "70000" })).port).toContain("between 1 and 65535");
+  });
+
+  it("builds the URL from host and port, with https unless plain HTTP is allowed", () => {
+    expect(buildBaseUrl("rpp.example.test", "8443", false)).toBe("https://rpp.example.test:8443");
+    expect(buildBaseUrl("localhost", "8000", true)).toBe("http://localhost:8000");
   });
 
   it("allows plain HTTP only when asked for", () => {
-    expect(messages(form({ baseUrl: "http://localhost:8000", allowInsecureHttp: true }))).toEqual({});
+    expect(messages(form({ host: "localhost", port: "8000", allowInsecureHttp: true }))).toEqual({});
   });
 
   it("requires a usable user name and a password for Basic", () => {
@@ -62,11 +70,11 @@ describe("connection form", () => {
   });
 
   it("separates what may be stored from the password", () => {
-    expect(toConnection(form({ baseUrl: " https://rpp.example.test/rpp/ ", authType: "basic", username: "u", password: "secret" }))).toEqual({
-      profile: { baseUrl: "https://rpp.example.test/rpp", allowInsecureHttp: false, auth: { type: "basic", username: "u" }, preset: DEFAULT_PRESET_SETTINGS },
+    expect(toConnection(form({ host: "rpp.example.test", port: "8443", authType: "basic", username: "u", password: "secret" }))).toEqual({
+      profile: { baseUrl: "https://rpp.example.test:8443", allowInsecureHttp: false, auth: { type: "basic", username: "u" }, preset: DEFAULT_PRESET_SETTINGS },
       credentials: { password: "secret" },
     });
-    expect(toConnection(form({ baseUrl: "https://rpp.example.test" }))).toEqual({
+    expect(toConnection(form({ host: "rpp.example.test" }))).toEqual({
       profile: { baseUrl: "https://rpp.example.test", allowInsecureHttp: false, auth: { type: "none" }, preset: DEFAULT_PRESET_SETTINGS },
       credentials: undefined,
     });
@@ -101,8 +109,8 @@ describe("stored profile", () => {
   });
 
   it("falls back to the default address of the environment", () => {
-    expect(toFormValues(undefined, "https://dev.example.test").baseUrl).toBe("https://dev.example.test");
-    expect(toFormValues(undefined).baseUrl).toBe("");
+    expect(toFormValues(undefined, "https://dev.example.test")).toMatchObject({ host: "dev.example.test", port: "443" });
+    expect(toFormValues(undefined).host).toBe("");
   });
 });
 

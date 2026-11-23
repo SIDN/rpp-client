@@ -19,6 +19,7 @@ import {
 } from "@/config/bookmarks";
 import { connectionFormSchema, toConnection, toFormValues, type ConnectionFormValues, type ConnectionProfile, type PresetSettings } from "@/config/connectionProfile";
 import { env } from "@/config/env";
+import { lookupRppPort } from "@/rpp/discovery/lookupPort";
 import { defaultBookmark } from "@/config/defaultConnection";
 import type { DiscoveryError } from "@/rpp/errors/DiscoveryError";
 import { BookmarkBar } from "./BookmarkBar";
@@ -62,6 +63,7 @@ export function ConnectionPage() {
     control: formControl,
     setValue,
     setError,
+    clearErrors,
     setFocus,
     reset,
     getValues,
@@ -72,8 +74,29 @@ export function ConnectionPage() {
   });
 
   const authType = useWatch({ control: formControl, name: "authType" });
-  const baseUrl = useWatch({ control: formControl, name: "baseUrl" });
-  const insecureBasic = authType === "basic" && /^http:/i.test(baseUrl.trim());
+  const allowInsecureHttp = useWatch({ control: formControl, name: "allowInsecureHttp" });
+  const insecureBasic = authType === "basic" && allowInsecureHttp;
+  const [lookup, setLookup] = useState<
+    { status: "idle" | "busy" } | { status: "done"; queried: string; port: number; portFound: boolean; target: string | undefined } | { status: "failed"; message: string }
+  >({ status: "idle" });
+
+  const lookupPort = async () => {
+    const host = getValues("host").trim();
+    if (host === "") {
+      setError("host", { type: "required", message: "Enter the host name of the RPP server" });
+      return;
+    }
+    setLookup({ status: "busy" });
+    try {
+      const result = await lookupRppPort(host, { endpoint: settings.dohEndpoint });
+      if (result.target) setValue("host", result.target, { shouldDirty: true });
+      setValue("port", String(result.port), { shouldDirty: true });
+      clearErrors("port");
+      setLookup({ status: "done", queried: host, port: result.port, portFound: result.portFound, target: result.target });
+    } catch (error) {
+      setLookup({ status: "failed", message: error instanceof Error ? error.message : "The DNS lookup failed" });
+    }
+  };
 
   const [activeId, setActiveId] = useState<string | undefined>(initial?.id);
   const [pickedId, setPickedId] = useState<string | undefined>(initial?.id);
@@ -118,7 +141,7 @@ export function ConnectionPage() {
     if (!result.success) {
       for (const issue of result.error.issues) {
         const field = issue.path[0];
-        if (field === "baseUrl" || field === "username") setError(field, { type: issue.code, message: issue.message });
+        if (field === "host" || field === "port" || field === "username") setError(field, { type: issue.code, message: issue.message });
       }
       return undefined;
     }
@@ -211,13 +234,47 @@ export function ConnectionPage() {
             )}
           </Field>
 
-          <Field
-            label="Server address"
-            hint="The RPP base URL, for example https://rpp.example/rpp"
-            error={errors.baseUrl?.message}
-          >
-            {(control) => <Input {...control} type="url" inputMode="url" autoComplete="url" spellCheck={false} {...register("baseUrl")} />}
-          </Field>
+          <div className="flex flex-col gap-6 sm:flex-row sm:items-start">
+            <Field
+              label="Server address or TLD"
+              hint="The host name of the RPP server, for example rpp.example"
+              error={errors.host?.message}
+              className="flex-1"
+            >
+              {(control) => (
+                <div className="flex gap-2">
+                  <Input {...control} inputMode="url" autoComplete="off" autoCapitalize="none" spellCheck={false} {...register("host")} />
+                  <Button variant="secondary" onClick={lookupPort} disabled={lookup.status === "busy"}>
+                    {lookup.status === "busy" ? "Looking up" : "Lookup"}
+                  </Button>
+                </div>
+              )}
+            </Field>
+            <Field label="Port" error={errors.port?.message} className="sm:w-28">
+              {(control) => <Input {...control} type="number" inputMode="numeric" min={1} max={65535} {...register("port")} />}
+            </Field>
+          </div>
+          {lookup.status === "done" && (
+            <Callout tone={lookup.portFound || lookup.target ? "success" : "info"} title={`Lookup of _rpp.${lookup.queried}`}>
+              <ul className="list-disc space-y-1 pl-5">
+                <li>
+                  {lookup.portFound
+                    ? `The HTTPS record names port ${lookup.port}.`
+                    : `No port was found: no HTTPS record names one. The default port ${lookup.port} is used, or enter another port by hand.`}
+                </li>
+                <li>
+                  {lookup.target
+                    ? `The HTTPS record names the target server ${lookup.target}, which now replaces the server address.`
+                    : `No target server was found: no HTTPS record names one. The server address stays ${lookup.queried}.`}
+                </li>
+              </ul>
+            </Callout>
+          )}
+          {lookup.status === "failed" && (
+            <Callout tone="warning" title="The port could not be looked up">
+              {lookup.message}. Enter the port by hand.
+            </Callout>
+          )}
 
           <Choice
             type="checkbox"

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { DEFAULT_DOH_ENDPOINT } from "@/rpp/discovery/lookupPort";
 
 export type TimeDisplay = "local" | "utc";
 
@@ -16,6 +17,8 @@ export interface AppSettings {
   processPageSize: number;
   /** Whether timestamps are shown in the time zone of this browser or in UTC. */
   timeDisplay: TimeDisplay;
+  /** DNS-over-HTTPS (JSON API) endpoint used to look up the port of a server. */
+  dohEndpoint: string;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -25,6 +28,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   messageLimit: 25,
   processPageSize: 25,
   timeDisplay: "local",
+  dohEndpoint: DEFAULT_DOH_ENDPOINT,
 };
 
 const count = (fallback: number) => z.number().int().min(1).max(1000).catch(fallback);
@@ -36,6 +40,7 @@ const storedSettingsSchema = z.object({
   messageLimit: count(DEFAULT_SETTINGS.messageLimit),
   processPageSize: count(DEFAULT_SETTINGS.processPageSize),
   timeDisplay: z.enum(["local", "utc"]).catch(DEFAULT_SETTINGS.timeDisplay),
+  dohEndpoint: z.url({ protocol: /^https$/ }).catch(DEFAULT_SETTINGS.dohEndpoint),
 });
 
 const STORAGE_KEY = "rpp-client.settings";

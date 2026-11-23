@@ -6,10 +6,18 @@ import { PAGE_SIZES } from "@/application/processes/processList";
 import { PageHeader, Section } from "@/components/common/layout";
 import { Callout } from "@/components/ui/callout";
 import { Choice } from "@/components/ui/choice";
-import { Field, Select } from "@/components/ui/field";
+import { Field, Input, Select } from "@/components/ui/field";
 import { type TimeDisplay } from "@/config/appSettings";
 import { loadBookmarks } from "@/config/bookmarks";
 import { defaultBookmark } from "@/config/defaultConnection";
+
+function isHttpsUrl(value: string): boolean {
+  try {
+    return new URL(value).protocol === "https:";
+  } catch {
+    return false;
+  }
+}
 
 /** The options of the person using this client: which connection to start with, and how screens show things. */
 export function ClientPage() {
@@ -17,6 +25,8 @@ export function ClientPage() {
   const [bookmarks] = useState(() => loadBookmarks());
   const chosen = defaultBookmark(settings, bookmarks);
   const needsPassword = chosen?.profile.auth.type === "basic";
+  const [doh, setDoh] = useState(settings.dohEndpoint);
+  const dohError = isHttpsUrl(doh.trim()) ? undefined : "Enter an https:// address";
 
   return (
     <>
@@ -64,6 +74,33 @@ export function ClientPage() {
               Passwords are never kept, so the client cannot connect by itself. It fills in the connection and waits for you to enter the password.
             </Callout>
           )}
+        </div>
+      </Section>
+
+      <Section id="dns" title="DNS">
+        <div className="flex max-w-xl flex-col gap-6">
+          <Field
+            label="DNS-over-HTTPS server"
+            hint="Used by Lookup on the Connection screen to read the HTTPS record of a server. It sees the host names you look up. It must offer the JSON API."
+            error={dohError}
+          >
+            {(control) => (
+              <Input
+                {...control}
+                type="url"
+                spellCheck={false}
+                value={doh}
+                onChange={(event) => {
+                  setDoh(event.target.value);
+                  const value = event.target.value.trim();
+                  if (isHttpsUrl(value)) update({ dohEndpoint: value });
+                }}
+                onBlur={() => {
+                  if (!isHttpsUrl(doh.trim())) setDoh(settings.dohEndpoint);
+                }}
+              />
+            )}
+          </Field>
         </div>
       </Section>
 

@@ -1,0 +1,103 @@
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { resolvePreset } from "@/application/connection/preset";
+import { createSession, type Session } from "@/application/connection/session";
+import { loadSettings } from "@/config/appSettings";
+import { autoConnectProfile } from "@/config/defaultConnection";
+import {
+  DEFAULT_PRESET_SETTINGS,
+  loadProfile,
+  saveProfile,
+  type ConnectionProfile,
+  type Credentials,
+  type PresetSettings,
+} from "@/config/connectionProfile";
+import type { DiscoveryState } from "@/rpp/discovery/capability-types";
+import { DiscoveryError } from "@/rpp/errors/DiscoveryError";
+import { ConnectionContext, type ConnectionApi } from "./connection-context";
+import { DiscoveryContext } from "./discovery-context";
+
+const DISCOVERY_KEY = "discovery";
+
+function asDiscoveryError(error: unknown): DiscoveryError {
+  return error instanceof DiscoveryError
+    ? error
+    : new DiscoveryError("transport", error instanceof Error ? error.message : String(error), { cause: error });
+}
+
+/** Holds the active session and reads its capabilities; the rest of the app only sees the resulting state. */
+export function ConnectionProvider({ children }: { children: ReactNode }) {
+  const queryClient = useQueryClient();
+  // A default bookmark without a password can be connected to when the client starts, if that is chosen.
+  const [startup] = useState(() => {
+    const profile = autoConnectProfile(loadSettings());
+    try {
+      return profile && { profile, session: createSession(profile, undefined) };
+    } catch {
+      return undefined;
+    }
+  });
+  const [session, setSession] = useState<Session | undefined>(startup?.session);
+  const [lastProfile, setLastProfile] = useState(() => startup?.profile ?? loadProfile());
+  const [presetSettings, setPresetSettings] = useState<PresetSettings>(() => lastProfile?.preset ?? DEFAULT_PRESET_SETTINGS);
+
+  // The key holds no address and no credential, only the number of the connection.
+  const discovery = useQuery({
+    queryKey: [DISCOVERY_KEY, session?.id],
+    queryFn: ({ signal }) => (session as Session).discovery.discover({ signal }),
+    enabled: session !== undefined,
+    staleTime: Infinity,
+  });
+
+  const state: DiscoveryState = !session
+    ? { status: "not-started" }
+    : discovery.isError
+      ? { status: "failed", error: asDiscoveryError(discovery.error) }
+      : discovery.data ?? { status: "loading" };
+
+  const snapshot = state.status === "ready" || state.status === "partial" ? state.snapshot : undefined;
+  const resolvedPreset = useMemo(() => resolvePreset(presetSettings, snapshot), [presetSettings, snapshot]);
+
+  // The session is an external object the transport reads on every request.
+  useEffect(() => {
+    session?.setPreset(resolvedPreset.preset);
+  }, [session, resolvedPreset.preset]);
+
+  const api = useMemo<ConnectionApi>(
+    () => ({
+      session,
+      lastProfile,
+      presetSettings,
+      resolvedPreset,
+      connect(profile: ConnectionProfile, credentials: Credentials | undefined) {
+        const next = createSession(profile, credentials);
+        session?.authentication.clearSession();
+        saveProfile(profile);
+        setLastProfile(profile);
+        setPresetSettings(profile.preset);
+        setSession(next);
+      },
+      updatePresetSettings(settings: PresetSettings) {
+        setPresetSettings(settings);
+        const profile = session?.profile ?? lastProfile;
+        if (profile) {
+          const updated = { ...profile, preset: settings };
+          saveProfile(updated);
+          setLastProfile(updated);
+        }
+      },
+      disconnect() {
+        session?.authentication.clearSession();
+        queryClient.removeQueries({ queryKey: [DISCOVERY_KEY] });
+        setSession(undefined);
+      },
+    }),
+    [session, lastProfile, presetSettings, resolvedPreset, queryClient],
+  );
+
+  return (
+    <ConnectionContext.Provider value={api}>
+      <DiscoveryContext.Provider value={state}>{children}</DiscoveryContext.Provider>
+    </ConnectionContext.Provider>
+  );
+}

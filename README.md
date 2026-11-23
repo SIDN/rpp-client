@@ -179,6 +179,17 @@ Tailwind CSS v4 with shadcn/ui conventions (`components.json`, `cn()`, `cva` var
 
 Not yet implemented: bearer and other authentication, DNS data editing for domain names, loading the Preset Schema into the session, and validating a payload against a schema on the schemas screen.
 
+## Docker
+
+The `Dockerfile` builds the app and serves the static files with nginx on port 8080 (`deploy/nginx.conf` sends unknown paths to `index.html`, so client-side routes survive a reload). `VITE_APP_TITLE` and `VITE_RPP_BASE_URL` are read at build time and end up in the bundle, so pass them as build arguments and never put secrets in them.
+
+```sh
+docker build -t rpp-client --build-arg VITE_RPP_BASE_URL=https://rpp.example/rpp .
+docker run --rm -p 8080:8080 rpp-client
+```
+
+The browser calls the RPP server directly, so that server has to allow requests from the address the client is served from (CORS).
+
 ## Important
 
 This starter intentionally does not invent RPP endpoints, media types, discovery documents, OAuth profiles, or extension semantics. Those must be filled in from the actual RPP specification set and target server contract before protocol operations are implemented.

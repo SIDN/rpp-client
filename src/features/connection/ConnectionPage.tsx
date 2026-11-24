@@ -236,7 +236,7 @@ export function ConnectionPage() {
 
           <div className="flex flex-col gap-6 sm:flex-row sm:items-start">
             <Field
-              label="Server address or TLD"
+              label="Server hostname or TLD"
               hint="The host name of the RPP server, for example rpp.example"
               error={errors.host?.message}
               className="flex-1"
@@ -244,7 +244,7 @@ export function ConnectionPage() {
               {(control) => (
                 <div className="flex gap-2">
                   <Input {...control} inputMode="url" autoComplete="off" autoCapitalize="none" spellCheck={false} {...register("host")} />
-                  <Button variant="secondary" onClick={lookupPort} disabled={lookup.status === "busy"}>
+                  <Button variant="secondary" title="Perform DNS-based bootstrap" onClick={lookupPort} disabled={lookup.status === "busy"}>
                     {lookup.status === "busy" ? "Looking up" : "Lookup"}
                   </Button>
                 </div>

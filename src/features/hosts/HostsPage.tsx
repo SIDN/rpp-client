@@ -27,7 +27,7 @@ const DESCRIPTIONS: Record<WorkflowId, string> = {
   info: "Get host details.",
   check: "Find out whether a host name is free.",
   create: "Create a host, with its IP addresses when it is below a domain of this registry.",
-  change: "Rename a host, change its IP addresses or its locks.",
+  change: "Modify host details.",
   delete: "Remove a host from the registry.",
 };
 

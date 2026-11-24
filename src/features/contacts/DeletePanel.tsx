@@ -19,25 +19,22 @@ export function DeletePanel({ id, onIdChange }: PanelProps) {
       <div className="flex max-w-xl flex-col gap-5">
         <IdField id={id} onIdChange={onIdChange} />
         <Callout tone="warning" title="Deleting a contact cannot be undone">
-          A contact that a domain still uses cannot be deleted. Take it off the domain first.
+          A contact that is still linked to a domain name object cannot be deleted.
         </Callout>
-        {target !== "" ? (
-          <div>
-            <ConfirmAction
-              destructive
-              trigger="Delete this contact"
-              title={`Delete ${target}?`}
-              confirmLabel={`Delete ${target}`}
-              expected={target}
-              pending={remove.pending}
-              onConfirm={() => remove.start(target)}
-            >
-              The registry is asked to delete <code>{target}</code>. Only the sponsoring registrar may do this.
-            </ConfirmAction>
-          </div>
-        ) : (
-          <p className="text-sm text-muted-foreground">Enter the identifier of the contact to delete.</p>
-        )}
+        <div>
+          <ConfirmAction
+            destructive
+            disabled={target === ""}
+            trigger="Delete this contact"
+            title={`Delete ${target}?`}
+            confirmLabel={`Delete ${target}`}
+            expected={target}
+            pending={remove.pending}
+            onConfirm={() => remove.start(target)}
+          >
+            The registry is asked to delete <code>{target}</code>. Only the sponsoring registrar may do this.
+          </ConfirmAction>
+        </div>
       </div>
       <OperationOutcome operation={remove} success={`Deleted ${remove.variables ?? "the contact"}`} />
     </div>

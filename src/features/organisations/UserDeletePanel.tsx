@@ -82,26 +82,27 @@ export function UserDeletePanel({ organisationId, onOrganisationChange, onUserCh
         </Callout>
       )}
 
-      {selected && (
-        <section aria-label="Delete the user" className="flex max-w-xl flex-col gap-4">
+      <section aria-label="Delete the user" className="flex max-w-xl flex-col gap-4">
+        {selected && (
           <Callout tone="warning" title="Deleting a user cannot be undone">
             Only <code>{selected}</code> is deleted. The organisation <code>{id}</code> and its other users stay.
           </Callout>
-          <div>
-            <ConfirmAction
-              destructive
-              trigger="Delete this user"
-              title={`Delete ${selected} from ${id}?`}
-              confirmLabel={`Delete ${selected}`}
-              expected={selected}
-              pending={remove.pending}
-              onConfirm={() => remove.start({ organisationId: id, userId: selected })}
-            >
-              The registry is asked to delete the user <code>{selected}</code> of <code>{id}</code>.
-            </ConfirmAction>
-          </div>
-        </section>
-      )}
+        )}
+        <div>
+          <ConfirmAction
+            destructive
+            disabled={!selected}
+            trigger="Delete this user"
+            title={`Delete ${selected} from ${id}?`}
+            confirmLabel={`Delete ${selected}`}
+            expected={selected}
+            pending={remove.pending}
+            onConfirm={() => selected && remove.start({ organisationId: id, userId: selected })}
+          >
+            The registry is asked to delete the user <code>{selected}</code> of <code>{id}</code>.
+          </ConfirmAction>
+        </div>
+      </section>
       <OperationOutcome operation={remove} success={`Deleted ${remove.variables?.userId ?? "the user"} from ${remove.variables?.organisationId ?? "the organisation"}`} />
     </div>
   );

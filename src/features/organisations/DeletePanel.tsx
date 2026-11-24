@@ -104,31 +104,32 @@ export function DeletePanel({ organisationId, onOrganisationChange }: PanelProps
             </>
           )}
 
-          {users.length > 0 && !deleteUsers ? (
+          {users.length > 0 && !deleteUsers && (
             <p className="text-sm text-muted-foreground">
               Check the box to delete the users with the organisation, or delete them one at a time on the Delete user tab.
             </p>
-          ) : (
-            <div>
-              <ConfirmAction
-                destructive
-                trigger="Delete this organisation"
-                title={`Delete ${id}?`}
-                confirmLabel={`Delete ${id}`}
-                expected={id}
-                pending={remove.pending}
-                onConfirm={() => {
-                  setDeleted([]);
-                  remove.start({ id, deleteUsers });
-                }}
-              >
-                The registry is asked to delete <code>{id}</code>
-                {users.length > 0 && <> and its {noun}</>}. Generally only a registry may do this.
-              </ConfirmAction>
-            </div>
           )}
         </section>
       )}
+
+      <div>
+        <ConfirmAction
+          destructive
+          disabled={id === "" || (users.length > 0 && !deleteUsers)}
+          trigger="Delete this organisation"
+          title={`Delete ${id}?`}
+          confirmLabel={`Delete ${id}`}
+          expected={id}
+          pending={remove.pending}
+          onConfirm={() => {
+            setDeleted([]);
+            remove.start({ id, deleteUsers });
+          }}
+        >
+          The registry is asked to delete <code>{id}</code>
+          {users.length > 0 && <> and its {noun}</>}. Generally only a registry may do this.
+        </ConfirmAction>
+      </div>
 
       {deleted.length > 0 && !remove.result && (
         <p role="status" className="text-sm">

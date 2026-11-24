@@ -34,11 +34,11 @@ type WorkflowId = (typeof ORGANISATION_WORKFLOWS)[number]["id"] | (typeof USER_W
 
 const DESCRIPTIONS: Record<WorkflowId, string> = {
   info: "Get organisation details.",
-  create: "Create an organisation with its roles, contact information and contacts.",
-  change: "Change the roles, parent, contact information, contacts or locks of an organisation.",
+  create: "Create an organisation",
+  change: "Modify the organisation details.",
   delete: "Delete an organisation, after checking for users that are still linked to it.",
   userInfo: "Get the details of a user of an organisation.",
-  userCreate: "Create a user in an organisation. The identifier only has to be unique within that organisation.",
+  userCreate: "Create a user in an organisation. The identifier has to be unique within that organisation.",
   userChange: "Change the details, description or status of a user of an organisation.",
   userDelete: "Delete one user of an organisation, leaving the organisation and its other users.",
 };

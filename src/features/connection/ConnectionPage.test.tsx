@@ -41,7 +41,7 @@ function renderConnection() {
   );
 }
 
-const address = () => screen.getByLabelText("Server address or TLD");
+const address = () => screen.getByLabelText("Server hostname or TLD");
 const connect = () => fireEvent.click(screen.getByRole("button", { name: /^(Connect|Reconnect)$/ }));
 const type = (label: string, value: string) => fireEvent.change(screen.getByLabelText(label), { target: { value } });
 
@@ -66,7 +66,7 @@ describe("connection screen", () => {
     expect(address()).toHaveAttribute("aria-invalid", "true");
     expect(fetchMock).not.toHaveBeenCalled();
 
-    type("Server address or TLD", "https://localhost");
+    type("Server hostname or TLD", "https://localhost");
     connect();
     expect(await screen.findByText(/Enter only the host name/)).toBeInTheDocument();
     expect(fetchMock).not.toHaveBeenCalled();
@@ -74,7 +74,7 @@ describe("connection screen", () => {
 
   it("connects without authentication and shows what the server offers", async () => {
     renderConnection();
-    type("Server address or TLD", "rpp.example.test");
+    type("Server hostname or TLD", "rpp.example.test");
     connect();
 
     expect(await screen.findByText("Capabilities read")).toBeInTheDocument();
@@ -100,7 +100,7 @@ describe("connection screen", () => {
     renderConnection();
     expect(screen.queryByLabelText("User name")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("radio", { name: /User name and password/ }));
-    type("Server address or TLD", "rpp.example.test");
+    type("Server hostname or TLD", "rpp.example.test");
     connect();
     expect(await screen.findByText("Enter the user name")).toBeInTheDocument();
     expect(screen.getByText("Enter the password")).toBeInTheDocument();
@@ -120,14 +120,14 @@ describe("connection screen", () => {
   it("warns before Basic credentials would go over plain HTTP", () => {
     renderConnection();
     fireEvent.click(screen.getByRole("radio", { name: /User name and password/ }));
-    type("Server address or TLD", "localhost"); type("Port", "8000"); fireEvent.click(screen.getByRole("checkbox", { name: /Allow plain HTTP/ }));
+    type("Server hostname or TLD", "localhost"); type("Port", "8000"); fireEvent.click(screen.getByRole("checkbox", { name: /Allow plain HTTP/ }));
     expect(screen.getByRole("status")).toHaveTextContent("The password would travel unprotected");
   });
 
   it("explains a failed connection and keeps the screens unconfirmed", async () => {
     fetchMock.mockRejectedValue(new TypeError("Failed to fetch"));
     renderConnection();
-    type("Server address or TLD", "rpp.example.test");
+    type("Server hostname or TLD", "rpp.example.test");
     connect();
 
     const alert = await screen.findByRole("alert");
@@ -140,7 +140,7 @@ describe("connection screen", () => {
   it("says when the address is not an RPP server", async () => {
     fetchMock.mockResolvedValue(new Response("<html>", { headers: { "Content-Type": "text/html" } }));
     renderConnection();
-    type("Server address or TLD", "rpp.example.test");
+    type("Server hostname or TLD", "rpp.example.test");
     connect();
     expect(await screen.findByRole("alert")).toHaveTextContent("not with an RPP discovery document");
   });
@@ -148,7 +148,7 @@ describe("connection screen", () => {
   it("warns when the server advertises another address, and does not follow it", async () => {
     fetchMock.mockResolvedValue(answer(discovery("https://elsewhere.example.test/rpp")));
     renderConnection();
-    type("Server address or TLD", "rpp.example.test");
+    type("Server hostname or TLD", "rpp.example.test");
     connect();
     expect(await screen.findByText("The server advertises another address")).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledTimes(1);
@@ -156,7 +156,7 @@ describe("connection screen", () => {
 
   it("disconnects, and prefills the last server next time", async () => {
     const first = renderConnection();
-    type("Server address or TLD", "rpp.example.test");
+    type("Server hostname or TLD", "rpp.example.test");
     connect();
     await screen.findByText("Capabilities read");
     fireEvent.click(screen.getByRole("button", { name: "Disconnect" }));
@@ -185,7 +185,7 @@ describe("preset section", () => {
   async function connected() {
     fetchMock.mockImplementation(async () => answer(twoPresets()));
     renderConnection();
-    type("Server address or TLD", "rpp.example.test");
+    type("Server hostname or TLD", "rpp.example.test");
     connect();
     await screen.findByText("Capabilities read");
   }
@@ -194,7 +194,7 @@ describe("preset section", () => {
     fetchMock.mockImplementation(async () => answer(twoPresets()));
     renderConnection();
     expect(screen.queryByRole("heading", { name: "Preset" })).not.toBeInTheDocument();
-    type("Server address or TLD", "rpp.example.test");
+    type("Server hostname or TLD", "rpp.example.test");
     connect();
     expect(await screen.findByRole("heading", { name: "Preset" })).toBeInTheDocument();
   });
@@ -267,7 +267,7 @@ describe("preset section", () => {
     );
     fetchMock.mockImplementation(async () => answer(twoPresets()));
     renderConnection();
-    type("Server address or TLD", "rpp.example.test");
+    type("Server hostname or TLD", "rpp.example.test");
     connect();
     await screen.findByText("Capabilities read");
     expect(screen.getByRole("combobox", { name: "Preset" })).toHaveValue("default");
@@ -302,7 +302,7 @@ describe("bookmarks", () => {
     expect(select()).toBeDisabled();
 
     fireEvent.click(screen.getByRole("radio", { name: /User name and password/ }));
-    type("Server address or TLD", "rpp.example.test");
+    type("Server hostname or TLD", "rpp.example.test");
     type("User name", "registrar");
     type("Password", "hunter2");
     type("Connection name", "  Registry A ");
@@ -324,7 +324,7 @@ describe("bookmarks", () => {
     expect(await screen.findByText("Enter a connection name to save a bookmark")).toBeInTheDocument();
     expect(screen.getByText("Enter the host name of the RPP server")).toBeInTheDocument();
     type("Connection name", "x");
-    type("Server address or TLD", "rpp.example.test");
+    type("Server hostname or TLD", "rpp.example.test");
     save();
     await waitFor(() => expect(stored()).toHaveLength(1));
     expect(screen.queryByText("Enter a connection name to save a bookmark")).not.toBeInTheDocument();
@@ -367,7 +367,7 @@ describe("bookmarks", () => {
     expect(screen.getByText("Editing bookmark Registry A")).toBeInTheDocument();
     expect(screen.getByRole("toolbar", { name: "Bookmarks" })).toHaveTextContent("Being edited");
 
-    type("Server address or TLD", "other.example.test");
+    type("Server hostname or TLD", "other.example.test");
     save("Save changes to the bookmark");
     await waitFor(() => expect(stored()[0]?.profile.baseUrl).toBe("https://other.example.test"));
     expect(screen.queryByRole("group", { name: /already exists/ })).not.toBeInTheDocument();
@@ -385,7 +385,7 @@ describe("bookmarks", () => {
     seed(BOOKMARK);
     renderConnection();
     type("Connection name", "registry a");
-    type("Server address or TLD", "other.example.test");
+    type("Server hostname or TLD", "other.example.test");
     save();
 
     const ask = await screen.findByRole("group", { name: "A bookmark named Registry A already exists" });

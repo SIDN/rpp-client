@@ -15,6 +15,7 @@ export function ConfirmAction({
   expected,
   pending = false,
   destructive = false,
+  disabled = false,
 }: {
   trigger: string;
   title: string;
@@ -25,6 +26,8 @@ export function ConfirmAction({
   expected?: string;
   pending?: boolean;
   destructive?: boolean;
+  /** The trigger is shown but cannot be used, for example while there is nothing yet to act on. */
+  disabled?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [typed, setTyped] = useState("");
@@ -32,7 +35,7 @@ export function ConfirmAction({
 
   if (!open) {
     return (
-      <Button variant={destructive ? "destructive" : "secondary"} disabled={pending} onClick={() => setOpen(true)}>
+      <Button variant={destructive ? "destructive" : "secondary"} disabled={pending || disabled} onClick={() => setOpen(true)}>
         {trigger}
       </Button>
     );

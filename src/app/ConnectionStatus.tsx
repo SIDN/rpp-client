@@ -33,9 +33,11 @@ export function ConnectionStatus() {
       const partial = discovery.status === "partial";
       return (
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-          <Badge tone={partial ? "warning" : "success"} dot>
-            {partial ? "Capabilities partly confirmed" : "Capabilities confirmed"}
-          </Badge>
+          <Link to="/developer/capabilities" className="rounded-full underline-offset-2 hover:underline">
+            <Badge tone={partial ? "warning" : "success"} dot>
+              {partial ? "Capabilities partly confirmed" : "Capabilities confirmed"}
+            </Badge>
+          </Link>
           {environment && (
             <span className="text-sm">
               {environment.name}, {environment.status}

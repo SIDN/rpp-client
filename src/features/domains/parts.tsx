@@ -28,7 +28,7 @@ export function NameField({ name, onNameChange }: PanelProps) {
   return (
     <Field
       label="Domain name"
-      hint={ref?.unicode ? <>Sent as <code>{ref.name}</code>, the A-label form the protocol takes.</> : "The name as the registry knows it, for example example.nl"}
+      hint={ref?.unicode ? <>Sent as <code>{ref.name}</code>, the A-label form the protocol takes.</> : "for example example.nl"}
     >
       {(control) => (
         <Input

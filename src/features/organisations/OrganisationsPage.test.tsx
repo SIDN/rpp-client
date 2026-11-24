@@ -493,7 +493,7 @@ describe("organisation delete", () => {
     const { calls } = await checked(answering(withUsers("U-1", "U-2")));
     expect(panel().getByText("This organisation still has 2 users")).toBeInTheDocument();
     expect(panel().getByRole("region", { name: "Before deleting" })).toHaveTextContent("U-2");
-    expect(panel().queryByRole("button", { name: "Delete this organisation" })).toBeNull();
+    expect(panel().getByRole("button", { name: "Delete this organisation" })).toBeDisabled();
     expect(panel().getByRole("checkbox", { name: /Delete all organisation users/ })).not.toBeChecked();
     expect(calls.every((call) => call.method === "GET")).toBe(true);
   });
@@ -563,7 +563,7 @@ describe("user delete", () => {
     press("Show the users");
     const table = await panel().findByRole("table", { name: "Users of ORG-1" });
     expect(within(table).getAllByRole("row")).toHaveLength(3);
-    expect(panel().queryByRole("button", { name: "Delete this user" })).toBeNull();
+    expect(panel().getByRole("button", { name: "Delete this user" })).toBeDisabled();
 
     press("Choose U-1");
     expect(panel().getByText("Deleting a user cannot be undone")).toBeInTheDocument();
@@ -577,7 +577,7 @@ describe("user delete", () => {
     expect(within(after).getAllByRole("row")).toHaveLength(2);
     expect(after).not.toHaveTextContent("U-1");
     expect(after).toHaveTextContent("U-2");
-    expect(panel().queryByRole("region", { name: "Delete the user" })).toBeNull();
+    expect(panel().getByRole("button", { name: "Delete this user" })).toBeDisabled();
   });
 
   it("does not delete without the identifier typed", async () => {

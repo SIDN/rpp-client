@@ -19,23 +19,20 @@ export function DeletePanel({ name, onNameChange }: PanelProps) {
     <div className="flex flex-col gap-6">
       <div className="flex max-w-xl flex-col gap-5">
         <NameField name={name} onNameChange={onNameChange} />
-        {tryParseDomainName(name) ? (
-          <div>
-            <ConfirmAction
-              destructive
-              trigger="Delete this domain"
-              title={`Delete ${target}?`}
-              confirmLabel={`Delete ${target}`}
-              expected={target}
-              pending={remove.pending}
-              onConfirm={() => remove.start(target)}
-            >
-              The registry is asked to delete <code>{target}</code>. Only the sponsoring registrar may do this.
-            </ConfirmAction>
-          </div>
-        ) : (
-          <p className="text-sm text-muted-foreground">Enter the name of the domain to delete.</p>
-        )}
+        <div>
+          <ConfirmAction
+            destructive
+            disabled={!tryParseDomainName(name)}
+            trigger="Delete this domain"
+            title={`Delete ${target}?`}
+            confirmLabel={`Delete ${target}`}
+            expected={target}
+            pending={remove.pending}
+            onConfirm={() => remove.start(target)}
+          >
+            The registry is asked to delete <code>{target}</code>. Only the sponsoring registrar may do this.
+          </ConfirmAction>
+        </div>
       </div>
       <OperationOutcome operation={remove} success={`Deleted ${remove.variables ?? "the domain"}`} />
     </div>

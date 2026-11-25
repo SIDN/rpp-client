@@ -7,9 +7,11 @@ import { Field, Input } from "@/components/ui/field";
 export interface DnssecValues {
   dsRecords: DsRdata[];
   keyRecords: DnskeyRdata[];
+  /** Seconds; empty to leave it to the server. */
+  maxSigLife: string;
 }
 
-export const DNSSEC_DEFAULTS: DnssecValues = { dsRecords: [], keyRecords: [] };
+export const DNSSEC_DEFAULTS: DnssecValues = { dsRecords: [], keyRecords: [], maxSigLife: "" };
 
 const EMPTY_DS: DsRdata = { keyTag: "", algorithm: "", digestType: "", digest: "" };
 const EMPTY_KEY: DnskeyRdata = { flags: "", protocol: "", algorithm: "", publicKey: "" };
@@ -20,9 +22,11 @@ const isFilled = (record: Record<string, string>) => Object.values(record).some(
 /** Only one kind is sent: the form does not let both be entered. Rows left empty are not sent. */
 export function dnssecOf(values: DnssecValues): DnssecInput | undefined {
   const ds = values.dsRecords.filter(isFilled).map((record) => trimmed(record) as DsRdata);
-  if (ds.length > 0) return { type: "ds", records: ds };
   const keys = values.keyRecords.filter(isFilled).map((record) => trimmed(record) as DnskeyRdata);
-  return keys.length > 0 ? { type: "dnskey", records: keys } : undefined;
+  const seconds = values.maxSigLife.trim();
+  const maxSigLife = seconds === "" ? {} : { maxSigLife: Number(seconds) };
+  if (ds.length > 0) return { type: "ds", records: ds, ...maxSigLife };
+  return keys.length > 0 ? { type: "dnskey", records: keys, ...maxSigLife } : undefined;
 }
 
 const integer = (label: string) => (value: string) => (/^\d{1,5}$/.test(value.trim()) ? true : `${label}: use a whole number`);
@@ -91,7 +95,7 @@ function Records({ kind, fields, onRemove }: { kind: "ds" | "dnskey"; fields: { 
 
 /** The DNS Data of a registration, holding either DS records or DNSKEY records, never both. */
 export function DnssecFields() {
-  const { control } = useFormContext<DnssecValues>();
+  const { control, register } = useFormContext<DnssecValues>();
   const ds = useFieldArray({ control, name: "dsRecords" });
   const keys = useFieldArray({ control, name: "keyRecords" });
   const hasDs = ds.fields.length > 0;
@@ -112,6 +116,18 @@ export function DnssecFields() {
           Add a DNSKEY record
         </Button>
       </div>
+      {(hasDs || hasKeys) && (
+        <Field label="Max signature life (seconds)" hint="How long the signature over these records may live. The server may ignore it." className="max-w-64">
+          {(control) => (
+            <Input
+              {...control}
+              inputMode="numeric"
+              autoComplete="off"
+              {...register("maxSigLife", { validate: (value) => value.trim() === "" || (/^[1-9]\d{0,9}$/.test(value.trim()) ? true : "Max signature life: use a whole number of seconds, at least 1") })}
+            />
+          )}
+        </Field>
+      )}
       {(hasDs || hasKeys) && (
         <p className="text-sm text-muted-foreground">
           {hasDs ? "Remove the DS records to add DNSKEY records instead." : "Remove the DNSKEY records to add DS records instead."}

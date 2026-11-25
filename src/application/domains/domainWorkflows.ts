@@ -55,15 +55,20 @@ export const CONTACT_ROLES = ["admin", "billing", "tech"] as const;
 export type DsRdata = Record<"keyTag" | "algorithm" | "digestType" | "digest", string>;
 export type DnskeyRdata = Record<"flags" | "protocol" | "algorithm" | "publicKey", string>;
 
-export type DnssecInput =
+export type DnssecInput = (
   | { type: "ds"; records: readonly DsRdata[] }
-  | { type: "dnskey"; records: readonly DnskeyRdata[] };
+  | { type: "dnskey"; records: readonly DnskeyRdata[] }
+) & {
+  /** Seconds: the child's preference for how long the parent's signature over these records lives (`dns.controls.maxSigLifetime`). */
+  maxSigLife?: number;
+};
 
-function dnsDataOf({ type, records }: DnssecInput): DnsData | undefined {
+function dnsDataOf({ type, records, maxSigLife }: DnssecInput): DnsData | undefined {
   if (records.length === 0) return undefined;
   return {
     "@type": "dnsData",
     records: records.map((rdata) => ({ "@type": "dnsRecord", name: "@", type, rdata: { ...rdata } })),
+    ...(maxSigLife !== undefined && { controls: { "@type": "dnsControls", maxSigLifetime: { [type]: maxSigLife } } }),
   };
 }
 
@@ -82,6 +87,10 @@ export interface RegisterInput {
   /** The transfer password, set as the domain's authorisation information (method `authinfo`, the EPP-compatible one). */
   authInfo?: string;
 }
+
+/** Which host information a domain name read returns (data objects, Domain Name Read): all, delegated, subordinate or none. */
+export const HOSTS_FILTERS = ["all", "del", "sub", "none"] as const;
+export type HostsFilter = (typeof HOSTS_FILTERS)[number];
 
 export interface RestoreReportInput {
   preData: string;
@@ -161,10 +170,11 @@ export function createDomainWorkflows(client: RppClient) {
     },
 
     /** The domain with everything the server shows. `authInfo` is only sent on request, and only to the sponsoring client. */
-    async info(input: string, options: Signal & { authInfo?: boolean } = {}): Promise<OperationSuccess<DomainName>> {
+    async info(input: string, options: Signal & { authInfo?: boolean; hostsFilter?: HostsFilter } = {}): Promise<OperationSuccess<DomainName>> {
       return domains.read(parseDomainName(input).name, {
         signal: options.signal,
         includeElements: options.authInfo ? ["authInfo"] : undefined,
+        parameters: options.hostsFilter ? { hostsFilter: options.hostsFilter } : undefined,
       });
     },
 

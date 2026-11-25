@@ -19,8 +19,8 @@ import { createMessageWorkflows } from "@/application/messages/messageWorkflows"
 import { isSynthetic, synthesizeMessages } from "@/application/messages/synthesize";
 import { Nothing } from "@/components/common/definition";
 import { EmptyState, PageHeader } from "@/components/common/layout";
+import { NotConnected } from "@/components/common/NotConnected";
 import { Badge } from "@/components/ui/badge";
-import { buttonVariants } from "@/components/ui/button-variants";
 import { Callout } from "@/components/ui/callout";
 import { Field, Select } from "@/components/ui/field";
 import type { Message } from "@/rpp/core/types/objects";
@@ -52,16 +52,7 @@ export function MessagesPage() {
     return (
       <>
         {header}
-        <EmptyState
-          title="Connect to a server first"
-          action={
-            <Link to="/connection" className={buttonVariants({ variant: "secondary" })}>
-              Set up a connection
-            </Link>
-          }
-        >
-          What a server offers is only known after its capabilities have been read. This screen stays empty until then.
-        </EmptyState>
+        <NotConnected />
       </>
     );
   }

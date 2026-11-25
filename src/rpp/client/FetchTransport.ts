@@ -20,7 +20,8 @@ import { createClientTransactionIdGenerator } from "./transactionId";
 import { TransportError } from "../errors/TransportError";
 
 const BODILESS_METHODS: ReadonlySet<string> = new Set(["GET", "HEAD"]);
-const OWNED_HEADERS: ReadonlySet<string> = new Set([
+/** Lower-case names of the headers a caller may not set: the transport owns them. */
+export const OWNED_HEADERS: ReadonlySet<string> = new Set([
   "accept",
   "content-type",
   PRESET_HEADER.toLowerCase(),
@@ -82,7 +83,10 @@ async function discard(response: Response): Promise<void> {
 
 export function createFetchTransport(config: TransportConfig): RppTransport {
   const policy = createOriginPolicy(config);
-  const defaultTimeoutMs = config.timeoutMs ?? 30_000;
+  const defaultTimeoutMs = (): number => {
+    const { timeoutMs } = config;
+    return (typeof timeoutMs === "function" ? timeoutMs() : timeoutMs) ?? 30_000;
+  };
   const redirectPolicy = config.redirectPolicy ?? "reject";
   const sensitiveHeaders = new Set((config.sensitiveHeaders ?? []).map((name) => name.toLowerCase()));
   const maxBodyChars = config.maxDiagnosticBodyChars ?? 100_000;
@@ -247,7 +251,7 @@ export function createFetchTransport(config: TransportConfig): RppTransport {
     const startedAt = new Date().toISOString();
     const startedMs = performance.now();
     const snapshot: RequestSnapshot = { method: request.method, url: "(unresolved)", headers: {}, body: undefined };
-    const abort = createAbortControl(request.signal, request.timeoutMs ?? defaultTimeoutMs);
+    const abort = createAbortControl(request.signal, request.timeoutMs ?? defaultTimeoutMs());
     progress({ id, phase: "started", method: request.method, at: startedMs });
     const record = (outcome: ExchangeOutcome): ExchangeRecord => {
       const exchange: ExchangeRecord = {

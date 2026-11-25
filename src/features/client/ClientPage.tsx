@@ -4,10 +4,11 @@ import { useSettings } from "@/app/settings-context";
 import { MESSAGE_LIMITS } from "@/application/messages/messages";
 import { PAGE_SIZES } from "@/application/processes/processList";
 import { PageHeader, Section } from "@/components/common/layout";
+import { PaletteChoice } from "@/components/common/PaletteChoice";
 import { Callout } from "@/components/ui/callout";
 import { Choice } from "@/components/ui/choice";
 import { Field, Input, Select } from "@/components/ui/field";
-import { type TimeDisplay } from "@/config/appSettings";
+import { TIMEOUT_SECONDS, type TimeDisplay } from "@/config/appSettings";
 import { loadBookmarks } from "@/config/bookmarks";
 import { defaultBookmark } from "@/config/defaultConnection";
 
@@ -19,6 +20,11 @@ function isHttpsUrl(value: string): boolean {
   }
 }
 
+function parseTimeout(value: string): number | undefined {
+  const seconds = Number(value);
+  return value.trim() !== "" && Number.isInteger(seconds) && seconds >= TIMEOUT_SECONDS.min && seconds <= TIMEOUT_SECONDS.max ? seconds : undefined;
+}
+
 /** The options of the person using this client: which connection to start with, and how screens show things. */
 export function ClientPage() {
   const { settings, update } = useSettings();
@@ -26,6 +32,8 @@ export function ClientPage() {
   const chosen = defaultBookmark(settings, bookmarks);
   const needsPassword = chosen?.profile.auth.type === "basic";
   const [doh, setDoh] = useState(settings.dohEndpoint);
+  const [timeout, setTimeoutText] = useState(String(settings.requestTimeoutSeconds));
+  const timeoutError = parseTimeout(timeout) === undefined ? `Enter a whole number of seconds, ${TIMEOUT_SECONDS.min} to ${TIMEOUT_SECONDS.max}` : undefined;
   const dohError = isHttpsUrl(doh.trim()) ? undefined : "Enter an https:// address";
 
   return (
@@ -61,6 +69,28 @@ export function ClientPage() {
               <code>{chosen.profile.baseUrl}</code>, {chosen.profile.auth.type === "basic" ? `user ${chosen.profile.auth.username}` : "no authentication"}.
             </p>
           )}
+          <Field label="Timeout (seconds)" hint="How long to wait for the answer to any request to the RPP server before giving up. Applies to the open connection too." error={timeoutError}>
+            {(control) => (
+              <Input
+                {...control}
+                type="number"
+                inputMode="numeric"
+                min={TIMEOUT_SECONDS.min}
+                max={TIMEOUT_SECONDS.max}
+                step={1}
+                className="max-w-32"
+                value={timeout}
+                onChange={(event) => {
+                  setTimeoutText(event.target.value);
+                  const seconds = parseTimeout(event.target.value);
+                  if (seconds !== undefined) update({ requestTimeoutSeconds: seconds });
+                }}
+                onBlur={() => {
+                  if (parseTimeout(timeout) === undefined) setTimeoutText(String(settings.requestTimeoutSeconds));
+                }}
+              />
+            )}
+          </Field>
           <Choice
             type="checkbox"
             label="Connect when the client starts"
@@ -106,6 +136,7 @@ export function ClientPage() {
 
       <Section id="display" title="Display">
         <div className="flex max-w-xl flex-col gap-6">
+          <PaletteChoice />
           <Field label="Time zone" hint="Dates and times are always sent and kept as the server gives them. This is how they are shown.">
             {(control) => (
               <Select {...control} value={settings.timeDisplay} onChange={(event) => update({ timeDisplay: event.target.value as TimeDisplay })}>

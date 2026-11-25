@@ -10,6 +10,7 @@ import {
   Radar,
   Server,
   Settings,
+  Terminal,
   UserRound,
   type LucideIcon,
 } from "lucide-react";
@@ -65,6 +66,7 @@ export const NAVIGATION: readonly NavGroup[] = [
     items: [
       { to: "/developer/capabilities", label: "Capabilities", icon: Radar, purpose: "The discovery document of the server: versions, presets, extensions and profiles." },
       { to: "/developer/exchanges", label: "Exchanges", icon: ArrowLeftRight, purpose: "Every request and response of this session, with secrets removed." },
+      { to: "/developer/requests", label: "Raw request", icon: Terminal, purpose: "Send any request to the server as typed, and read the redacted exchange." },
       { to: "/developer/schemas", label: "Schemas", icon: Braces, purpose: "The JSON Schema of each preset, as a tree you can search and as the raw schema." },
       { to: "/developer/settings", label: "Settings", icon: Settings, purpose: "How this client behaves, such as showing synthesized data instead of asking the server." },
     ],

@@ -146,8 +146,9 @@ describe("domain names screen", () => {
     const view = panel();
     expect(view.getByRole("list", { name: "Status" })).toHaveTextContent("clientHold");
     expect(view.getByText("C-1")).toBeInTheDocument();
+    expect(view.getByRole("link", { name: "C-1" })).toHaveAttribute("href", "/contacts?tab=info&name=C-1&run=1");
     expect(view.getByText("C-2")).toBeInTheDocument();
-    expect(view.getByText("ns1.example.test")).toBeInTheDocument();
+    expect(view.getByRole("link", { name: "ns1.example.test" })).toHaveAttribute("href", "/hosts?tab=info&name=ns1.example.test&run=1");
     expect(view.getByText("REG-1")).toBeInTheDocument();
     expect(view.getByText("weird")).toBeInTheDocument();
     expect(view.getByText("S-7")).toBeInTheDocument();
@@ -339,6 +340,23 @@ describe("check and register", () => {
     });
   });
 
+  it("sends the max signature life with the DNSSEC data", async () => {
+    const { calls } = renderPage(() => answer(DOMAIN, { status: 201 }));
+    openTab("Register");
+    typeName("example.test");
+    expect(panel().queryByLabelText("Max signature life (seconds)")).not.toBeInTheDocument();
+    fireEvent.click(panel().getByRole("button", { name: "Add a DS record" }));
+    const record = within(panel().getByRole("group", { name: "DS record 1" }));
+    fireEvent.change(record.getByLabelText("Key tag"), { target: { value: "1" } });
+    fireEvent.change(record.getByLabelText("Algorithm"), { target: { value: "13" } });
+    fireEvent.change(record.getByLabelText("Digest type"), { target: { value: "2" } });
+    fireEvent.change(record.getByLabelText("Digest"), { target: { value: "AB" } });
+    fireEvent.change(panel().getByLabelText("Max signature life (seconds)"), { target: { value: "600" } });
+    fireEvent.click(panel().getByRole("button", { name: "Register domain" }));
+    await waitFor(() => expect(calls).toHaveLength(1));
+    expect(calls[0]?.body).toMatchObject({ dns: { controls: { maxSigLifetime: { ds: 600 } } } });
+  });
+
   it("disables the Unicode name and ruleset when the server lists no IDN rulesets", () => {
     renderPage(() => answer(DOMAIN));
     openTab("Register");
@@ -419,6 +437,21 @@ describe("renew", () => {
   });
 });
 
+describe("hosts filter", () => {
+  it("is sent as the hostsFilter parameter only when one is chosen", async () => {
+    const { calls } = renderPage(() => answer(DOMAIN));
+    typeName("example.test");
+    fireEvent.click(panel().getByRole("button", { name: "Get info" }));
+    await waitFor(() => expect(calls).toHaveLength(1));
+    expect(calls[0]?.path).toBe("/domainNames/example.test");
+
+    fireEvent.change(panel().getByLabelText("Hosts filter"), { target: { value: "del" } });
+    fireEvent.click(panel().getByRole("button", { name: "Get info" }));
+    await waitFor(() => expect(calls).toHaveLength(2));
+    expect(calls[1]).toMatchObject({ method: "GET", path: "/domainNames/example.test?hostsFilter=del" });
+  });
+});
+
 describe("restore", () => {
   it("asks for a restore, then sends the report, then reads the status", async () => {
     const { calls } = renderPage(() => answer({ "@type": "restoreProcess", restoreStatus: "pendingRestore" }));
@@ -428,6 +461,7 @@ describe("restore", () => {
     await waitFor(() => expect(panel().getByText("The registry took the restore")).toBeInTheDocument());
     expect(calls[0]).toMatchObject({ method: "POST", path: "/domainNames/example.test/processes/restoreProcesses", body: { "@type": "restoreProcess" } });
     expect(panel().getAllByText("pendingRestore").length).toBeGreaterThan(0);
+    expect(panel().getByRole("button", { name: "Ask for a restore" })).toBeDisabled();
 
     fireEvent.click(panel().getByRole("radio", { name: /Send the restore report/ }));
     fireEvent.click(panel().getByRole("button", { name: "Send the report" }));
@@ -449,6 +483,12 @@ describe("restore", () => {
       path: "/domainNames/example.test/processes/restoreProcesses/latest",
       body: { "@type": "restoreProcess", restoreReport: { preData: "before", postData: "after", restoreReason: "deleted in error", statements: ["one", "two"] } },
     });
+
+    expect(await panel().findByRole("region", { name: "Restore report sent" })).toBeVisible();
+    expect(panel().queryByLabelText("Registration data before the delete")).toBeNull();
+    expect(panel().getByText("before")).toBeVisible();
+    expect(panel().getByText("deleted in error")).toBeVisible();
+    expect(panel().queryByRole("button", { name: "Send the report" })).toBeNull();
 
     fireEvent.click(panel().getByRole("radio", { name: "Check the restore status" }));
     fireEvent.click(panel().getByRole("button", { name: "Check the status" }));

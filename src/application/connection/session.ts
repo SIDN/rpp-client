@@ -39,7 +39,7 @@ let sequence = 0;
 export function createSession(
   profile: ConnectionProfile,
   credentials: Credentials | undefined,
-  options: { fetch?: typeof fetch } = {},
+  options: { fetch?: typeof fetch; /** Milliseconds to wait for any request; asked for each one. */ timeoutMs?: () => number } = {},
 ): Session {
   let authentication: AuthenticationProvider;
   if (profile.auth.type === "basic") {
@@ -66,6 +66,7 @@ export function createSession(
     onProgress: activity.record,
     preset: () => preset,
     fetch: options.fetch,
+    timeoutMs: options.timeoutMs,
   });
   return {
     id: ++sequence,

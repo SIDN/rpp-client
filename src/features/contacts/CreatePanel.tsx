@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { FormProvider, useForm } from "react-hook-form";
 import { toData, EMPTY_VALUES, type ContactValues } from "./formValues";
+import { Button } from "@/components/ui/button";
 import { Callout } from "@/components/ui/callout";
 import { Field, Input } from "@/components/ui/field";
 import { OperationOutcome } from "../shared/OperationOutcome";
@@ -20,6 +22,7 @@ export function CreatePanel({ id, onIdChange }: PanelProps) {
   const store = useContactStore();
   const form = useForm<CreateValues>({ defaultValues: { ...EMPTY_VALUES, authInfo: "" } });
   const shape = useContactForm();
+  const [authInfoShown, setAuthInfoShown] = useState(false);
 
   const create = useOperation(
     (input: CreateContactInput, signal) => workflows.create(input, { signal }),
@@ -45,8 +48,15 @@ export function CreatePanel({ id, onIdChange }: PanelProps) {
               <SchemaNote note={shape.note} />
               <ContactFields withKind addresses={ADDRESSES[shape.mode]} />
               {shape.authInfo && (
-                <Field label="Transfer password" hint="Set now, or later in Change. Another registrar needs it to take the contact over.">
-                  {(control) => <Input {...control} type="password" autoComplete="off" className="max-w-64" {...form.register("authInfo")} />}
+                <Field label="Authorisation Information" hint="Set now, or later in Change. Another registrar needs it to take the contact over.">
+                  {(control) => (
+                    <div className="flex items-center gap-2">
+                      <Input {...control} type={authInfoShown ? "text" : "password"} autoComplete="off" className="max-w-64" {...form.register("authInfo")} />
+                      <Button variant="ghost" size="sm" aria-pressed={authInfoShown} onClick={() => setAuthInfoShown((current) => !current)}>
+                        {authInfoShown ? "Hide" : "Show"}
+                      </Button>
+                    </div>
+                  )}
                 </Field>
               )}
               <Callout tone="info" title="What the registry requires varies">

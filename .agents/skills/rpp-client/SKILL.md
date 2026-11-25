@@ -244,7 +244,6 @@ Rules:
 Organize navigation around three modes:
 
 - **Registry operations:** dashboard, domains, contacts, hosts, and other supported objects.
-- **Extensions:** server-supported extension workflows.
 - **Developer tools:** capability explorer, request/response inspector, schema validation, and diagnostics.
 
 Do not show an action as available unless both the client implements it and the current server capability snapshot permits it.

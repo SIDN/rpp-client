@@ -1,11 +1,11 @@
 import { useState, type ReactNode } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { objectSupport } from "@/application/capability";
 import { useConnection } from "@/app/connection-context";
 import { useDiscoveryState } from "@/app/discovery-context";
-import { EmptyState, PageHeader } from "@/components/common/layout";
+import { PageHeader } from "@/components/common/layout";
+import { NotConnected } from "@/components/common/NotConnected";
 import { WorkflowTabs } from "@/components/common/WorkflowTabs";
-import { buttonVariants } from "@/components/ui/button-variants";
 import { Callout } from "@/components/ui/callout";
 import { ChangePanel } from "./ChangePanel";
 import { CheckPanel } from "./CheckPanel";
@@ -38,6 +38,7 @@ export function HostsPage() {
   const [params] = useSearchParams();
   const [workflow, setWorkflow] = useState<WorkflowId>(() => WORKFLOWS.find((entry) => entry.id === params.get("tab"))?.id ?? "info");
   const [name, setName] = useState(() => params.get("name") ?? "");
+  const [lookUpAtOnce] = useState(() => params.get("run") === "1");
 
   const header = <PageHeader title="Hosts" description="Manage name servers and their addresses." />;
 
@@ -45,16 +46,7 @@ export function HostsPage() {
     return (
       <>
         {header}
-        <EmptyState
-          title="Connect to a server first"
-          action={
-            <Link to="/connection" className={buttonVariants({ variant: "secondary" })}>
-              Set up a connection
-            </Link>
-          }
-        >
-          What a server offers is only known after its capabilities have been read. This screen stays empty until then.
-        </EmptyState>
+        <NotConnected />
       </>
     );
   }
@@ -83,7 +75,7 @@ export function HostsPage() {
 
   const panelProps = { name, onNameChange: setName };
   const panels: Record<WorkflowId, ReactNode> = {
-    info: <InfoPanel {...panelProps} />,
+    info: <InfoPanel {...panelProps} startNow={lookUpAtOnce} />,
     check: <CheckPanel {...panelProps} onCreate={() => setWorkflow("create")} />,
     create: <CreatePanel {...panelProps} />,
     change: <ChangePanel {...panelProps} />,

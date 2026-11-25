@@ -11,6 +11,7 @@ import { ConnectionPage } from "@/features/connection/ConnectionPage";
 import { ClientPage } from "@/features/client/ClientPage";
 import { NotFoundPage, RouteError } from "@/features/errors/ErrorPages";
 import { ExchangesPage } from "@/features/exchanges/ExchangesPage";
+import { RawRequestPage } from "@/features/developer/RawRequestPage";
 import { SchemasPage } from "@/features/schemas/SchemasPage";
 import { MessagesPage } from "@/features/messages/MessagesPage";
 import { SettingsPage } from "@/features/settings/SettingsPage";
@@ -30,6 +31,7 @@ const screens: Record<string, ReactElement> = {
   "/processes": <ProcessesPage />,
   "/developer/capabilities": <CapabilitiesPage />,
   "/developer/exchanges": <ExchangesPage />,
+  "/developer/requests": <RawRequestPage />,
   "/developer/schemas": <SchemasPage />,
   "/developer/settings": <SettingsPage />,
 };

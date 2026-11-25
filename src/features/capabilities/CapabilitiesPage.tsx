@@ -2,7 +2,8 @@ import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { useConnection } from "@/app/connection-context";
 import { useDiscoveryState } from "@/app/discovery-context";
-import { EmptyState, PageHeader, Section } from "@/components/common/layout";
+import { PageHeader, Section } from "@/components/common/layout";
+import { NotConnected } from "@/components/common/NotConnected";
 import { DefinitionList, DefinitionRow, Nothing } from "@/components/common/definition";
 import { Badge } from "@/components/ui/badge";
 import { Callout } from "@/components/ui/callout";
@@ -40,16 +41,7 @@ export function CapabilitiesPage() {
     return (
       <>
         {header}
-        <EmptyState
-          title="Connect to a server first"
-          action={
-            <Link to="/connection" className={buttonVariants({ variant: "secondary" })}>
-              Set up a connection
-            </Link>
-          }
-        >
-          The capabilities are read from the server when you connect.
-        </EmptyState>
+        <NotConnected />
       </>
     );
   }

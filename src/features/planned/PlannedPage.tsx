@@ -1,11 +1,10 @@
-import { Link } from "react-router-dom";
 import { objectSupport } from "@/application/capability";
 import { useDiscoveryState } from "@/app/discovery-context";
 import type { NavItem } from "@/app/navigation";
 import { EmptyState, PageHeader } from "@/components/common/layout";
+import { NotConnected } from "@/components/common/NotConnected";
 import { Badge } from "@/components/ui/badge";
 import { Callout } from "@/components/ui/callout";
-import { buttonVariants } from "@/components/ui/button-variants";
 
 /** A screen whose workflow is not built yet. It still tells the truth about the server. */
 export function PlannedPage({ item }: { item: NavItem }) {
@@ -23,16 +22,7 @@ export function PlannedPage({ item }: { item: NavItem }) {
       )}
 
       {support === "unknown" && (
-        <EmptyState
-          title="Connect to a server first"
-          action={
-            <Link to="/connection" className={buttonVariants({ variant: "secondary" })}>
-              Set up a connection
-            </Link>
-          }
-        >
-          What a server offers is only known after its capabilities have been read. This screen stays empty until then.
-        </EmptyState>
+        <NotConnected />
       )}
 
       {support !== "unknown" && support !== "not-offered" && (

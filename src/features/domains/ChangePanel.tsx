@@ -1,8 +1,9 @@
 import { FormProvider, useForm, useWatch, type DeepPartial } from "react-hook-form";
-import { buildDomainPatch, CLIENT_STATUSES, describePatchOperation, editOf, type AuthInfoEdit } from "@/application/domains/domainPatch";
+import { buildDomainPatch, CLIENT_STATUSES, describePatchOperation, dnssecEditOf, editOf, type AuthInfoEdit } from "@/application/domains/domainPatch";
 import { Callout } from "@/components/ui/callout";
 import { Choice } from "@/components/ui/choice";
 import { Field, Input } from "@/components/ui/field";
+import { DnssecFields, type DnssecValues } from "./DnssecFields";
 import type { DomainName } from "@/rpp/core/types/objects";
 import type { PatchOperation } from "@/rpp/operations/patch";
 import { useCachedDomain, useDomainStore } from "./domainCache";
@@ -13,7 +14,7 @@ import { useDomainWorkflows } from "./useDomainWorkflows";
 import { SubmitButton } from "../shared/SubmitButton";
 import { useOperation, type Operation } from "../shared/useOperation";
 
-interface ChangeValues extends DomainDataValues {
+interface ChangeValues extends DomainDataValues, DnssecValues {
   clientStatuses: string[];
   authAction: "keep" | "set" | "remove";
   authValue: string;
@@ -26,6 +27,7 @@ interface Change {
 
 const toValues = (domain: DomainName): ChangeValues => {
   const edit = editOf(domain);
+  const dnssec = dnssecEditOf(domain);
   return {
     registrant: edit.registrant,
     contacts: edit.contacts,
@@ -33,6 +35,9 @@ const toValues = (domain: DomainName): ChangeValues => {
     clientStatuses: edit.clientStatuses,
     authAction: "keep",
     authValue: "",
+    dsRecords: dnssec.ds as unknown as DnssecValues["dsRecords"],
+    keyRecords: dnssec.keys as unknown as DnssecValues["keyRecords"],
+    maxSigLife: dnssec.maxSigLife,
   };
 };
 
@@ -45,6 +50,11 @@ function editOfValues(values: DeepPartial<ChangeValues>) {
     nameservers: (values.nameservers ?? []).map((server) => server?.host ?? ""),
     clientStatuses: (values.clientStatuses ?? []).filter((label): label is string => typeof label === "string"),
     authInfo,
+    dnssec: {
+      ds: (values.dsRecords ?? []).map((record) => ({ ...record }) as Record<string, string>),
+      keys: (values.keyRecords ?? []).map((record) => ({ ...record }) as Record<string, string>),
+      maxSigLife: values.maxSigLife ?? "",
+    },
   };
 }
 
@@ -68,6 +78,8 @@ function ChangeForm({ domain, change }: { domain: DomainName; change: Operation<
           ))}
           <p className="text-sm text-muted-foreground">Statuses the registry sets itself cannot be changed here.</p>
         </fieldset>
+
+        <DnssecFields />
 
         <fieldset className="flex flex-col gap-3">
           <legend className="mb-1 text-sm font-medium">Transfer password</legend>
@@ -93,7 +105,7 @@ function ChangeForm({ domain, change }: { domain: DomainName; change: Operation<
             </ul>
           )}
           <p className="text-sm text-muted-foreground">
-            Only these changes are sent, as one partial update that the registry carries out completely or not at all. DNS data is not changed on this screen.
+            Only these changes are sent, as one partial update that the registry carries out completely or not at all. Only DS and DNSKEY records are changed here; other DNS data stays as it is.
           </p>
         </section>
 

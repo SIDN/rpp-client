@@ -4,7 +4,8 @@ import { Link } from "react-router-dom";
 import { useConnection } from "@/app/connection-context";
 import { useDiscoveryState } from "@/app/discovery-context";
 import { DefinitionList, DefinitionRow } from "@/components/common/definition";
-import { EmptyState, PageHeader, Section } from "@/components/common/layout";
+import { PageHeader, Section } from "@/components/common/layout";
+import { NotConnected } from "@/components/common/NotConnected";
 import { FailureView } from "@/components/protocol/FailureView";
 import { Button } from "@/components/ui/button";
 import { buttonVariants } from "@/components/ui/button-variants";
@@ -32,16 +33,7 @@ export function SchemasPage() {
     return (
       <>
         {header}
-        <EmptyState
-          title="Connect to a server first"
-          action={
-            <Link to="/connection" className={buttonVariants({ variant: "secondary" })}>
-              Set up a connection
-            </Link>
-          }
-        >
-          The presets, and with them their schemas, are known once the capabilities of the server have been read.
-        </EmptyState>
+        <NotConnected />
       </>
     );
   }

@@ -1,7 +1,6 @@
 import { RefreshCw } from "lucide-react";
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Link } from "react-router-dom";
 import { useConnection } from "@/app/connection-context";
 import { useDiscoveryState } from "@/app/discovery-context";
 import { useSettings } from "@/app/settings-context";
@@ -28,9 +27,9 @@ import {
 } from "@/application/processes/processList";
 import { Nothing } from "@/components/common/definition";
 import { EmptyState, PageHeader } from "@/components/common/layout";
+import { NotConnected } from "@/components/common/NotConnected";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { buttonVariants } from "@/components/ui/button-variants";
 import { Callout } from "@/components/ui/callout";
 import { Field, Select } from "@/components/ui/field";
 import { seenKey } from "../shared/seenObjects";
@@ -54,16 +53,7 @@ export function ProcessesPage() {
     return (
       <>
         {header}
-        <EmptyState
-          title="Connect to a server first"
-          action={
-            <Link to="/connection" className={buttonVariants({ variant: "secondary" })}>
-              Set up a connection
-            </Link>
-          }
-        >
-          The processes shown here belong to objects read from the server, so there is nothing until you are connected.
-        </EmptyState>
+        <NotConnected />
       </>
     );
   }

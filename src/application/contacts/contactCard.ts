@@ -85,7 +85,10 @@ const text = (value: unknown): string => (typeof value === "string" ? value : ""
 const record = (value: unknown): Record<string, unknown> => (isJsonObject(value) ? value : {});
 
 function addressOf(addresses: unknown): AddressData {
-  const address = record(record(addresses).addr);
+  return addressFrom(record(record(addresses).addr));
+}
+
+function addressFrom(address: Record<string, unknown>): AddressData {
   const components = (Array.isArray(address.components) ? address.components : []).map(record);
   const component = (kind: string) => components.filter((entry) => entry.kind === kind).map((entry) => text(entry.value));
   const street = component("name");
@@ -101,6 +104,20 @@ function addressOf(addresses: unknown): AddressData {
 /** The key of the localization the contact has, else the undetermined language. The registry holds at most one. */
 export function localizationKeyOf(contact: Contact): string {
   return Object.keys(record(record(contact.contactInfo).localizations))[0] ?? LOCALIZATION_KEY;
+}
+
+/** An address of a localization, with the keys of the Card it is held under. */
+export interface LocalizedAddress {
+  localization: string;
+  key: string;
+  address: AddressData;
+}
+
+/** Every address of every localization of the Card, in the order received. */
+export function localizedAddressesOf(contact: Contact): LocalizedAddress[] {
+  return Object.entries(record(record(contact.contactInfo).localizations)).flatMap(([localization, value]) =>
+    Object.entries(record(record(value).addresses)).map(([key, address]) => ({ localization, key, address: addressFrom(record(address)) })),
+  );
 }
 
 /** How a contact read back keeps its postal info: in the localization alone when the Card itself has none of it. */

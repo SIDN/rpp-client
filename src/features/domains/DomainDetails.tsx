@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { DefinitionList, DefinitionRow, Nothing } from "@/components/common/definition";
 import { StatusLabel } from "@/components/protocol/protocol-badges";
 import { Badge } from "@/components/ui/badge";
@@ -9,13 +10,33 @@ const MODELLED = new Set([
   "subordinateHosts", "expiryDate", "authInfo", "processes",
 ]);
 
+/** The contact, looked up on the Contacts screen as soon as it opens. */
+function ContactLink({ id }: { id: string }) {
+  const query = new URLSearchParams({ tab: "info", name: id, run: "1" });
+  return (
+    <Link to={`/contacts?${query}`} className="underline underline-offset-2">
+      <code>{id}</code>
+    </Link>
+  );
+}
+
+/** The host, looked up on the Hosts screen as soon as it opens. */
+function HostLink({ name }: { name: string }) {
+  const query = new URLSearchParams({ tab: "info", name, run: "1" });
+  return (
+    <Link to={`/hosts?${query}`} className="underline underline-offset-2">
+      <code>{name}</code>
+    </Link>
+  );
+}
+
 function List({ items }: { items: readonly string[] | undefined }) {
   if (!items || items.length === 0) return <Nothing />;
   return (
     <ul className="flex flex-wrap gap-x-4 gap-y-1">
       {items.map((item) => (
         <li key={item}>
-          <code>{item}</code>
+          <HostLink name={item} />
         </li>
       ))}
     </ul>
@@ -57,14 +78,14 @@ export function DomainDetails({ domain }: { domain: DomainName }) {
         <DefinitionRow term="Expires">
           <Timestamp value={domain.expiryDate} />
         </DefinitionRow>
-        <DefinitionRow term="Registrant">{domain.registrant ? <code>{domain.registrant.id}</code> : <Nothing />}</DefinitionRow>
+        <DefinitionRow term="Registrant">{domain.registrant ? <ContactLink id={domain.registrant.id} /> : <Nothing />}</DefinitionRow>
         <DefinitionRow term="Contacts">
           {domain.contacts && domain.contacts.length > 0 ? (
             <ul className="flex flex-col gap-1">
               {domain.contacts.map((contact, index) => (
                 <li key={`${contact.label}-${contact.object.id}-${index}`} className="flex flex-wrap items-center gap-2">
                   <Badge>{contact.label}</Badge>
-                  <code>{contact.object.id}</code>
+                  <ContactLink id={contact.object.id} />
                 </li>
               ))}
             </ul>

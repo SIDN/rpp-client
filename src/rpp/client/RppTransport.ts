@@ -32,8 +32,8 @@ export interface TransportConfig {
   /** Development only: permits `http:` URLs. */
   allowInsecureHttp?: boolean;
   fetch?: typeof fetch;
-  /** Default 30000; 0 disables. */
-  timeoutMs?: number;
+  /** Default 30000; 0 disables. A function is asked for every request, so the timeout can change while the transport lives. */
+  timeoutMs?: number | (() => number);
   redirectPolicy?: RedirectPolicy;
   /** Default `omit`: no cookies. */
   credentials?: RequestCredentials;

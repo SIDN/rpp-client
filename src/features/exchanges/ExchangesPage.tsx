@@ -2,14 +2,13 @@ import { useState, useSyncExternalStore, type ReactNode } from "react";
 import { Trash2 } from "lucide-react";
 import { useConnection } from "@/app/connection-context";
 import { EmptyState, PageHeader, Section } from "@/components/common/layout";
+import { NotConnected } from "@/components/common/NotConnected";
 import { ResultCodeChip } from "@/components/protocol/protocol-badges";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Callout } from "@/components/ui/callout";
 import { Field, Input } from "@/components/ui/field";
-import { buttonVariants } from "@/components/ui/button-variants";
 import { cn } from "@/lib/utils";
-import { Link } from "react-router-dom";
 import { REDACTED } from "@/rpp/client/redaction";
 import type { ExchangeLog, ExchangeRecord } from "@/rpp/client/diagnostics";
 import { filterExchanges, formatBody, summarize } from "./exchangeView";
@@ -38,16 +37,7 @@ export function ExchangesPage() {
     return (
       <>
         <PageHeader title="Exchanges" description="Every request and response of this session, with secrets removed." />
-        <EmptyState
-          title="Connect to a server first"
-          action={
-            <Link to="/connection" className={buttonVariants({ variant: "secondary" })}>
-              Set up a connection
-            </Link>
-          }
-        >
-          Exchanges are recorded per connection, so there is nothing to show before one exists.
-        </EmptyState>
+        <NotConnected />
       </>
     );
   }
@@ -128,7 +118,7 @@ function ExchangeRow({ record, current, onSelect }: { record: ExchangeRecord; cu
   );
 }
 
-function ExchangeDetail({ record }: { record: ExchangeRecord }) {
+export function ExchangeDetail({ record }: { record: ExchangeRecord }) {
   const summary = summarize(record);
   const { request, outcome } = record;
   const response = outcome.kind === "response" ? outcome : undefined;

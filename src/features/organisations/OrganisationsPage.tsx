@@ -1,11 +1,10 @@
 import { useState, type ReactNode } from "react";
-import { Link } from "react-router-dom";
 import { objectSupport } from "@/application/capability";
 import { useConnection } from "@/app/connection-context";
 import { useDiscoveryState } from "@/app/discovery-context";
-import { EmptyState, PageHeader } from "@/components/common/layout";
+import { PageHeader } from "@/components/common/layout";
+import { NotConnected } from "@/components/common/NotConnected";
 import { WorkflowTabs } from "@/components/common/WorkflowTabs";
-import { buttonVariants } from "@/components/ui/button-variants";
 import { Callout } from "@/components/ui/callout";
 import { ChangePanel } from "./ChangePanel";
 import { CreatePanel } from "./CreatePanel";
@@ -58,16 +57,7 @@ export function OrganisationsPage() {
     return (
       <>
         {header}
-        <EmptyState
-          title="Connect to a server first"
-          action={
-            <Link to="/connection" className={buttonVariants({ variant: "secondary" })}>
-              Set up a connection
-            </Link>
-          }
-        >
-          What a server offers is only known after its capabilities have been read. This screen stays empty until then.
-        </EmptyState>
+        <NotConnected />
       </>
     );
   }

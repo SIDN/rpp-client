@@ -56,12 +56,33 @@ describe("client screen", () => {
     expect(screen.getByText("This connection needs a password")).toBeInTheDocument();
   });
 
+  it("keeps the request timeout in seconds, and refuses one that is not a whole number in range", () => {
+    renderPage();
+    const field = screen.getByLabelText("Timeout (seconds)");
+    expect(field).toHaveValue(5);
+    fireEvent.change(field, { target: { value: "12" } });
+    expect(stored()).toMatchObject({ requestTimeoutSeconds: 12 });
+    fireEvent.change(field, { target: { value: "0" } });
+    expect(screen.getByText(/Enter a whole number of seconds/)).toBeInTheDocument();
+    expect(stored()).toMatchObject({ requestTimeoutSeconds: 12 });
+    fireEvent.blur(field);
+    expect(field).toHaveValue(12);
+  });
+
   it("keeps the display options", () => {
     renderPage();
     fireEvent.change(screen.getByRole("combobox", { name: "Time zone" }), { target: { value: "utc" } });
     fireEvent.change(screen.getByRole("combobox", { name: "Messages shown to begin with" }), { target: { value: "50" } });
     fireEvent.change(screen.getByRole("combobox", { name: "Processes per page" }), { target: { value: "10" } });
     expect(stored()).toMatchObject({ timeDisplay: "utc", messageLimit: 50, processPageSize: 10 });
+  });
+  it("chooses a colour scheme, applies it and keeps it", () => {
+    renderPage();
+    expect(screen.getByRole("radio", { name: /Teal and sodium/ })).toBeChecked();
+    fireEvent.click(screen.getByRole("radio", { name: /Nord/ }));
+    expect(document.documentElement.dataset.palette).toBe("nord");
+    expect(localStorage.getItem("rpp-client.palette")).toBe("nord");
+    expect(screen.getByRole("radio", { name: /Nord/ })).toBeChecked();
   });
 });
 

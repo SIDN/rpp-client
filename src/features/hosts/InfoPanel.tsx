@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { useOperation } from "../shared/useOperation";
 import { OperationOutcome } from "../shared/OperationOutcome";
 import { SubmitButton } from "../shared/SubmitButton";
@@ -6,7 +7,8 @@ import { useHostStore, useHostWorkflows } from "./hostHooks";
 import { HostDetails } from "./HostDetails";
 import { NameField, type PanelProps } from "./parts";
 
-export function InfoPanel({ name, onNameChange }: PanelProps) {
+/** `startNow` asks for the info of the host name as soon as the panel is shown, as when a link leads here. */
+export function InfoPanel({ name, onNameChange, startNow = false }: PanelProps & { startNow?: boolean }) {
   const workflows = useHostWorkflows();
   const store = useHostStore();
   const info = useOperation(
@@ -15,6 +17,14 @@ export function InfoPanel({ name, onNameChange }: PanelProps) {
       if (result.data) store.remember(variables, result.data);
     },
   );
+
+  const started = useRef(false);
+  const { start } = info;
+  useEffect(() => {
+    if (!startNow || started.current || name.trim() === "") return;
+    started.current = true;
+    start(name);
+  }, [startNow, name, start]);
 
   return (
     <div className="flex flex-col gap-6">

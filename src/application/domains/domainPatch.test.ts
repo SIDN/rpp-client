@@ -28,6 +28,7 @@ describe("domain patch", () => {
       nameservers: ["ns1.example.test", "ns2.example.test"],
       clientStatuses: ["clientHold"],
       authInfo: { action: "keep" },
+      dnssec: { ds: [], keys: [], maxSigLife: "" },
     });
     expect(buildDomainPatch(domain, edit)).toEqual([]);
   });
@@ -90,5 +91,51 @@ describe("domain patch", () => {
     ]);
     expect(lines.join()).not.toContain("pw");
     expect(describePatchOperation({ op: "remove", path: "/registrant" })).toBe("Remove the registrant");
+  });
+
+  describe("DNSSEC", () => {
+    const ds = { keyTag: "1", algorithm: "13", digestType: "2", digest: "AB" };
+    const key = { flags: "257", protocol: "3", algorithm: "13", publicKey: "AAAA" };
+    const withDs: DomainName = {
+      ...domain,
+      dns: {
+        "@type": "dnsData",
+        records: [{ "@type": "dnsRecord", name: "@", type: "ds", rdata: ds }],
+        controls: { "@type": "dnsControls", maxSigLifetime: { ds: 600 } },
+      },
+    };
+
+    it("adds the DNS data whole to a domain that has none", () => {
+      const edit = { ...editOf(domain), dnssec: { ds: [ds], keys: [], maxSigLife: "300" } };
+      expect(buildDomainPatch(domain, edit)).toEqual([
+        {
+          op: "add",
+          path: "/dns",
+          value: {
+            "@type": "dnsData",
+            records: [{ "@type": "dnsRecord", name: "@", type: "ds", rdata: ds }],
+            controls: { "@type": "dnsControls", maxSigLifetime: { ds: 300 } },
+          },
+        },
+      ]);
+    });
+
+    it("sends nothing when the DNSSEC data is untouched", () => {
+      expect(buildDomainPatch(withDs, editOf(withDs))).toEqual([]);
+    });
+
+    it("removes a record and swaps it for a DNSKEY, and changes the signature life", () => {
+      const edit = { ...editOf(withDs), dnssec: { ds: [], keys: [key], maxSigLife: "900" } };
+      expect(buildDomainPatch(withDs, edit)).toEqual([
+        { op: "remove", path: "/dns/records", match: { type: "ds", rdata: ds } },
+        { op: "add", path: "/dns/records", value: { "@type": "dnsRecord", name: "@", type: "dnskey", rdata: key } },
+        { op: "replace", path: "/dns/controls", value: { "@type": "dnsControls", maxSigLifetime: { dnskey: 900 } } },
+      ]);
+    });
+
+    it("removes the controls when the signature life is cleared", () => {
+      const edit = { ...editOf(withDs), dnssec: { ds: [ds], keys: [], maxSigLife: "" } };
+      expect(buildDomainPatch(withDs, edit)).toEqual([{ op: "remove", path: "/dns/controls" }]);
+    });
   });
 });

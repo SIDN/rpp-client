@@ -1,4 +1,4 @@
-import { dataOf, hasAddress, postalModeOfContact, type AddressData } from "@/application/contacts/contactCard";
+import { dataOf, hasAddress, localizedAddressesOf, postalModeOfContact, type AddressData } from "@/application/contacts/contactCard";
 import { DefinitionList, DefinitionRow, Nothing } from "@/components/common/definition";
 import { StatusLabel } from "@/components/protocol/protocol-badges";
 import type { Contact } from "@/rpp/core/types/objects";
@@ -30,7 +30,7 @@ export function ContactDetails({ contact }: { contact: Contact }) {
   const processes = contact.processes ? Object.entries(contact.processes).filter(([key]) => key !== "@type") : [];
   const others = Object.entries(contact).filter(([key]) => !MODELLED.has(key));
   const authInfo = contact.authInfo;
-  const localizations = card.localizations;
+  const localized = localizedAddressesOf(contact);
 
   return (
     <div className="flex flex-col gap-4">
@@ -66,16 +66,22 @@ export function ContactDetails({ contact }: { contact: Contact }) {
           </DefinitionRow>
         )}
         <DefinitionRow term={mode === "both" ? "Address (loc)" : "Address"}>
-          <Address address={data.localAddress} />
+          {localized.length === 0 ? (
+            <Nothing>Not given</Nothing>
+          ) : (
+            <ul className="flex flex-col gap-3">
+              {localized.map(({ localization, key, address }) => (
+                <li key={`${localization}/${key}`} className="flex flex-col gap-1">
+                  <code className="text-xs text-muted-foreground">{localization}</code>
+                  <Address address={address} />
+                </li>
+              ))}
+            </ul>
+          )}
         </DefinitionRow>
         <DefinitionRow term="Phone">{data.voice ? <code>{data.voice}</code> : <Nothing>Not given</Nothing>}</DefinitionRow>
         <DefinitionRow term="Fax">{data.fax ? <code>{data.fax}</code> : <Nothing>Not given</Nothing>}</DefinitionRow>
         <DefinitionRow term="Email">{value(data.email)}</DefinitionRow>
-        {mode === "both" && localizations !== undefined && (
-          <DefinitionRow term="Other forms">
-            <code className="break-all text-xs">{JSON.stringify(localizations)}</code>
-          </DefinitionRow>
-        )}
         {contact.disclose !== undefined && (
           <DefinitionRow term="Disclosure">
             <code className="break-all text-xs">{JSON.stringify(contact.disclose)}</code>

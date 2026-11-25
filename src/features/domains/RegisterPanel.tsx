@@ -3,7 +3,6 @@ import { FormProvider, useForm } from "react-hook-form";
 import { useDiscoveryState } from "@/app/discovery-context";
 import { idnLgrsFor } from "@/application/capability";
 import { tryParseDomainName } from "@/application/domains/domainWorkflows";
-import { Callout } from "@/components/ui/callout";
 import { Field, Input, Select } from "@/components/ui/field";
 import { useDomainStore } from "./domainCache";
 import { DomainDetails } from "./DomainDetails";
@@ -90,9 +89,6 @@ export function RegisterPanel({ name, onNameChange }: PanelProps) {
           <Field label="Transfer password" hint="Set now, or later in Change. Another registrar needs it to take the domain over.">
             {(control) => <Input {...control} type="password" autoComplete="off" className="max-w-64" {...form.register("authInfo")} />}
           </Field>
-          <Callout tone="info" title="Registering may be billed">
-            The registry decides what a registration costs and when it is charged. Check that the name is available first.
-          </Callout>
           <div>
             <SubmitButton pending={register.pending}>Register domain</SubmitButton>
           </div>

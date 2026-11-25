@@ -120,16 +120,18 @@ function ContactFields() {
                 aria-label={`Identifier of contact ${index + 1}`}
                 aria-invalid={errors.contacts?.[index]?.id ? true : undefined}
                 placeholder="Contact identifier"
-                className="max-w-64 font-mono"
+                className="max-w-52 font-mono"
                 spellCheck={false}
                 {...register(`contacts.${index}.id`, {
                   validate: (id, values) => id.trim() !== "" || values.contacts[index]?.label === "" || "Enter the contact identifier",
                 })}
               />
-              <ContactLookup label={`Look up contact ${index + 1}`} onSelect={(id) => setValue(`contacts.${index}.id`, id, { shouldDirty: true, shouldValidate: true })} />
-              <Button variant="ghost" size="icon" aria-label={`Remove contact ${index + 1}`} onClick={() => remove(index)}>
-                <X aria-hidden />
-              </Button>
+              <div className="flex items-center gap-2">
+                <ContactLookup label={`Look up contact ${index + 1}`} onSelect={(id) => setValue(`contacts.${index}.id`, id, { shouldDirty: true, shouldValidate: true })} />
+                <Button variant="ghost" size="icon" aria-label={`Remove contact ${index + 1}`} onClick={() => remove(index)}>
+                  <X aria-hidden />
+                </Button>
+              </div>
             </div>
             {problem && <p className="text-sm font-medium text-danger-ink">{problem}</p>}
           </div>

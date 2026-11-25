@@ -19,7 +19,11 @@ export interface AppSettings {
   timeDisplay: TimeDisplay;
   /** DNS-over-HTTPS (JSON API) endpoint used to look up the port of a server. */
   dohEndpoint: string;
+  /** Seconds to wait for the answer to any request to the RPP server. */
+  requestTimeoutSeconds: number;
 }
+
+export const TIMEOUT_SECONDS = { min: 1, max: 300 } as const;
 
 export const DEFAULT_SETTINGS: AppSettings = {
   synthesizeData: false,
@@ -29,6 +33,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   processPageSize: 25,
   timeDisplay: "local",
   dohEndpoint: DEFAULT_DOH_ENDPOINT,
+  requestTimeoutSeconds: 5,
 };
 
 const count = (fallback: number) => z.number().int().min(1).max(1000).catch(fallback);
@@ -41,6 +46,7 @@ const storedSettingsSchema = z.object({
   processPageSize: count(DEFAULT_SETTINGS.processPageSize),
   timeDisplay: z.enum(["local", "utc"]).catch(DEFAULT_SETTINGS.timeDisplay),
   dohEndpoint: z.url({ protocol: /^https$/ }).catch(DEFAULT_SETTINGS.dohEndpoint),
+  requestTimeoutSeconds: z.number().int().min(TIMEOUT_SECONDS.min).max(TIMEOUT_SECONDS.max).catch(DEFAULT_SETTINGS.requestTimeoutSeconds),
 });
 
 const STORAGE_KEY = "rpp-client.settings";

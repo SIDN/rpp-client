@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { Choice } from "@/components/ui/choice";
 import { OperationOutcome } from "../shared/OperationOutcome";
@@ -7,7 +8,8 @@ import { useContactStore, useContactWorkflows } from "./contactHooks";
 import { ContactDetails } from "./ContactDetails";
 import { IdField, type PanelProps } from "./parts";
 
-export function InfoPanel({ id, onIdChange }: PanelProps) {
+/** `startNow` asks for the info of the identifier as soon as the panel is shown, as when a link leads here. */
+export function InfoPanel({ id, onIdChange, startNow = false }: PanelProps & { startNow?: boolean }) {
   const workflows = useContactWorkflows();
   const store = useContactStore();
   const { register, handleSubmit } = useForm({ defaultValues: { authInfo: false } });
@@ -17,6 +19,14 @@ export function InfoPanel({ id, onIdChange }: PanelProps) {
       if (result.data) store.remember(variables.id, result.data);
     },
   );
+
+  const started = useRef(false);
+  const { start } = info;
+  useEffect(() => {
+    if (!startNow || started.current || id.trim() === "") return;
+    started.current = true;
+    start({ id, authInfo: false });
+  }, [startNow, id, start]);
 
   return (
     <div className="flex flex-col gap-6">

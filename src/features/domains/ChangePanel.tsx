@@ -9,13 +9,15 @@ import type { DomainName } from "@/rpp/core/types/objects";
 import type { PatchOperation } from "@/rpp/operations/patch";
 import { useCachedDomain, useDomainStore } from "./domainCache";
 import { DomainDetails } from "./DomainDetails";
+import { DnsRecordFields } from "./DnsRecordFields";
+import { recordInputOf, recordRowOf, type DnsRecordRow, type DnsRecordValues } from "./dnsRecordValues";
 import { OperationOutcome } from "../shared/OperationOutcome";
 import { DomainDataFields, NameField, type DomainDataValues, type PanelProps } from "./parts";
 import { useDomainWorkflows } from "./useDomainWorkflows";
 import { SubmitButton } from "../shared/SubmitButton";
 import { useOperation, type Operation } from "../shared/useOperation";
 
-interface ChangeValues extends DomainDataValues, DnssecValues {
+interface ChangeValues extends DomainDataValues, DnssecValues, DnsRecordValues {
   clientStatuses: string[];
   authAction: "keep" | "set" | "remove";
   authValue: string;
@@ -36,6 +38,7 @@ const toValues = (domain: DomainName): ChangeValues => {
     clientStatuses: edit.clientStatuses,
     authAction: "keep",
     authValue: "",
+    dnsRecords: edit.records.map(recordRowOf),
     dsRecords: dnssec.ds as unknown as DnssecValues["dsRecords"],
     keyRecords: dnssec.keys as unknown as DnssecValues["keyRecords"],
     maxSigLife: dnssec.maxSigLife,
@@ -51,6 +54,10 @@ function editOfValues(values: DeepPartial<ChangeValues>) {
     nameservers: (values.nameservers ?? []).map((server) => server?.host ?? ""),
     clientStatuses: (values.clientStatuses ?? []).filter((label): label is string => typeof label === "string"),
     authInfo,
+    // A row with a problem (an emptied one too) adds nothing, so the record it held is removed; the form flags real problems.
+    records: (values.dnsRecords ?? []).filter((row): row is DnsRecordRow => Boolean(row?.type)).map((row) =>
+      recordInputOf({ type: row.type, name: row.name ?? "", value: row.value ?? "", preference: row.preference ?? "" }),
+    ),
     dnssec: {
       ds: (values.dsRecords ?? []).map((record) => ({ ...record }) as Record<string, string>),
       keys: (values.keyRecords ?? []).map((record) => ({ ...record }) as Record<string, string>),
@@ -71,6 +78,7 @@ function ChangeForm({ domain, change }: { domain: DomainName; change: Operation<
           {t("domains.change.heading")} <code>{domain.name}</code>
         </h3>
         <DomainDataFields />
+        <DnsRecordFields domain={domain.name} />
 
         <fieldset className="flex flex-col gap-3">
           <legend className="mb-1 text-sm font-medium">{t("domains.change.locks")}</legend>

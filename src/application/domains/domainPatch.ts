@@ -2,6 +2,7 @@ import { t } from "@/i18n";
 import { STATUS_VOCABULARIES } from "@/rpp/core/status/statuses";
 import type { DnsData, DnsRecord, DomainName } from "@/rpp/core/types/objects";
 import type { PatchOperation } from "@/rpp/operations/patch";
+import { dnsRecordInputOf, dnsRecordOf, describeRecord, editableRecordsOf, recordProblems, sameRecord, type DnsRecordInput } from "./dnsRecords";
 
 export type AuthInfoEdit = { action: "keep" } | { action: "set"; value: string } | { action: "remove" };
 
@@ -24,6 +25,8 @@ export interface DomainEdit {
   /** The client statuses the domain should have; statuses set by the server are not part of it. */
   clientStatuses: string[];
   authInfo: AuthInfoEdit;
+  /** The NS, A, AAAA and MX records of the DNS data; DS and DNSKEY records are in `dnssec`, and other records stay. */
+  records: DnsRecordInput[];
   /** Left alone when undefined. */
   dnssec?: DnssecEdit;
 }
@@ -59,6 +62,7 @@ export function editOf(domain: DomainName): DomainEdit {
     nameservers: (domain.nameservers ?? []).map((host) => host.hostName),
     clientStatuses: domain.status.map((status) => status.label).filter((label) => CLIENT_STATUSES.includes(label)),
     authInfo: { action: "keep" },
+    records: editableRecordsOf(domain.dns?.records),
     dnssec: dnssecEditOf(domain),
   };
 }
@@ -165,7 +169,7 @@ export function buildDomainPatch(current: DomainName, edit: DomainEdit): PatchOp
     if (!before.clientStatuses.includes(label)) operations.push({ op: "add", path: "/status", value: { "@type": "domainStatus", label } });
   }
 
-  if (edit.dnssec) operations.push(...dnssecOperations(current, edit.dnssec));
+  operations.push(...mergeDnsAdds([...recordOperations(current, edit.records), ...(edit.dnssec ? dnssecOperations(current, edit.dnssec) : [])]));
 
   if (edit.authInfo.action === "set") {
     operations.push({ op: "add", path: "/authInfo", value: { "@type": "authInfo", method: "authinfo", authdata: edit.authInfo.value } });
@@ -174,6 +178,56 @@ export function buildDomainPatch(current: DomainName, edit: DomainEdit): PatchOp
   }
 
   return operations;
+}
+
+/**
+ * One `remove` per editable record that goes, matched by its type, name and RDATA as the server gave them, and one `add`
+ * per record that comes. When the domain has no DNS data yet, the new records are added as the whole element. Records
+ * with a problem are left out, for the form to flag.
+ */
+function recordOperations(current: DomainName, records: readonly DnsRecordInput[]): PatchOperation[] {
+  const operations: PatchOperation[] = [];
+  const had = current.dns?.records ?? [];
+  const wanted = records.filter((record) => Object.keys(recordProblems(record, current.name)).length === 0);
+  for (const record of had) {
+    const input = dnsRecordInputOf(record);
+    if (input && !wanted.some((entry) => sameRecord(entry, input))) {
+      operations.push({ op: "remove", path: "/dns/records", match: { type: record.type, name: record.name, rdata: record.rdata } });
+    }
+  }
+  const before = editableRecordsOf(had);
+  const added: DnsRecordInput[] = [];
+  for (const record of wanted) {
+    if (!before.some((known) => sameRecord(known, record)) && !added.some((known) => sameRecord(known, record))) added.push(record);
+  }
+  if (added.length === 0) return operations;
+  if (current.dns === undefined) {
+    operations.push({ op: "add", path: "/dns", value: { "@type": "dnsData", records: added.map(dnsRecordOf) } });
+  } else {
+    for (const record of added) operations.push({ op: "add", path: "/dns/records", value: dnsRecordOf(record) });
+  }
+  return operations;
+}
+
+/**
+ * The record operations and the DNSSEC operations each add the whole DNS data element when the domain has none; a
+ * second `add /dns` would replace the first, so they become one, holding the records of both.
+ */
+function mergeDnsAdds(operations: PatchOperation[]): PatchOperation[] {
+  const adds = operations.filter((operation) => operation.op === "add" && operation.path === "/dns");
+  if (adds.length < 2) return operations;
+  const merged: Record<string, unknown> = { "@type": "dnsData" };
+  const records: unknown[] = [];
+  for (const add of adds) {
+    const value = asRecord("value" in add ? add.value : undefined);
+    if (Array.isArray(value.records)) records.push(...(value.records as unknown[]));
+    if (value.controls !== undefined) merged.controls = value.controls;
+  }
+  if (records.length > 0) merged.records = records;
+  const first = operations.indexOf(adds[0] as PatchOperation);
+  return operations.flatMap((operation, index) =>
+    index === first ? [{ op: "add", path: "/dns", value: merged } as PatchOperation] : adds.includes(operation) ? [] : [operation],
+  );
 }
 
 const asRecord = (value: unknown): Record<string, unknown> => (typeof value === "object" && value !== null ? (value as Record<string, unknown>) : {});
@@ -190,7 +244,9 @@ export function describePatchOperation(operation: PatchOperation): string {
     "/dns/controls": t("domains.patch.subject.dnsControls"),
     "/dns": t("domains.patch.subject.dnsData"),
   };
-  const subject = subjects[operation.path] ?? operation.path;
+  const touched = operation.op === "remove" ? operation.match : operation.value;
+  const dnssecRecord = operation.path === "/dns/records" && (DNSSEC_KINDS as readonly string[]).includes(String(asRecord(touched).type ?? "").toLowerCase());
+  const subject = operation.path === "/dns/records" && !dnssecRecord ? t("domains.patch.subject.dnsRecord") : (subjects[operation.path] ?? operation.path);
   const detail = (source: unknown): string => {
     const record = asRecord(source);
     switch (operation.path) {
@@ -203,7 +259,9 @@ export function describePatchOperation(operation: PatchOperation): string {
       case "/status":
         return String(record.label ?? "");
       case "/dns/records":
-        return `${String(record.type ?? "").toUpperCase()} ${JSON.stringify(record.rdata ?? {})}`.trim();
+        return recordText(record);
+      case "/dns":
+        return (Array.isArray(record.records) ? record.records : []).map(recordText).join(", ");
       default:
         return "";
     }
@@ -221,3 +279,16 @@ export function describePatchOperation(operation: PatchOperation): string {
           : t("domains.patch.remove", { subject, detail: detail(operation.match) }).trim();
   }
 }
+
+const recordInputOfJson = (value: unknown) => {
+  const record = asRecord(value);
+  return dnsRecordInputOf({ "@type": "dnsRecord", name: String(record.name ?? ""), type: String(record.type ?? ""), rdata: asRecord(record.rdata) });
+};
+
+/** An NS, A, AAAA or MX record as a presentation line; any other record as its type and RDATA. */
+const recordText = (value: unknown): string => {
+  const input = recordInputOfJson(value);
+  if (input) return describeRecord(input);
+  const record = asRecord(value);
+  return `${String(record.type ?? "").toUpperCase()} ${JSON.stringify(record.rdata ?? {})}`.trim();
+};

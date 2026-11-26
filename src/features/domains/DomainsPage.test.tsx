@@ -340,6 +340,75 @@ describe("check and register", () => {
     });
   });
 
+  it("delegates with NS and glue records instead of hosts", async () => {
+    const { calls } = renderPage(() => answer(DOMAIN, { status: 201 }));
+    openTab("Register");
+    typeName("example.test");
+    fireEvent.click(panel().getByRole("button", { name: "Add an NS record" }));
+    fireEvent.click(panel().getByRole("button", { name: "Add a glue record" }));
+    fireEvent.click(panel().getByRole("button", { name: "Add an MX record" }));
+    const ns = within(panel().getByRole("group", { name: "DNS record 1" }));
+    expect(ns.getByLabelText("Name")).toHaveValue("@");
+    fireEvent.change(ns.getByLabelText("Name server"), { target: { value: "ns1.example.test" } });
+    const glue = within(panel().getByRole("group", { name: "DNS record 2" }));
+    fireEvent.change(glue.getByLabelText("Type"), { target: { value: "aaaa" } });
+    fireEvent.change(glue.getByLabelText("Name"), { target: { value: "ns1" } });
+    fireEvent.change(await glue.findByLabelText("IPv6 address"), { target: { value: "2001:db8::1" } });
+    const mx = within(panel().getByRole("group", { name: "DNS record 3" }));
+    fireEvent.change(mx.getByLabelText("Mail server"), { target: { value: "mail.example.net" } });
+    fireEvent.click(panel().getByRole("button", { name: "Register domain" }));
+    await waitFor(() => expect(calls).toHaveLength(1));
+    const body = calls[0]?.body as { nameservers?: unknown; dns: unknown };
+    expect(body.nameservers).toBeUndefined();
+    expect(body.dns).toEqual({
+      "@type": "dnsData",
+      records: [
+        { "@type": "dnsRecord", name: "@", type: "ns", rdata: { nsdname: "ns1.example.test" } },
+        { "@type": "dnsRecord", name: "ns1", type: "aaaa", rdata: { address: "2001:db8::1" } },
+        { "@type": "dnsRecord", name: "@", type: "mx", rdata: { preference: "10", exchange: "mail.example.net" } },
+      ],
+    });
+  });
+
+  it("sends an MX record of 0 .", async () => {
+    const { calls } = renderPage(() => answer(DOMAIN, { status: 201 }));
+    openTab("Register");
+    typeName("example.test");
+    fireEvent.click(panel().getByRole("button", { name: "Add an MX record" }));
+    const mx = within(panel().getByRole("group", { name: "DNS record 1" }));
+    fireEvent.change(mx.getByLabelText("Preference"), { target: { value: "0" } });
+    fireEvent.change(mx.getByLabelText("Mail server"), { target: { value: "." } });
+    fireEvent.click(panel().getByRole("button", { name: "Register domain" }));
+    await waitFor(() => expect(calls).toHaveLength(1));
+    expect(calls[0]?.body).toMatchObject({ dns: { records: [{ type: "mx", name: "@", rdata: { preference: "0", exchange: "." } }] } });
+  });
+
+  it("flags NS records next to name servers and a wrong address, and sends nothing", async () => {
+    const { calls } = renderPage(() => answer(DOMAIN, { status: 201 }));
+    openTab("Register");
+    typeName("example.test");
+    fireEvent.click(panel().getByRole("button", { name: "Add a name server" }));
+    fireEvent.change(panel().getByLabelText("Name server 1"), { target: { value: "ns1.example.net" } });
+    fireEvent.click(panel().getByRole("button", { name: "Add an NS record" }));
+    fireEvent.click(panel().getByRole("button", { name: "Add a glue record" }));
+    fireEvent.change(within(panel().getByRole("group", { name: "DNS record 1" })).getByLabelText("Name server"), { target: { value: "ns2.example.test" } });
+    const glue = within(panel().getByRole("group", { name: "DNS record 2" }));
+    fireEvent.change(glue.getByLabelText("Name"), { target: { value: "ns2.other.test." } });
+    fireEvent.change(glue.getByLabelText("IPv4 address"), { target: { value: "2001:db8::1" } });
+    expect(await panel().findByRole("alert")).toHaveTextContent("not both");
+    fireEvent.click(panel().getByRole("button", { name: "Register domain" }));
+    expect(await within(panel().getByRole("group", { name: "DNS record 1" })).findByText(/Remove the name servers above/)).toBeInTheDocument();
+    expect(calls).toHaveLength(0);
+
+    fireEvent.click(panel().getByRole("button", { name: "Remove name server 1" }));
+    fireEvent.click(panel().getByRole("button", { name: "Register domain" }));
+    expect(await glue.findByText(/An absolute name must be example\.test\./)).toBeInTheDocument();
+    fireEvent.change(glue.getByLabelText("Name"), { target: { value: "ns2" } });
+    fireEvent.click(panel().getByRole("button", { name: "Register domain" }));
+    expect(await glue.findByText("Enter an IPv4 address")).toBeInTheDocument();
+    expect(calls).toHaveLength(0);
+  });
+
   it("sends the max signature life with the DNSSEC data", async () => {
     const { calls } = renderPage(() => answer(DOMAIN, { status: 201 }));
     openTab("Register");
@@ -406,6 +475,49 @@ describe("change", () => {
     // the form starts over from what the registry returned
     await waitFor(() => expect(panel().getByLabelText("Registrant")).toHaveValue("C-9"));
     expect(panel().getByText("Changed example.test")).toBeInTheDocument();
+  });
+});
+
+describe("change DNS records", () => {
+  it("switches a domain from hosts to NS records in one patch", async () => {
+    const { calls } = renderPage((request) => answer(request.method === "PATCH" ? { ...DOMAIN, nameservers: undefined } : DOMAIN));
+    openTab("Change");
+    typeName("example.test");
+    fireEvent.click(panel().getByRole("button", { name: "Load the domain" }));
+    await waitFor(() => expect(panel().getByLabelText("Registrant")).toHaveValue("C-1"));
+    fireEvent.click(panel().getByRole("button", { name: "Remove name server 1" }));
+    fireEvent.click(panel().getByRole("button", { name: "Add an NS record" }));
+    fireEvent.change(within(panel().getByRole("group", { name: "DNS record 1" })).getByLabelText("Name server"), { target: { value: "a.nic.example" } });
+    const summary = panel().getByRole("region", { name: "Changes to send" });
+    await waitFor(() => expect(summary).toHaveTextContent("Add DNS data @ NS a.nic.example"));
+    fireEvent.click(panel().getByRole("button", { name: "Save changes" }));
+    await waitFor(() => expect(calls.at(-1)?.method).toBe("PATCH"));
+    expect(calls.at(-1)?.body).toEqual([
+      { op: "remove", path: "/nameservers", match: { hostName: "ns1.example.test" } },
+      { op: "add", path: "/dns", value: { "@type": "dnsData", records: [{ "@type": "dnsRecord", name: "@", type: "ns", rdata: { nsdname: "a.nic.example" } }] } },
+    ]);
+  });
+
+  it("removes a record and leaves DNSSEC records alone", async () => {
+    const dns = {
+      "@type": "dnsData",
+      records: [
+        { "@type": "dnsRecord", name: "@", type: "ns", rdata: { nsdname: "a.nic.example" } },
+        { "@type": "dnsRecord", name: "@", type: "ns", rdata: { nsdname: "b.nic.example" } },
+        { "@type": "dnsRecord", name: "@", type: "ds", rdata: { keyTag: "1", algorithm: "13", digestType: "2", digest: "AB" } },
+      ],
+    };
+    const { calls } = renderPage(() => answer({ ...DOMAIN, nameservers: undefined, dns }));
+    openTab("Change");
+    typeName("example.test");
+    fireEvent.click(panel().getByRole("button", { name: "Load the domain" }));
+    await waitFor(() => expect(panel().getAllByRole("group", { name: /^DNS record \d/ })).toHaveLength(2));
+    fireEvent.click(panel().getByRole("button", { name: "Remove DNS record 2" }));
+    const save = panel().getByRole("button", { name: "Save changes" });
+    await waitFor(() => expect(save).toBeEnabled());
+    fireEvent.click(save);
+    await waitFor(() => expect(calls.at(-1)?.method).toBe("PATCH"));
+    expect(calls.at(-1)?.body).toEqual([{ op: "remove", path: "/dns/records", match: { type: "ns", name: "@", rdata: { nsdname: "b.nic.example" } } }]);
   });
 });
 

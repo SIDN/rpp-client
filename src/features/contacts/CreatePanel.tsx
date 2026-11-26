@@ -1,7 +1,10 @@
 import { useState } from "react";
 import { t } from "@/i18n";
-import { FormProvider, useForm } from "react-hook-form";
-import { toData, EMPTY_VALUES, type ContactValues } from "./formValues";
+import { FormProvider } from "react-hook-form";
+import { dataOf } from "@/application/contacts/contactCard";
+import { useDraftForm, usePrefill } from "../shared/drafts";
+import { PrefillNote, ResetButton } from "../shared/DraftActions";
+import { toData, toValues, EMPTY_VALUES, type ContactValues } from "./formValues";
 import { Button } from "@/components/ui/button";
 import { Callout } from "@/components/ui/callout";
 import { Field, Input } from "@/components/ui/field";
@@ -9,20 +12,28 @@ import { OperationOutcome } from "../shared/OperationOutcome";
 import { SubmitButton } from "../shared/SubmitButton";
 import { useOperation } from "../shared/useOperation";
 import type { CreateContactInput } from "@/application/contacts/contactWorkflows";
-import { useContactForm, useContactStore, useContactWorkflows } from "./contactHooks";
+import { useContactForm, useContactStore, useContactWorkflows, useLoadedContact } from "./contactHooks";
 import { ContactDetails } from "./ContactDetails";
 import { ContactFields } from "./ContactFields";
 import { IdField, SchemaLoading, SchemaNote, type PanelProps } from "./parts";
 
 type CreateValues = ContactValues & { authInfo: string };
 
+const EMPTY: CreateValues = { ...EMPTY_VALUES, authInfo: "" };
+
 const ADDRESSES = { both: "both", "card-only": "international", "localized-only": "localized" } as const;
 
 export function CreatePanel({ id, onIdChange }: PanelProps) {
   const workflows = useContactWorkflows();
   const store = useContactStore();
-  const form = useForm<CreateValues>({ defaultValues: { ...EMPTY_VALUES, authInfo: "" } });
+  const draft = useDraftForm<CreateValues>("contacts/create", EMPTY);
+  const { form } = draft;
   const shape = useContactForm();
+
+  // A contact loaded in Info or Change fills the form in, as far as the schema shapes it; never its password.
+  const loaded = useLoadedContact().contact;
+  const source = loaded && shape.status === "ready" ? { id: loaded.id, values: { ...toValues(dataOf(loaded, shape.mode)), authInfo: "" } } : undefined;
+  usePrefill(draft, source);
   const [authInfoShown, setAuthInfoShown] = useState(false);
 
   const create = useOperation(
@@ -30,6 +41,7 @@ export function CreatePanel({ id, onIdChange }: PanelProps) {
     (result, input) => {
       if (result.data) store.remember(input.id, result.data);
     },
+    { keep: "contacts/create.create" },
   );
 
   const submit = form.handleSubmit((values) => {
@@ -47,6 +59,7 @@ export function CreatePanel({ id, onIdChange }: PanelProps) {
           ) : (
             <>
               <SchemaNote note={shape.note} />
+              <PrefillNote draft={draft} source={source} />
               <ContactFields withKind addresses={ADDRESSES[shape.mode]} />
               {shape.authInfo && (
                 <Field label={t("contacts.create.authInfo")} hint={t("contacts.create.authInfoHint")}>
@@ -63,8 +76,11 @@ export function CreatePanel({ id, onIdChange }: PanelProps) {
               <Callout tone="info" title={t("contacts.create.requirementsVary")}>
                 {t("contacts.create.requirementsDescription")}
               </Callout>
-              <div>
+              <div className="flex flex-wrap gap-2">
                 <SubmitButton pending={create.pending}>{t("contacts.create.submit")}</SubmitButton>
+                <ResetButton draft={draft} to={EMPTY}>
+                  {t("shared.form.clear")}
+                </ResetButton>
               </div>
             </>
           )}

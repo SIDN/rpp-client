@@ -2,18 +2,22 @@ import { t } from "@/i18n";
 import { SubmitButton } from "../shared/SubmitButton";
 import { OperationOutcome } from "../shared/OperationOutcome";
 import { useOperation } from "../shared/useOperation";
-import { useOrganisationStore, useOrganisationWorkflows } from "./organisationHooks";
+import { useLoadedOrganisation, useOrganisationStore, useOrganisationWorkflows } from "./organisationHooks";
 import { OrganisationDetails } from "./OrganisationDetails";
 import { OrganisationField, type PanelProps } from "./parts";
 
 export function InfoPanel({ organisationId, onOrganisationChange }: PanelProps) {
   const workflows = useOrganisationWorkflows();
   const store = useOrganisationStore();
+  const { setLoaded } = useLoadedOrganisation();
   const info = useOperation(
     (variables: string, signal) => workflows.info(variables, { signal }),
     (result, variables) => {
-      if (result.data) store.remember(variables, result.data);
+      if (!result.data) return;
+      store.remember(variables, result.data);
+      setLoaded(variables);
     },
+    { keep: "organisations/info.info" },
   );
 
   return (

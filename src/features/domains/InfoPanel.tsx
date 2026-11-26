@@ -1,9 +1,9 @@
 import { t } from "@/i18n";
-import { useForm } from "react-hook-form";
 import { HOSTS_FILTERS, type HostsFilter } from "@/application/domains/domainWorkflows";
 import { Choice } from "@/components/ui/choice";
 import { Field, Select } from "@/components/ui/field";
-import { useDomainStore } from "./domainCache";
+import { useDomainStore, useLoadedDomain } from "./domainCache";
+import { useDraftForm } from "../shared/drafts";
 import { DomainDetails } from "./DomainDetails";
 import { OperationOutcome } from "../shared/OperationOutcome";
 import { NameField, type PanelProps } from "./parts";
@@ -14,13 +14,17 @@ import { useOperation } from "../shared/useOperation";
 export function InfoPanel({ name, onNameChange }: PanelProps) {
   const workflows = useDomainWorkflows();
   const store = useDomainStore();
-  const { register, handleSubmit } = useForm<{ authInfo: boolean; hostsFilter: HostsFilter | "" }>({ defaultValues: { authInfo: false, hostsFilter: "" } });
+  const { setLoaded } = useLoadedDomain();
+  const { register, handleSubmit } = useDraftForm<{ authInfo: boolean; hostsFilter: HostsFilter | "" }>("domains/info", { authInfo: false, hostsFilter: "" }).form;
   const info = useOperation(
     (variables: { name: string; authInfo: boolean; hostsFilter?: HostsFilter }, signal) =>
       workflows.info(variables.name, { authInfo: variables.authInfo, hostsFilter: variables.hostsFilter, signal }),
     (result, variables) => {
-      if (result.data) store.remember(variables.name, result.data);
+      if (!result.data) return;
+      store.remember(variables.name, result.data);
+      setLoaded(variables.name);
     },
+    { keep: "domains/info.info" },
   );
 
   return (

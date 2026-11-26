@@ -17,6 +17,8 @@ import type { DiscoveryState } from "@/rpp/discovery/capability-types";
 import { DiscoveryError } from "@/rpp/errors/DiscoveryError";
 import { ConnectionContext, type ConnectionApi } from "./connection-context";
 import { DiscoveryContext } from "./discovery-context";
+import { useDraftStore } from "./draft-context";
+import { KEPT_OBJECT_ROOTS } from "@/features/shared/seenObjects";
 
 const DISCOVERY_KEY = "discovery";
 
@@ -65,6 +67,17 @@ export function ConnectionProvider({ children }: { children: ReactNode }) {
 
   const snapshot = state.status === "ready" || state.status === "partial" ? state.snapshot : undefined;
   const resolvedPreset = useMemo(() => resolvePreset(presetSettings, snapshot), [presetSettings, snapshot]);
+
+  // Work in progress and the objects seen belong to one connection; those of another are dropped, typed passwords too.
+  // This runs after the screens of the old connection have put their drafts away.
+  const drafts = useDraftStore();
+  const sessionId = session?.id;
+  useEffect(() => {
+    drafts.retain(sessionId);
+    queryClient.removeQueries({
+      predicate: (query) => (KEPT_OBJECT_ROOTS as readonly unknown[]).includes(query.queryKey[0]) && query.queryKey[1] !== sessionId,
+    });
+  }, [drafts, queryClient, sessionId]);
 
   // The session is an external object the transport reads on every request.
   useEffect(() => {

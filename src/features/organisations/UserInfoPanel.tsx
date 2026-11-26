@@ -2,18 +2,22 @@ import { t } from "@/i18n";
 import { useOperation } from "../shared/useOperation";
 import { OperationOutcome } from "../shared/OperationOutcome";
 import { SubmitButton } from "../shared/SubmitButton";
-import { useOrganisationStore, useOrganisationWorkflows } from "./organisationHooks";
+import { useLoadedUser, useOrganisationStore, useOrganisationWorkflows } from "./organisationHooks";
 import { OrganisationField, UserField, type PanelProps } from "./parts";
 import { UserDetails } from "./UserDetails";
 
 export function UserInfoPanel({ organisationId, onOrganisationChange, userId, onUserChange }: PanelProps) {
   const workflows = useOrganisationWorkflows();
   const store = useOrganisationStore();
+  const { setLoaded } = useLoadedUser();
   const info = useOperation(
     (variables: { organisationId: string; userId: string }, signal) => workflows.users.info(variables.organisationId, variables.userId, { signal }),
     (result, variables) => {
-      if (result.data) store.rememberUser(variables.organisationId, variables.userId, result.data);
+      if (!result.data) return;
+      store.rememberUser(variables.organisationId, variables.userId, result.data);
+      setLoaded(variables.organisationId, variables.userId);
     },
+    { keep: "organisations/userInfo.info" },
   );
 
   return (

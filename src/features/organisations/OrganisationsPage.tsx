@@ -1,4 +1,5 @@
-import { useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
+import { useDraftState } from "../shared/drafts";
 import { t } from "@/i18n";
 import { objectSupport } from "@/application/capability";
 import { useConnection } from "@/app/connection-context";
@@ -52,9 +53,10 @@ export function OrganisationsPage() {
   const { session } = useConnection();
   const support = objectSupport(discovery, "organisation");
   const usersOffered = objectSupport(discovery, "user") === "offered";
-  const [workflow, setWorkflow] = useState<WorkflowId>("info");
-  const [organisationId, setOrganisationId] = useState("");
-  const [userId, setUserId] = useState("");
+  // Kept for the connection, so that the screen is as it was left.
+  const [workflow, setWorkflow] = useDraftState<WorkflowId>("organisations/workflow", "info");
+  const [organisationId, setOrganisationId] = useDraftState("organisations/organisationId", "");
+  const [userId, setUserId] = useDraftState("organisations/userId", "");
 
   const header = <PageHeader title={t("organisations.page.title")} description={t("organisations.page.description")} />;
 

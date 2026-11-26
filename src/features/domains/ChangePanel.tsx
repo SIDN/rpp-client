@@ -1,13 +1,16 @@
 import { t } from "@/i18n";
-import { FormProvider, useForm, useWatch, type DeepPartial } from "react-hook-form";
-import { buildDomainPatch, CLIENT_STATUSES, describePatchOperation, dnssecEditOf, editOf, type AuthInfoEdit } from "@/application/domains/domainPatch";
+import { FormProvider, useWatch, type DeepPartial } from "react-hook-form";
+import { buildDomainPatch, CLIENT_STATUSES, describePatchOperation, editOf, type AuthInfoEdit } from "@/application/domains/domainPatch";
 import { Callout } from "@/components/ui/callout";
 import { Choice } from "@/components/ui/choice";
 import { Field, Input } from "@/components/ui/field";
 import { DnssecFields, type DnssecValues } from "./DnssecFields";
 import type { DomainName } from "@/rpp/core/types/objects";
 import type { PatchOperation } from "@/rpp/operations/patch";
-import { useCachedDomain, useDomainStore } from "./domainCache";
+import { useCachedDomain, useDomainStore, useLoadedDomain } from "./domainCache";
+import { domainValuesOf } from "./formValues";
+import { useDraftForm } from "../shared/drafts";
+import { ResetButton } from "../shared/DraftActions";
 import { DomainDetails } from "./DomainDetails";
 import { OperationOutcome } from "../shared/OperationOutcome";
 import { DomainDataFields, NameField, type DomainDataValues, type PanelProps } from "./parts";
@@ -26,21 +29,12 @@ interface Change {
   operations: readonly PatchOperation[];
 }
 
-const toValues = (domain: DomainName): ChangeValues => {
-  const edit = editOf(domain);
-  const dnssec = dnssecEditOf(domain);
-  return {
-    registrant: edit.registrant,
-    contacts: edit.contacts,
-    nameservers: edit.nameservers.map((host) => ({ host })),
-    clientStatuses: edit.clientStatuses,
-    authAction: "keep",
-    authValue: "",
-    dsRecords: dnssec.ds as unknown as DnssecValues["dsRecords"],
-    keyRecords: dnssec.keys as unknown as DnssecValues["keyRecords"],
-    maxSigLife: dnssec.maxSigLife,
-  };
-};
+const toValues = (domain: DomainName): ChangeValues => ({
+  ...domainValuesOf(domain),
+  clientStatuses: editOf(domain).clientStatuses,
+  authAction: "keep",
+  authValue: "",
+});
 
 function editOfValues(values: DeepPartial<ChangeValues>) {
   const authInfo: AuthInfoEdit =
@@ -59,8 +53,11 @@ function editOfValues(values: DeepPartial<ChangeValues>) {
   };
 }
 
-function ChangeForm({ domain, change }: { domain: DomainName; change: Operation<Change, DomainName> }) {
-  const form = useForm<ChangeValues>({ defaultValues: toValues(domain) });
+/** `version` names the domain as loaded: what was typed for another name or state of it is not given back. */
+function ChangeForm({ domain, version, change }: { domain: DomainName; version: string; change: Operation<Change, DomainName> }) {
+  const loaded = toValues(domain);
+  const draft = useDraftForm<ChangeValues>("domains/change", loaded, version);
+  const { form } = draft;
   const values = useWatch({ control: form.control });
   const operations = buildDomainPatch(domain, editOfValues(values));
 
@@ -110,26 +107,35 @@ function ChangeForm({ domain, change }: { domain: DomainName; change: Operation<
           </p>
         </section>
 
-        <div>
+        <div className="flex flex-wrap gap-2">
           <SubmitButton pending={change.pending} disabled={operations.length === 0}>
             {t("domains.change.save")}
           </SubmitButton>
+          <ResetButton draft={draft} to={loaded}>
+            {t("shared.form.discard")}
+          </ResetButton>
         </div>
       </form>
     </FormProvider>
   );
 }
 
+const version = (domain: DomainName) => JSON.stringify([domain.name, editOf(domain)]);
+
 export function ChangePanel({ name, onNameChange }: PanelProps) {
   const workflows = useDomainWorkflows();
   const store = useDomainStore();
   const domain = useCachedDomain(name);
+  const { setLoaded } = useLoadedDomain();
 
   const load = useOperation(
     (variables: string, signal) => workflows.info(variables, { signal }),
     (result, variables) => {
-      if (result.data) store.remember(variables, result.data);
+      if (!result.data) return;
+      store.remember(variables, result.data);
+      setLoaded(variables);
     },
+    { keep: "domains/change.load" },
   );
   // Held here, not in the form: the form starts over when the saved domain replaces the loaded one.
   const change = useOperation(
@@ -138,6 +144,7 @@ export function ChangePanel({ name, onNameChange }: PanelProps) {
       if (result.data) store.remember(variables.name, result.data);
       else store.forget(variables.name);
     },
+    { keep: "domains/change.change" },
   );
 
   return (
@@ -162,7 +169,7 @@ export function ChangePanel({ name, onNameChange }: PanelProps) {
           {t("domains.change.loadHint")}
         </Callout>
       )}
-      {domain && <ChangeForm key={JSON.stringify(editOf(domain))} domain={domain} change={change} />}
+      {domain && <ChangeForm key={version(domain)} version={version(domain)} domain={domain} change={change} />}
       <OperationOutcome operation={change} success={t("domains.change.success", { name: change.variables?.name ?? t("domains.name.generic") })}>
         {(changed) => <DomainDetails domain={changed} />}
       </OperationOutcome>

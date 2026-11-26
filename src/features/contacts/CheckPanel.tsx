@@ -9,10 +9,14 @@ import { IdField, type PanelProps } from "./parts";
 
 export function CheckPanel({ id, onIdChange, onCreate }: PanelProps & { onCreate(): void }) {
   const workflows = useContactWorkflows();
-  const check = useOperation(async (variables: string, signal) => {
-    const { available, details, meta } = await workflows.check(variables, { signal });
-    return { data: { available, reason: details?.reason }, meta };
-  });
+  const check = useOperation(
+    async (variables: string, signal) => {
+      const { available, details, meta } = await workflows.check(variables, { signal });
+      return { data: { available, reason: details?.reason }, meta };
+    },
+    undefined,
+    { keep: "contacts/check.check" },
+  );
 
   return (
     <div className="flex flex-col gap-6">

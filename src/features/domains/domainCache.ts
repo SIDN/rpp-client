@@ -2,6 +2,7 @@ import { skipToken, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useConnection } from "@/app/connection-context";
 import { tryParseDomainName } from "@/application/domains/domainWorkflows";
 import type { DomainName } from "@/rpp/core/types/objects";
+import { useDraftState } from "../shared/drafts";
 import { seenKey } from "../shared/seenObjects";
 
 /** Domains the server has shown in this session, by A-label; nothing in the key but the connection number and the name. */
@@ -29,4 +30,13 @@ export function useDomainStore() {
       if (ref) void queryClient.resetQueries({ queryKey: domainKey(session?.id, ref.name), exact: true });
     },
   };
+}
+
+/**
+ * The domain last loaded in Info or Change, as long as it is known, and how to record one: a new registration can be
+ * filled in from it.
+ */
+export function useLoadedDomain(): { domain: DomainName | undefined; setLoaded(name: string): void } {
+  const [name, setLoaded] = useDraftState("domains/loaded", "");
+  return { domain: useCachedDomain(name), setLoaded };
 }

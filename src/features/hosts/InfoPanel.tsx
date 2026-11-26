@@ -4,7 +4,7 @@ import { useOperation } from "../shared/useOperation";
 import { OperationOutcome } from "../shared/OperationOutcome";
 import { SubmitButton } from "../shared/SubmitButton";
 import { tryParseHostName } from "@/application/hosts/hostWorkflows";
-import { useHostStore, useHostWorkflows } from "./hostHooks";
+import { useHostStore, useHostWorkflows, useLoadedHost } from "./hostHooks";
 import { HostDetails } from "./HostDetails";
 import { NameField, type PanelProps } from "./parts";
 
@@ -12,11 +12,15 @@ import { NameField, type PanelProps } from "./parts";
 export function InfoPanel({ name, onNameChange, startNow = false }: PanelProps & { startNow?: boolean }) {
   const workflows = useHostWorkflows();
   const store = useHostStore();
+  const { setLoaded } = useLoadedHost();
   const info = useOperation(
     (variables: string, signal) => workflows.info(variables, { signal }),
     (result, variables) => {
-      if (result.data) store.remember(variables, result.data);
+      if (!result.data) return;
+      store.remember(variables, result.data);
+      setLoaded(variables);
     },
+    { keep: "hosts/info.info" },
   );
 
   const started = useRef(false);

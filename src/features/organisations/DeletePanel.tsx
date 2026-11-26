@@ -29,6 +29,7 @@ export function DeletePanel({ organisationId, onOrganisationChange }: PanelProps
     (result, variables) => {
       if (result.data) store.remember(variables, result.data);
     },
+    { keep: "organisations/delete.check" },
   );
   const remove = useOperation(
     (variables: Removal, signal) =>
@@ -45,6 +46,7 @@ export function DeletePanel({ organisationId, onOrganisationChange }: PanelProps
       store.forgetUsersOf(variables.id);
       store.forgetOrganisation(variables.id);
     },
+    { keep: "organisations/delete.remove" },
   );
 
   const noun = users.length === 1 ? t("organisations.delete.userCount.one") : t("organisations.delete.userCount.other", { count: users.length });

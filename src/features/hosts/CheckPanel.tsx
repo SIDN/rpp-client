@@ -9,10 +9,14 @@ import { NameField, type PanelProps } from "./parts";
 
 export function CheckPanel({ name, onNameChange, onCreate }: PanelProps & { onCreate(): void }) {
   const workflows = useHostWorkflows();
-  const check = useOperation(async (variables: string, signal) => {
-    const { available, details, meta } = await workflows.check(variables, { signal });
-    return { data: { available, reason: details?.reason }, meta };
-  });
+  const check = useOperation(
+    async (variables: string, signal) => {
+      const { available, details, meta } = await workflows.check(variables, { signal });
+      return { data: { available, reason: details?.reason }, meta };
+    },
+    undefined,
+    { keep: "hosts/check.check" },
+  );
 
   return (
     <div className="flex flex-col gap-6">

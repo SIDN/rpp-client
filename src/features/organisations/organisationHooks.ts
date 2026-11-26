@@ -5,6 +5,7 @@ import { useConnection } from "@/app/connection-context";
 import { createOrganisationWorkflows, type OrganisationWorkflows } from "@/application/organisations/organisationWorkflows";
 import { userLinksOf, type UserLink } from "@/application/organisations/organisationData";
 import type { Organisation, User } from "@/rpp/core/types/objects";
+import { useDraftState } from "../shared/drafts";
 
 /** Organisations the server has shown in this session; nothing in the key but the connection number and the identifier. */
 const organisationKey = (sessionId: number | undefined, id: string) => ["organisation", sessionId, id] as const;
@@ -92,4 +93,18 @@ export function useOrganisationStore() {
       });
     },
   };
+}
+
+/** The organisation last loaded in Info or Change, as long as it is known: a new organisation can be filled in from it. */
+export function useLoadedOrganisation(): { organisation: Organisation | undefined; setLoaded(id: string): void } {
+  const [id, setLoaded] = useDraftState("organisations/loaded", "");
+  return { organisation: useCachedOrganisation(id), setLoaded };
+}
+
+const NO_USER = { organisationId: "", userId: "" };
+
+/** The user last loaded in User info or User change, as long as it is known: a new user can be filled in from it. */
+export function useLoadedUser(): { user: User | undefined; setLoaded(organisationId: string, userId: string): void } {
+  const [loaded, setLoaded] = useDraftState("organisations/loadedUser", NO_USER);
+  return { user: useCachedUser(loaded.organisationId, loaded.userId), setLoaded: (organisationId, userId) => setLoaded({ organisationId, userId }) };
 }

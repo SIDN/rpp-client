@@ -80,18 +80,25 @@ function renderPage(responder: Responder, discovery: DiscoveryState = discoveryW
       });
     },
   });
-  render(
+  // The page can be left and come back to, as when another screen is opened in between; the app's state stays.
+  const tree = (shown: boolean) => (
     <Providers>
       <MemoryRouter initialEntries={[entry]}>
         <ConnectionContext.Provider value={{ session } as ConnectionApi}>
-          <DiscoveryContext.Provider value={discovery}>
-            <DomainsPage />
-          </DiscoveryContext.Provider>
+          <DiscoveryContext.Provider value={discovery}>{shown && <DomainsPage />}</DiscoveryContext.Provider>
         </ConnectionContext.Provider>
       </MemoryRouter>
-    </Providers>,
+    </Providers>
   );
-  return { session, calls };
+  const { rerender } = render(tree(true));
+  const leaveAndComeBack = () => {
+    rerender(tree(false));
+    expect(screen.queryByRole("tab")).toBeNull();
+    rerender(tree(true));
+  };
+  const hide = () => rerender(tree(false));
+  const show = () => rerender(tree(true));
+  return { session, calls, leaveAndComeBack, hide, show };
 }
 
 const panel = () => within(screen.getByRole("tabpanel"));
@@ -406,6 +413,167 @@ describe("change", () => {
     // the form starts over from what the registry returned
     await waitFor(() => expect(panel().getByLabelText("Registrant")).toHaveValue("C-9"));
     expect(panel().getByText("Changed example.test")).toBeInTheDocument();
+  });
+});
+
+describe("work in progress", () => {
+  it("keeps the tab, the name and what was typed when the screen is left and come back to", () => {
+    const { leaveAndComeBack } = renderPage(() => answer({}));
+    openTab("Register");
+    typeName("new.test");
+    fireEvent.change(panel().getByLabelText("Registrant"), { target: { value: "C-5" } });
+    fireEvent.click(panel().getByRole("button", { name: "Add a name server" }));
+    fireEvent.change(panel().getByLabelText("Name server 1"), { target: { value: "ns.new.test" } });
+
+    leaveAndComeBack();
+
+    expect(screen.getByRole("tab", { name: "Register" })).toHaveAttribute("aria-selected", "true");
+    expect(panel().getByLabelText("Domain name")).toHaveValue("new.test");
+    expect(panel().getByLabelText("Registrant")).toHaveValue("C-5");
+    expect(panel().getByLabelText("Name server 1")).toHaveValue("ns.new.test");
+  });
+
+  it("clears the registration form on request", async () => {
+    renderPage(() => answer({}));
+    openTab("Register");
+    const clear = panel().getByRole("button", { name: "Clear form" });
+    expect(clear).toBeDisabled();
+    fireEvent.change(panel().getByLabelText("Registrant"), { target: { value: "C-5" } });
+    await waitFor(() => expect(clear).toBeEnabled());
+    fireEvent.click(clear);
+    expect(panel().getByLabelText("Registrant")).toHaveValue("");
+    await waitFor(() => expect(clear).toBeDisabled());
+  });
+
+  it("fills a new registration in from the domain looked up in Info, but not its password", async () => {
+    const { calls, leaveAndComeBack } = renderPage(() => answer(DOMAIN));
+    typeName("example.test");
+    fireEvent.click(panel().getByRole("button", { name: "Get info" }));
+    await waitFor(() => expect(panel().getByText("Found example.test")).toBeInTheDocument());
+
+    openTab("Register");
+    expect(panel().getByText("Filled in from example.test")).toBeInTheDocument();
+    expect(panel().getByLabelText("Registrant")).toHaveValue("C-1");
+    expect(panel().getByLabelText("Identifier of contact 1")).toHaveValue("C-2");
+    expect(panel().getByLabelText("Name server 1")).toHaveValue("ns1.example.test");
+    expect(panel().getByLabelText("Transfer password")).toHaveValue("");
+
+    // What is filled in is kept, and is not filled in again over the person's own changes.
+    fireEvent.change(panel().getByLabelText("Registrant"), { target: { value: "C-8" } });
+    leaveAndComeBack();
+    expect(panel().getByLabelText("Registrant")).toHaveValue("C-8");
+
+    // Cleared, it offers the domain again instead of filling it in by itself.
+    fireEvent.click(panel().getByRole("button", { name: "Clear form" }));
+    expect(panel().getByLabelText("Registrant")).toHaveValue("");
+    expect(panel().getByText("example.test was loaded in Info or Change")).toBeInTheDocument();
+    leaveAndComeBack();
+    expect(panel().getByLabelText("Registrant")).toHaveValue("");
+    fireEvent.click(panel().getByRole("button", { name: "Fill in from example.test" }));
+    expect(panel().getByLabelText("Registrant")).toHaveValue("C-1");
+    expect(calls).toHaveLength(1);
+  });
+
+  it("does not fill in over what was typed into the registration form", async () => {
+    renderPage(() => answer(DOMAIN));
+    openTab("Register");
+    fireEvent.change(panel().getByLabelText("Registrant"), { target: { value: "C-5" } });
+    openTab("Info");
+    typeName("example.test");
+    fireEvent.click(panel().getByRole("button", { name: "Get info" }));
+    await waitFor(() => expect(panel().getByText("Found example.test")).toBeInTheDocument());
+
+    openTab("Register");
+    expect(panel().getByLabelText("Registrant")).toHaveValue("C-5");
+    expect(panel().getByRole("button", { name: "Fill in from example.test" })).toBeInTheDocument();
+  });
+
+  it("keeps the changes being made to a loaded domain, and discards them on request", async () => {
+    const { calls, leaveAndComeBack } = renderPage(() => answer(DOMAIN));
+    openTab("Change");
+    typeName("example.test");
+    fireEvent.click(panel().getByRole("button", { name: "Load the domain" }));
+    await waitFor(() => expect(panel().getByLabelText("Registrant")).toHaveValue("C-1"));
+    const discard = panel().getByRole("button", { name: "Discard changes" });
+    expect(discard).toBeDisabled();
+    fireEvent.change(panel().getByLabelText("Registrant"), { target: { value: "C-9" } });
+
+    leaveAndComeBack();
+
+    expect(screen.getByRole("tab", { name: "Change" })).toHaveAttribute("aria-selected", "true");
+    expect(panel().getByLabelText("Registrant")).toHaveValue("C-9");
+    expect(panel().getByRole("region", { name: "Changes to send" })).toHaveTextContent("Replace the registrant with C-9");
+    expect(calls).toHaveLength(1);
+
+    fireEvent.click(panel().getByRole("button", { name: "Discard changes" }));
+    expect(panel().getByLabelText("Registrant")).toHaveValue("C-1");
+    expect(panel().getByText("Nothing has been changed yet.")).toBeInTheDocument();
+  });
+
+  it("shows the answer again when the screen is left and come back to", async () => {
+    const { calls, leaveAndComeBack } = renderPage(() => answer(DOMAIN));
+    typeName("example.test");
+    fireEvent.click(panel().getByRole("button", { name: "Get info" }));
+    await waitFor(() => expect(panel().getByText("Found example.test")).toBeInTheDocument());
+
+    leaveAndComeBack();
+
+    expect(panel().getByText("Found example.test")).toBeInTheDocument();
+    expect(panel().getByText("ns1.example.test")).toBeInTheDocument();
+    expect(calls).toHaveLength(1);
+  });
+
+  it("keeps a refusal too", async () => {
+    const { leaveAndComeBack } = renderPage(() =>
+      answer({ type: "urn:ietf:params:rpp:error", title: "RPP Error", errors: [{ type: "t", result: "02303", reason: "No such domain" }] }, { status: 404, code: "02303", type: "application/problem+json" }),
+    );
+    typeName("nope.test");
+    fireEvent.click(panel().getByRole("button", { name: "Get info" }));
+    await panel().findByRole("alert");
+    leaveAndComeBack();
+    expect(panel().getByRole("alert")).toHaveTextContent("No such domain");
+  });
+
+  it("follows a request still under way when the screen is come back to, and shows the answer that came meanwhile", async () => {
+    let release: (response: Response) => void = () => undefined;
+    const { leaveAndComeBack } = renderPage(() => new Promise<Response>((resolve) => (release = resolve)));
+    typeName("example.test");
+    fireEvent.click(panel().getByRole("button", { name: "Get info" }));
+    await panel().findByRole("button", { name: "Cancel the request" });
+
+    leaveAndComeBack();
+    expect(panel().getByRole("button", { name: "Waiting for the registry" })).toBeDisabled();
+    // Stopping still works after coming back.
+    expect(panel().getByRole("button", { name: "Cancel the request" })).toBeInTheDocument();
+
+    release(answer(DOMAIN));
+    await waitFor(() => expect(panel().getByText("Found example.test")).toBeInTheDocument());
+  });
+
+  it("takes an answer that arrives while the screen is away, for the result and for the other workflows", async () => {
+    let release: (response: Response) => void = () => undefined;
+    const { hide, show } = renderPage(() => new Promise<Response>((resolve) => (release = resolve)));
+    typeName("example.test");
+    fireEvent.click(panel().getByRole("button", { name: "Get info" }));
+    await panel().findByRole("button", { name: "Cancel the request" });
+
+    hide();
+    release(answer(DOMAIN));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    show();
+
+    await waitFor(() => expect(panel().getByText("Found example.test")).toBeInTheDocument());
+    openTab("Register");
+    expect(panel().getByText("Filled in from example.test")).toBeInTheDocument();
+  });
+
+  it("lets a link name the tab and the domain over what was kept", () => {
+    const { leaveAndComeBack } = renderPage(() => answer({}), discoveryWith(["domainName"]), "/domains?name=linked.test&tab=renew");
+    openTab("Register");
+    typeName("typed.test");
+    leaveAndComeBack();
+    expect(screen.getByRole("tab", { name: "Renew" })).toHaveAttribute("aria-selected", "true");
+    expect(panel().getByLabelText("Domain name")).toHaveValue("linked.test");
   });
 });
 

@@ -4,6 +4,7 @@ import { t } from "@/i18n";
 import { useConnection } from "@/app/connection-context";
 import { createHostWorkflows, tryParseHostName, type HostWorkflows } from "@/application/hosts/hostWorkflows";
 import type { Host } from "@/rpp/core/types/objects";
+import { useDraftState } from "../shared/drafts";
 import { seenKey } from "../shared/seenObjects";
 
 /** Hosts the server has shown in this session, by A-label; nothing in the key but the connection number and the name. */
@@ -40,4 +41,10 @@ export function useHostStore() {
       if (ref) void queryClient.resetQueries({ queryKey: hostKey(session?.id, ref.name), exact: true });
     },
   };
+}
+
+/** The host last loaded in Info or Change, as long as it is known, and how to record one: a new host can be filled in from it. */
+export function useLoadedHost(): { host: Host | undefined; setLoaded(name: string): void } {
+  const [name, setLoaded] = useDraftState("hosts/loaded", "");
+  return { host: useCachedHost(name), setLoaded };
 }

@@ -1,4 +1,6 @@
-import { FormProvider, useForm, useWatch } from "react-hook-form";
+import { FormProvider, useWatch } from "react-hook-form";
+import { useDraftForm } from "../shared/drafts";
+import { ResetButton } from "../shared/DraftActions";
 import { t } from "@/i18n";
 import { buildContactPatch, CONTACT_CLIENT_STATUSES, dataOf, describeContactOperation, editOf, type ContactEdit, type PostalMode } from "@/application/contacts/contactCard";
 import { Callout } from "@/components/ui/callout";
@@ -9,7 +11,7 @@ import type { PatchOperation } from "@/rpp/operations/patch";
 import { OperationOutcome } from "../shared/OperationOutcome";
 import { SubmitButton } from "../shared/SubmitButton";
 import { useOperation, type Operation } from "../shared/useOperation";
-import { useCachedContact, useContactForm, useContactStore, useContactWorkflows } from "./contactHooks";
+import { useCachedContact, useContactForm, useContactStore, useContactWorkflows, useLoadedContact } from "./contactHooks";
 import { ContactDetails } from "./ContactDetails";
 import { ContactFields } from "./ContactFields";
 import { addressTypeOfErrors, toData, toValues, type ContactValues } from "./formValues";
@@ -43,8 +45,11 @@ function editOfValues(values: Partial<ChangeValues>): ContactEdit {
   };
 }
 
-function ChangeForm({ contact, change, mode, authInfo, note }: { contact: Contact; change: Operation<Change, Contact>; mode: PostalMode; authInfo: boolean; note: string | undefined }) {
-  const form = useForm<ChangeValues>({ defaultValues: toChangeValues(contact, mode) });
+/** `version` names the contact as loaded and the form's shape: what was typed for anything else is not given back. */
+function ChangeForm({ contact, version, change, mode, authInfo, note }: { contact: Contact; version: string; change: Operation<Change, Contact>; mode: PostalMode; authInfo: boolean; note: string | undefined }) {
+  const loaded = toChangeValues(contact, mode);
+  const draft = useDraftForm<ChangeValues>("contacts/change", loaded, version);
+  const { form } = draft;
   const values = useWatch({ control: form.control });
   const operations = buildContactPatch(contact, editOfValues(values as Partial<ChangeValues>), mode);
 
@@ -104,10 +109,13 @@ function ChangeForm({ contact, change, mode, authInfo, note }: { contact: Contac
           </p>
         </section>
 
-        <div>
+        <div className="flex flex-wrap gap-2">
           <SubmitButton pending={change.pending} disabled={operations.length === 0}>
             {t("contacts.change.submit")}
           </SubmitButton>
+          <ResetButton draft={draft} to={loaded}>
+            {t("shared.form.discard")}
+          </ResetButton>
         </div>
       </form>
     </FormProvider>
@@ -120,12 +128,16 @@ export function ChangePanel({ id, onIdChange }: PanelProps) {
   const contact = useCachedContact(id);
   const shape = useContactForm();
   const mode = shape.status === "ready" ? shape.mode : "both";
+  const { setLoaded } = useLoadedContact();
 
   const load = useOperation(
     (variables: string, signal) => workflows.info(variables, { signal }),
     (result, variables) => {
-      if (result.data) store.remember(variables, result.data);
+      if (!result.data) return;
+      store.remember(variables, result.data);
+      setLoaded(variables);
     },
+    { keep: "contacts/change.load" },
   );
   // Held here, not in the form: the form starts over when the saved contact replaces the loaded one.
   const change = useOperation(
@@ -134,6 +146,7 @@ export function ChangePanel({ id, onIdChange }: PanelProps) {
       if (result.data) store.remember(variables.id, result.data);
       else store.forget(variables.id);
     },
+    { keep: "contacts/change.change" },
   );
 
   return (
@@ -160,7 +173,15 @@ export function ChangePanel({ id, onIdChange }: PanelProps) {
       )}
       {contact && shape.status === "loading" && <SchemaLoading />}
       {contact && shape.status === "ready" && (
-        <ChangeForm key={`${mode}${shape.authInfo}${JSON.stringify(editOf(contact, mode))}`} contact={contact} change={change} mode={mode} authInfo={shape.authInfo} note={shape.note} />
+        <ChangeForm
+          key={JSON.stringify([contact.id, mode, shape.authInfo, editOf(contact, mode)])}
+          version={JSON.stringify([contact.id, mode, shape.authInfo, editOf(contact, mode)])}
+          contact={contact}
+          change={change}
+          mode={mode}
+          authInfo={shape.authInfo}
+          note={shape.note}
+        />
       )}
       <OperationOutcome operation={change} success={t("contacts.change.success", { contact: change.variables?.id ?? "the contact" })}>
         {(changed) => <ContactDetails contact={changed} />}

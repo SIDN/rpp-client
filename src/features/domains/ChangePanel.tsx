@@ -7,13 +7,15 @@ import type { DomainName } from "@/rpp/core/types/objects";
 import type { PatchOperation } from "@/rpp/operations/patch";
 import { useCachedDomain, useDomainStore } from "./domainCache";
 import { DomainDetails } from "./DomainDetails";
+import { DnsRecordFields } from "./DnsRecordFields";
+import { recordInputOf, recordRowOf, type DnsRecordRow, type DnsRecordValues } from "./dnsRecordValues";
 import { OperationOutcome } from "../shared/OperationOutcome";
 import { DomainDataFields, NameField, type DomainDataValues, type PanelProps } from "./parts";
 import { useDomainWorkflows } from "./useDomainWorkflows";
 import { SubmitButton } from "../shared/SubmitButton";
 import { useOperation, type Operation } from "../shared/useOperation";
 
-interface ChangeValues extends DomainDataValues {
+interface ChangeValues extends DomainDataValues, DnsRecordValues {
   clientStatuses: string[];
   authAction: "keep" | "set" | "remove";
   authValue: string;
@@ -33,6 +35,7 @@ const toValues = (domain: DomainName): ChangeValues => {
     clientStatuses: edit.clientStatuses,
     authAction: "keep",
     authValue: "",
+    dnsRecords: edit.records.map(recordRowOf),
   };
 };
 
@@ -45,6 +48,10 @@ function editOfValues(values: DeepPartial<ChangeValues>) {
     nameservers: (values.nameservers ?? []).map((server) => server?.host ?? ""),
     clientStatuses: (values.clientStatuses ?? []).filter((label): label is string => typeof label === "string"),
     authInfo,
+    // A row with a problem (an emptied one too) adds nothing, so the record it held is removed; the form flags real problems.
+    records: (values.dnsRecords ?? []).filter((row): row is DnsRecordRow => Boolean(row?.type)).map((row) =>
+      recordInputOf({ type: row.type, name: row.name ?? "", value: row.value ?? "", preference: row.preference ?? "" }),
+    ),
   };
 }
 
@@ -60,6 +67,7 @@ function ChangeForm({ domain, change }: { domain: DomainName; change: Operation<
           Change <code>{domain.name}</code>
         </h3>
         <DomainDataFields />
+        <DnsRecordFields domain={domain.name} />
 
         <fieldset className="flex flex-col gap-3">
           <legend className="mb-1 text-sm font-medium">Locks set by you</legend>
@@ -93,7 +101,7 @@ function ChangeForm({ domain, change }: { domain: DomainName; change: Operation<
             </ul>
           )}
           <p className="text-sm text-muted-foreground">
-            Only these changes are sent, as one partial update that the registry carries out completely or not at all. DNS data is not changed on this screen.
+            Only these changes are sent, as one partial update that the registry carries out completely or not at all. DNSSEC records are not changed on this screen.
           </p>
         </section>
 
@@ -146,7 +154,7 @@ export function ChangePanel({ name, onNameChange }: PanelProps) {
 
       {!domain && !load.pending && !load.failure && !load.cancelled && !load.result && (
         <Callout tone="info" title="Load the domain to change it">
-          The form appears here with the registrant, contacts and name servers as they are now.
+          The form appears here with the registrant, contacts, name servers and DNS records as they are now.
         </Callout>
       )}
       {domain && <ChangeForm key={JSON.stringify(editOf(domain))} domain={domain} change={change} />}

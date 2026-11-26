@@ -7,6 +7,8 @@ import { Callout } from "@/components/ui/callout";
 import { Field, Input, Select } from "@/components/ui/field";
 import { useDomainStore } from "./domainCache";
 import { DomainDetails } from "./DomainDetails";
+import { DnsRecordFields } from "./DnsRecordFields";
+import { DNS_RECORD_DEFAULTS, recordInputsOf, type DnsRecordValues } from "./dnsRecordValues";
 import { DnssecFields, DNSSEC_DEFAULTS, dnssecOf, type DnssecValues } from "./DnssecFields";
 import { domainDataOf, periodOf } from "./formValues";
 import { OperationOutcome } from "../shared/OperationOutcome";
@@ -16,13 +18,13 @@ import { SubmitButton } from "../shared/SubmitButton";
 import { useOperation } from "../shared/useOperation";
 import type { RegisterInput } from "@/application/domains/domainWorkflows";
 
-interface RegisterValues extends PeriodValues, DomainDataValues, DnssecValues {
+interface RegisterValues extends PeriodValues, DomainDataValues, DnssecValues, DnsRecordValues {
   authInfo: string;
   uName: string;
   lgr: string;
 }
 
-const DEFAULTS: RegisterValues = { periodValue: "", periodUnit: "y", registrant: "", contacts: [], nameservers: [], authInfo: "", uName: "", lgr: "", ...DNSSEC_DEFAULTS };
+const DEFAULTS: RegisterValues = { periodValue: "", periodUnit: "y", registrant: "", contacts: [], nameservers: [], authInfo: "", uName: "", lgr: "", ...DNSSEC_DEFAULTS, ...DNS_RECORD_DEFAULTS };
 
 export function RegisterPanel({ name, onNameChange }: PanelProps) {
   const workflows = useDomainWorkflows();
@@ -53,6 +55,7 @@ export function RegisterPanel({ name, onNameChange }: PanelProps) {
       period: periodOf(values),
       authInfo: values.authInfo || undefined,
       dnssec: dnssecOf(values),
+      records: recordInputsOf(values.dnsRecords),
       ...domainDataOf(values),
     });
   });
@@ -86,6 +89,7 @@ export function RegisterPanel({ name, onNameChange }: PanelProps) {
           </Field>
           <PeriodFields label="Registration period" />
           <DomainDataFields />
+          <DnsRecordFields domain={tryParseDomainName(name)?.name ?? ""} />
           <DnssecFields />
           <Field label="Transfer password" hint="Set now, or later in Change. Another registrar needs it to take the domain over.">
             {(control) => <Input {...control} type="password" autoComplete="off" className="max-w-64" {...form.register("authInfo")} />}

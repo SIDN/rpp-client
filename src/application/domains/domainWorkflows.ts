@@ -11,6 +11,7 @@ import type {
   TransferProcess,
 } from "@/rpp/core/types/objects";
 import type { PatchOperation } from "@/rpp/operations/patch";
+import { describeRecord, dnsRecordOf, isDelegationType, recordProblems, type DnsRecordInput } from "./dnsRecords";
 import { invalidRequest } from "@/rpp/operations/paths";
 import type { RppClient } from "@/rpp/operations/RppClient";
 import type { AvailabilityResult, OperationSuccess } from "@/rpp/operations/types";
@@ -59,18 +60,27 @@ export type DnssecInput =
   | { type: "ds"; records: readonly DsRdata[] }
   | { type: "dnskey"; records: readonly DnskeyRdata[] };
 
-function dnsDataOf({ type, records }: DnssecInput): DnsData | undefined {
-  if (records.length === 0) return undefined;
-  return {
-    "@type": "dnsData",
-    records: records.map((rdata) => ({ "@type": "dnsRecord", name: "@", type, rdata: { ...rdata } })),
-  };
+function dnsDataOf(domain: string, dnssec: DnssecInput | undefined, records: readonly DnsRecordInput[]): DnsData | undefined {
+  for (const record of records) {
+    const problems = Object.values(recordProblems(record, domain));
+    if (problems.length > 0) throw invalidRequest(`DNS record ${describeRecord(record)}: ${problems.join("; ")}`);
+  }
+  const all = [
+    ...records.map(dnsRecordOf),
+    ...(dnssec?.records ?? []).map((rdata) => ({ "@type": "dnsRecord" as const, name: "@", type: dnssec?.type ?? "", rdata: { ...rdata } })),
+  ];
+  return all.length === 0 ? undefined : { "@type": "dnsData", records: all };
 }
 
 export interface RegisterInput {
   name: string;
   /** DNSSEC data for the DNS Data element: DS records or DNSKEY records, whose values are sent as the strings given. */
   dnssec?: DnssecInput;
+  /**
+   * NS, A, AAAA and MX records for the DNS Data element. NS records with their A/AAAA glue delegate the domain without
+   * host objects (draft-ietf-rpp-data-objects §11.2), which is how registries without a host object model work.
+   */
+  records?: readonly DnsRecordInput[];
   /** The Unicode name, when given apart from `name`; it must be the Unicode form of `name`. */
   uName?: string;
   /** Names the Label Generation Ruleset of a Unicode name; the draft requires it with `uName`. */
@@ -126,7 +136,17 @@ export function registerBody(input: RegisterInput): DomainNameCreate {
     if (!(CONTACT_ROLES as readonly string[]).includes(label)) throw invalidRequest(`A contact role is admin, billing or tech, not ${label}`);
   }
   const nameservers = present(input.nameservers);
-  const dns = input.dnssec && dnsDataOf(input.dnssec);
+  const records = input.records ?? [];
+  // The draft: DNS Data "MUST not be used when 1 or more nameservers are specified" (§11.2). DNSSEC records have been
+  // sent next to name servers by this client before, so only the delegation and mail records are refused here.
+  if (nameservers && records.length > 0) {
+    throw invalidRequest(
+      records.some((record) => isDelegationType(record.type))
+        ? "Delegate with name servers (hosts) or with NS records, not both"
+        : "DNS records cannot be sent together with name servers given as hosts",
+    );
+  }
+  const dns = dnsDataOf(ref.name, input.dnssec, records);
   return {
     "@type": "domainName",
     name: ref.name,

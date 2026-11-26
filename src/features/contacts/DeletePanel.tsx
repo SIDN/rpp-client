@@ -12,6 +12,7 @@ export function DeletePanel({ id, onIdChange }: PanelProps) {
   const remove = useOperation(
     (variables: string, signal) => workflows.remove(variables, { signal }),
     (_result, variables) => store.forget(variables),
+    { keep: "contacts/delete.remove" },
   );
   const target = id.trim();
 

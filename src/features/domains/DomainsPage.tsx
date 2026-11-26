@@ -1,5 +1,5 @@
 import { t } from "@/i18n";
-import { useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { useSearchParams } from "react-router-dom";
 import { objectSupport } from "@/application/capability";
 import { useConnection } from "@/app/connection-context";
@@ -16,6 +16,7 @@ import { RegisterPanel } from "./RegisterPanel";
 import { RenewPanel } from "./RenewPanel";
 import { RestorePanel } from "./RestorePanel";
 import { TransferPanel } from "./TransferPanel";
+import { useDraftState } from "../shared/drafts";
 
 const WORKFLOWS = ["info", "check", "register", "change", "renew", "restore", "transfer", "delete"] as const;
 
@@ -27,8 +28,9 @@ export function DomainsPage() {
   const { session } = useConnection();
   const support = objectSupport(discovery, "domainName");
   const [params] = useSearchParams();
-  const [workflow, setWorkflow] = useState<WorkflowId>(() => WORKFLOWS.find((id) => id === params.get("tab")) ?? "info");
-  const [name, setName] = useState(() => params.get("name") ?? "");
+  // Kept for the connection, so that the screen is as it was left; a link that names a tab or a name wins.
+  const [workflow, setWorkflow] = useDraftState<WorkflowId>("domains/workflow", "info", WORKFLOWS.find((id) => id === params.get("tab")));
+  const [name, setName] = useDraftState("domains/name", "", params.get("name") ?? undefined);
 
   const labels: Record<WorkflowId, string> = {
     info: t("domains.page.info"), check: t("domains.page.check"), register: t("domains.page.register"), change: t("domains.page.change"),

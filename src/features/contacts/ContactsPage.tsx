@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from "react";
+import { useDraftState } from "../shared/drafts";
 import { useSearchParams } from "react-router-dom";
 import { objectSupport } from "@/application/capability";
 import { useConnection } from "@/app/connection-context";
@@ -23,8 +24,9 @@ export function ContactsPage() {
   const { session } = useConnection();
   const support = objectSupport(discovery, "contact");
   const [params] = useSearchParams();
-  const [workflow, setWorkflow] = useState<WorkflowId>(() => WORKFLOW_IDS.find((id) => id === params.get("tab")) ?? "info");
-  const [id, setId] = useState(() => params.get("name") ?? "");
+  // Kept for the connection, so that the screen is as it was left; a link that names a tab or an identifier wins.
+  const [workflow, setWorkflow] = useDraftState<WorkflowId>("contacts/workflow", "info", WORKFLOW_IDS.find((id) => id === params.get("tab")));
+  const [id, setId] = useDraftState("contacts/id", "", params.get("name") ?? undefined);
   const [lookUpAtOnce] = useState(() => params.get("run") === "1");
 
   const workflows = [

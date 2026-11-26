@@ -1,14 +1,16 @@
 import { t } from "@/i18n";
 import { useEffect } from "react";
-import { FormProvider, useForm } from "react-hook-form";
+import { FormProvider } from "react-hook-form";
 import { useDiscoveryState } from "@/app/discovery-context";
 import { idnLgrsFor } from "@/application/capability";
 import { tryParseDomainName } from "@/application/domains/domainWorkflows";
 import { Field, Input, Select } from "@/components/ui/field";
-import { useDomainStore } from "./domainCache";
+import { useDomainStore, useLoadedDomain } from "./domainCache";
 import { DomainDetails } from "./DomainDetails";
 import { DnssecFields, DNSSEC_DEFAULTS, dnssecOf, type DnssecValues } from "./DnssecFields";
-import { domainDataOf, periodOf } from "./formValues";
+import { domainDataOf, domainValuesOf, periodOf } from "./formValues";
+import { useDraftForm, usePrefill } from "../shared/drafts";
+import { PrefillNote, ResetButton } from "../shared/DraftActions";
 import { OperationOutcome } from "../shared/OperationOutcome";
 import { DomainDataFields, NameField, PeriodFields, type DomainDataValues, type PanelProps, type PeriodValues } from "./parts";
 import { useDomainWorkflows } from "./useDomainWorkflows";
@@ -27,12 +29,19 @@ const DEFAULTS: RegisterValues = { periodValue: "", periodUnit: "y", registrant:
 export function RegisterPanel({ name, onNameChange }: PanelProps) {
   const workflows = useDomainWorkflows();
   const store = useDomainStore();
-  const form = useForm<RegisterValues>({ defaultValues: DEFAULTS });
   const discovery = useDiscoveryState();
   const idnOffered = idnLgrsFor(discovery).length > 0;
   const forTld = idnLgrsFor(discovery, tryParseDomainName(name)?.name ?? name);
   const lgrs = forTld.length > 0 ? forTld : idnLgrsFor(discovery);
   const defaultLgr = lgrs.find((lgr) => lgr.isDefault)?.name ?? (lgrs.length === 1 ? lgrs[0]?.name : undefined);
+  const empty: RegisterValues = { ...DEFAULTS, lgr: defaultLgr ?? "" };
+  const draft = useDraftForm<RegisterValues>("domains/register", empty);
+  const { form } = draft;
+
+  // A domain loaded in Info or Change fills the form in, contacts, name servers and DNSSEC data; never its password.
+  const loaded = useLoadedDomain().domain;
+  const source = loaded && { id: loaded.name, values: { ...empty, ...domainValuesOf(loaded) } };
+  usePrefill(draft, source);
 
   useEffect(() => {
     if (defaultLgr && !form.getValues("lgr")) form.setValue("lgr", defaultLgr);
@@ -43,6 +52,7 @@ export function RegisterPanel({ name, onNameChange }: PanelProps) {
     (result, input) => {
       if (result.data) store.remember(input.name, result.data);
     },
+    { keep: "domains/register.register" },
   );
 
   const submit = form.handleSubmit((values) => {
@@ -62,6 +72,7 @@ export function RegisterPanel({ name, onNameChange }: PanelProps) {
       <FormProvider {...form}>
         <form onSubmit={submit} noValidate className="flex max-w-xl flex-col gap-6">
           <NameField name={name} onNameChange={onNameChange} />
+          <PrefillNote draft={draft} source={source} />
           <Field
             label={t("domains.register.unicodeName")}
             hint={idnOffered ? t("domains.register.unicodeHint") : t("domains.register.disabledIdn")}
@@ -90,8 +101,11 @@ export function RegisterPanel({ name, onNameChange }: PanelProps) {
           <Field label={t("domains.register.transferPassword")} hint={t("domains.register.transferPasswordHint")}>
             {(control) => <Input {...control} type="password" autoComplete="off" className="max-w-64" {...form.register("authInfo")} />}
           </Field>
-          <div>
+          <div className="flex flex-wrap gap-2">
             <SubmitButton pending={register.pending}>{t("domains.register.submit")}</SubmitButton>
+            <ResetButton draft={draft} to={empty}>
+              {t("shared.form.clear")}
+            </ResetButton>
           </div>
         </form>
       </FormProvider>

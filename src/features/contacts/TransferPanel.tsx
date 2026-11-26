@@ -1,4 +1,5 @@
-import { FormProvider, useForm, useWatch } from "react-hook-form";
+import { FormProvider, useWatch } from "react-hook-form";
+import { useDraftForm } from "../shared/drafts";
 import { t } from "@/i18n";
 import { Choice } from "@/components/ui/choice";
 import { Field, Input } from "@/components/ui/field";
@@ -33,7 +34,7 @@ function transferSuccess(action: TransferAction): string {
 export function TransferPanel({ id, onIdChange }: PanelProps) {
   const workflows = useContactWorkflows();
   const store = useContactStore();
-  const form = useForm<TransferValues>({ defaultValues: { action: "request", authInfo: "" } });
+  const { form } = useDraftForm<TransferValues>("contacts/transfer", { action: "request", authInfo: "" });
   const action = useWatch({ control: form.control, name: "action" });
   const target = id.trim();
 
@@ -55,6 +56,7 @@ export function TransferPanel({ id, onIdChange }: PanelProps) {
     (_result, command) => {
       if (command.kind !== "status") store.forget(command.id);
     },
+    { keep: "contacts/transfer.transfer" },
   );
 
   const submit = form.handleSubmit((values) => {

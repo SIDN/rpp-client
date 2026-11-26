@@ -1,6 +1,7 @@
 import { t } from "@/i18n";
-import { useState } from "react";
-import { FormProvider, useForm, useWatch } from "react-hook-form";
+import { FormProvider, useWatch } from "react-hook-form";
+import { useDraftForm, useDraftState } from "../shared/drafts";
+import { ResetButton } from "../shared/DraftActions";
 import { buildUserPatch, describeUserOperation, userEditOf } from "@/application/organisations/userData";
 import { Callout } from "@/components/ui/callout";
 import type { User } from "@/rpp/core/types/objects";
@@ -8,7 +9,7 @@ import type { PatchOperation } from "@/rpp/operations/patch";
 import { OperationOutcome } from "../shared/OperationOutcome";
 import { SubmitButton } from "../shared/SubmitButton";
 import { useOperation, type Operation } from "../shared/useOperation";
-import { useCachedOrganisation, useCachedUser, useKnownUsers, useOrganisationStore, useOrganisationWorkflows } from "./organisationHooks";
+import { useCachedOrganisation, useCachedUser, useKnownUsers, useLoadedUser, useOrganisationStore, useOrganisationWorkflows } from "./organisationHooks";
 import { OrganisationField, type PanelProps } from "./parts";
 import { UserDetails } from "./UserDetails";
 import { UserFields } from "./UserFields";
@@ -24,8 +25,11 @@ interface Change extends Target {
   operations: readonly PatchOperation[];
 }
 
-function ChangeForm({ target, user, change }: { target: Target; user: User; change: Operation<Change, User> }) {
-  const form = useForm<UserValues>({ defaultValues: toValues(userEditOf(user)) });
+/** `version` names the user as loaded: what was typed for another one or state of it is not given back. */
+function ChangeForm({ target, version, user, change }: { target: Target; version: string; user: User; change: Operation<Change, User> }) {
+  const loaded = toValues(userEditOf(user));
+  const draft = useDraftForm<UserValues>("organisations/userChange", loaded, version);
+  const { form } = draft;
   const values = useWatch({ control: form.control });
   const operations = buildUserPatch(user, toData(values as Partial<UserValues>));
 
@@ -54,10 +58,13 @@ function ChangeForm({ target, user, change }: { target: Target; user: User; chan
           </p>
         </section>
 
-        <div>
+        <div className="flex flex-wrap gap-2">
           <SubmitButton pending={change.pending} disabled={operations.length === 0}>
             {t("organisations.action.saveChanges")}
           </SubmitButton>
+          <ResetButton draft={draft} to={loaded}>
+            {t("shared.form.discard")}
+          </ResetButton>
         </div>
       </form>
     </FormProvider>
@@ -69,20 +76,25 @@ export function UserChangePanel({ organisationId, onOrganisationChange, onUserCh
   const store = useOrganisationStore();
   const organisation = useCachedOrganisation(organisationId);
   const users = useKnownUsers(organisationId);
-  const [selected, setSelected] = useState<string>();
+  const [selected, setSelected] = useDraftState<string | undefined>("organisations/userChange/selected", undefined);
   const user = useCachedUser(organisationId, selected ?? "");
+  const { setLoaded } = useLoadedUser();
 
   const loadUsers = useOperation(
     (variables: string, signal) => workflows.info(variables, { signal }),
     (result, variables) => {
       if (result.data) store.remember(variables, result.data);
     },
+    { keep: "organisations/userChange.loadUsers" },
   );
   const load = useOperation(
     (variables: Target, signal) => workflows.users.info(variables.organisationId, variables.userId, { signal }),
     (result, variables) => {
-      if (result.data) store.rememberUser(variables.organisationId, variables.userId, result.data);
+      if (!result.data) return;
+      store.rememberUser(variables.organisationId, variables.userId, result.data);
+      setLoaded(variables.organisationId, variables.userId);
     },
+    { keep: "organisations/userChange.load" },
   );
   // Held here, not in the form: the form starts over when the saved user replaces the loaded one.
   const change = useOperation(
@@ -90,6 +102,7 @@ export function UserChangePanel({ organisationId, onOrganisationChange, onUserCh
     (result, variables) => {
       if (result.data) store.rememberUser(variables.organisationId, variables.userId, result.data);
     },
+    { keep: "organisations/userChange.change" },
   );
 
   const choose = (id: string) => {
@@ -137,6 +150,7 @@ export function UserChangePanel({ organisationId, onOrganisationChange, onUserCh
       {selected && user && !load.pending && (
         <ChangeForm
           key={JSON.stringify([organisationId.trim(), selected, userEditOf(user)])}
+          version={JSON.stringify([organisationId.trim(), selected, userEditOf(user)])}
           target={{ organisationId: organisationId.trim(), userId: selected }}
           user={user}
           change={change}

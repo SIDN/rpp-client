@@ -1,11 +1,11 @@
 import { useEffect, useRef } from "react";
 import { t } from "@/i18n";
-import { useForm } from "react-hook-form";
 import { Choice } from "@/components/ui/choice";
 import { OperationOutcome } from "../shared/OperationOutcome";
 import { SubmitButton } from "../shared/SubmitButton";
 import { useOperation } from "../shared/useOperation";
-import { useContactStore, useContactWorkflows } from "./contactHooks";
+import { useContactStore, useContactWorkflows, useLoadedContact } from "./contactHooks";
+import { useDraftForm } from "../shared/drafts";
 import { ContactDetails } from "./ContactDetails";
 import { IdField, type PanelProps } from "./parts";
 
@@ -13,12 +13,16 @@ import { IdField, type PanelProps } from "./parts";
 export function InfoPanel({ id, onIdChange, startNow = false }: PanelProps & { startNow?: boolean }) {
   const workflows = useContactWorkflows();
   const store = useContactStore();
-  const { register, handleSubmit } = useForm({ defaultValues: { authInfo: false } });
+  const { setLoaded } = useLoadedContact();
+  const { register, handleSubmit } = useDraftForm("contacts/info", { authInfo: false }).form;
   const info = useOperation(
     (variables: { id: string; authInfo: boolean }, signal) => workflows.info(variables.id, { authInfo: variables.authInfo, signal }),
     (result, variables) => {
-      if (result.data) store.remember(variables.id, result.data);
+      if (!result.data) return;
+      store.remember(variables.id, result.data);
+      setLoaded(variables.id);
     },
+    { keep: "contacts/info.info" },
   );
 
   const started = useRef(false);

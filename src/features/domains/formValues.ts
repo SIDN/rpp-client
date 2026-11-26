@@ -1,5 +1,8 @@
 import { t } from "@/i18n";
 import type { PeriodInput } from "@/application/domains/domainWorkflows";
+import { dnssecEditOf, editOf } from "@/application/domains/domainPatch";
+import type { DomainName } from "@/rpp/core/types/objects";
+import type { DnssecValues } from "./DnssecFields";
 import type { DomainDataValues, PeriodValues } from "./parts";
 
 export function periodOf(values: PeriodValues): PeriodInput | undefined {
@@ -59,5 +62,19 @@ export function domainDataOf(values: DomainDataValues) {
     registrant: values.registrant.trim() || undefined,
     contacts: values.contacts.filter((contact) => filled(contact.label) && filled(contact.id)).map(({ label, id }) => ({ label: label.trim(), id: id.trim() })),
     nameservers: values.nameservers.map(({ host }) => host.trim()).filter(Boolean),
+  };
+}
+
+/** The contacts, name servers and DNSSEC data of a domain as the server showed it, as form values. */
+export function domainValuesOf(domain: DomainName): DomainDataValues & DnssecValues {
+  const edit = editOf(domain);
+  const dnssec = dnssecEditOf(domain);
+  return {
+    registrant: edit.registrant,
+    contacts: edit.contacts,
+    nameservers: edit.nameservers.map((host) => ({ host })),
+    dsRecords: dnssec.ds as unknown as DnssecValues["dsRecords"],
+    keyRecords: dnssec.keys as unknown as DnssecValues["keyRecords"],
+    maxSigLife: dnssec.maxSigLife,
   };
 }

@@ -9,10 +9,14 @@ import { useOperation } from "../shared/useOperation";
 
 export function CheckPanel({ name, onNameChange, onRegister }: PanelProps & { onRegister(): void }) {
   const workflows = useDomainWorkflows();
-  const check = useOperation(async (variables: string, signal) => {
-    const { available, details, meta } = await workflows.check(variables, { signal });
-    return { data: { available, reason: details?.reason }, meta };
-  });
+  const check = useOperation(
+    async (variables: string, signal) => {
+      const { available, details, meta } = await workflows.check(variables, { signal });
+      return { data: { available, reason: details?.reason }, meta };
+    },
+    undefined,
+    { keep: "domains/check.check" },
+  );
 
   return (
     <div className="flex flex-col gap-6">

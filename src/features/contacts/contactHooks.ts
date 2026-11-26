@@ -8,6 +8,7 @@ import type { PostalMode } from "@/application/contacts/contactCard";
 import { createContactWorkflows, parseContactId, type ContactWorkflows } from "@/application/contacts/contactWorkflows";
 import { defaultPreset } from "@/rpp/discovery/capabilities";
 import type { Contact } from "@/rpp/core/types/objects";
+import { useDraftState } from "../shared/drafts";
 import { seenKey } from "../shared/seenObjects";
 
 const contactKey = (sessionId: number | undefined, id: string) => seenKey("contact", sessionId, id);
@@ -85,4 +86,10 @@ export function useContactForm(): ContactForm {
   if (!query.data) return { status: "loading" };
   if (query.data.kind === "unknown") return { status: "ready", mode: "both", authInfo: true, note: t("contacts.form.schemaNotUsable", { reason: query.data.reason }) };
   return { status: "ready", mode: postalModeOf(query.data.support), authInfo: query.data.support.authInfo, note: undefined };
+}
+
+/** The contact last loaded in Info or Change, as long as it is known, and how to record one: a new contact can be filled in from it. */
+export function useLoadedContact(): { contact: Contact | undefined; setLoaded(id: string): void } {
+  const [id, setLoaded] = useDraftState("contacts/loaded", "");
+  return { contact: useCachedContact(id), setLoaded };
 }

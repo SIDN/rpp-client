@@ -1,4 +1,6 @@
-import { FormProvider, useForm, useWatch } from "react-hook-form";
+import { FormProvider, useWatch } from "react-hook-form";
+import { useDraftForm } from "../shared/drafts";
+import { ResetButton } from "../shared/DraftActions";
 import { t } from "@/i18n";
 import { buildHostPatch, describeHostOperation, editOf, HOST_CLIENT_STATUSES, type HostEdit } from "@/application/hosts/hostData";
 import { tryParseHostName } from "@/application/hosts/hostWorkflows";
@@ -10,7 +12,7 @@ import type { PatchOperation } from "@/rpp/operations/patch";
 import { OperationOutcome } from "../shared/OperationOutcome";
 import { SubmitButton } from "../shared/SubmitButton";
 import { useOperation, type Operation } from "../shared/useOperation";
-import { useCachedHost, useHostStore, useHostWorkflows } from "./hostHooks";
+import { useCachedHost, useHostStore, useHostWorkflows, useLoadedHost } from "./hostHooks";
 import { HostDetails } from "./HostDetails";
 import { AddressFields, NameField, type AddressValues, type PanelProps } from "./parts";
 
@@ -35,8 +37,11 @@ const editOfValues = (values: Partial<ChangeValues>): HostEdit => ({
   clientStatuses: (values.clientStatuses ?? []).filter((label): label is string => typeof label === "string"),
 });
 
-function ChangeForm({ host, change }: { host: Host; change: Operation<Change, Host> }) {
-  const form = useForm<ChangeValues>({ defaultValues: toValues(host) });
+/** `version` names the host as loaded: what was typed for another name or state of it is not given back. */
+function ChangeForm({ host, version, change }: { host: Host; version: string; change: Operation<Change, Host> }) {
+  const loaded = toValues(host);
+  const draft = useDraftForm<ChangeValues>("hosts/change", loaded, version);
+  const { form } = draft;
   const values = useWatch({ control: form.control });
   const operations = buildHostPatch(host, editOfValues(values as Partial<ChangeValues>));
 
@@ -92,10 +97,13 @@ function ChangeForm({ host, change }: { host: Host; change: Operation<Change, Ho
           </p>
         </section>
 
-        <div>
+        <div className="flex flex-wrap gap-2">
           <SubmitButton pending={change.pending} disabled={operations.length === 0}>
             {t("hosts.change.submit")}
           </SubmitButton>
+          <ResetButton draft={draft} to={loaded}>
+            {t("shared.form.discard")}
+          </ResetButton>
         </div>
       </form>
     </FormProvider>
@@ -106,12 +114,16 @@ export function ChangePanel({ name, onNameChange }: PanelProps) {
   const workflows = useHostWorkflows();
   const store = useHostStore();
   const host = useCachedHost(name);
+  const { setLoaded } = useLoadedHost();
 
   const load = useOperation(
     (variables: string, signal) => workflows.info(variables, { signal }),
     (result, variables) => {
-      if (result.data) store.remember(variables, result.data);
+      if (!result.data) return;
+      store.remember(variables, result.data);
+      setLoaded(variables);
     },
+    { keep: "hosts/change.load" },
   );
   // Held here, not in the form: the form starts over when the saved host replaces the loaded one.
   const change = useOperation(
@@ -125,6 +137,7 @@ export function ChangePanel({ name, onNameChange }: PanelProps) {
       // The host is under its new name now; the screens follow it.
       if (changed && renamed) onNameChange(changed.hostName);
     },
+    { keep: "hosts/change.change" },
   );
 
   return (
@@ -149,7 +162,7 @@ export function ChangePanel({ name, onNameChange }: PanelProps) {
           {t("hosts.change.loadPromptDescription")}
         </Callout>
       )}
-      {host && <ChangeForm key={JSON.stringify([host.hostName, editOf(host)])} host={host} change={change} />}
+      {host && <ChangeForm key={JSON.stringify([host.hostName, editOf(host)])} version={JSON.stringify([host.hostName, editOf(host)])} host={host} change={change} />}
       <OperationOutcome operation={change} success={t("hosts.change.success", { host: change.variables?.name ?? "the host" })}>
         {(changed) => <HostDetails host={changed} />}
       </OperationOutcome>

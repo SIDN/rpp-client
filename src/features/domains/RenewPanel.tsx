@@ -1,5 +1,7 @@
 import { t } from "@/i18n";
-import { FormProvider, useForm } from "react-hook-form";
+import { FormProvider } from "react-hook-form";
+import { useDraftForm } from "../shared/drafts";
+import { ResetButton } from "../shared/DraftActions";
 import type { PeriodInput } from "@/application/domains/domainWorkflows";
 import { DefinitionList, DefinitionRow, Nothing } from "@/components/common/definition";
 import { Callout } from "@/components/ui/callout";
@@ -23,17 +25,21 @@ interface Renewal {
   period?: PeriodInput;
 }
 
+const RENEW_DEFAULTS: RenewValues = { periodValue: "", periodUnit: "y", sendExpiry: true };
+
 export function RenewPanel({ name, onNameChange }: PanelProps) {
   const workflows = useDomainWorkflows();
   const store = useDomainStore();
   const known = useCachedDomain(name);
-  const form = useForm<RenewValues>({ defaultValues: { periodValue: "", periodUnit: "y", sendExpiry: true } });
+  const draft = useDraftForm<RenewValues>("domains/renew", RENEW_DEFAULTS);
+  const { form } = draft;
   const expiry = known?.expiryDate;
 
   const renew = useOperation(
     (renewal: Renewal, signal) => workflows.renew(renewal.name, { expiryDate: renewal.expiryDate, period: renewal.period }, { signal }),
     // The domain loaded before is out of date now.
     (_result, renewal) => store.forget(renewal.name),
+    { keep: "domains/renew.renew" },
   );
 
   const submit = form.handleSubmit((values) =>
@@ -58,8 +64,11 @@ export function RenewPanel({ name, onNameChange }: PanelProps) {
               {t("domains.renew.lookupFirst")}
             </Callout>
           )}
-          <div>
+          <div className="flex flex-wrap gap-2">
             <SubmitButton pending={renew.pending}>{t("domains.renew.submit")}</SubmitButton>
+            <ResetButton draft={draft} to={RENEW_DEFAULTS}>
+              {t("shared.form.clear")}
+            </ResetButton>
           </div>
         </form>
       </FormProvider>

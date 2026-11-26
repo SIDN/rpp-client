@@ -27,6 +27,7 @@ export function UserDeletePanel({ organisationId, onOrganisationChange, onUserCh
     (result, variables) => {
       if (result.data) store.remember(variables, result.data);
     },
+    { keep: "organisations/userDelete.loadUsers" },
   );
   const remove = useOperation(
     (variables: Target, signal) => workflows.users.remove(variables.organisationId, variables.userId, { signal }),
@@ -35,6 +36,7 @@ export function UserDeletePanel({ organisationId, onOrganisationChange, onUserCh
       store.forgetUser(variables.organisationId, variables.userId);
       setSelected(undefined);
     },
+    { keep: "organisations/userDelete.remove" },
   );
 
   return (

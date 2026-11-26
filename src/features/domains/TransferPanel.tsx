@@ -1,5 +1,7 @@
 import { t } from "@/i18n";
-import { FormProvider, useForm, useWatch } from "react-hook-form";
+import { FormProvider, useWatch } from "react-hook-form";
+import { useDraftForm } from "../shared/drafts";
+import { ResetButton } from "../shared/DraftActions";
 import { Choice } from "@/components/ui/choice";
 import { Field, Input } from "@/components/ui/field";
 import type { PeriodInput } from "@/application/domains/domainWorkflows";
@@ -33,10 +35,13 @@ function transferSuccess(action: TransferAction): string {
   }
 }
 
+const TRANSFER_DEFAULTS: TransferValues = { action: "request", authInfo: "", periodValue: "", periodUnit: "y" };
+
 export function TransferPanel({ name, onNameChange }: PanelProps) {
   const workflows = useDomainWorkflows();
   const store = useDomainStore();
-  const form = useForm<TransferValues>({ defaultValues: { action: "request", authInfo: "", periodValue: "", periodUnit: "y" } });
+  const draft = useDraftForm<TransferValues>("domains/transfer", TRANSFER_DEFAULTS);
+  const { form } = draft;
   const action = useWatch({ control: form.control, name: "action" });
   const target = name.trim();
 
@@ -58,6 +63,7 @@ export function TransferPanel({ name, onNameChange }: PanelProps) {
     (_result, command) => {
       if (command.kind !== "status") store.forget(command.name);
     },
+    { keep: "domains/transfer.transfer" },
   );
 
   const submit = form.handleSubmit((values) => {
@@ -91,11 +97,14 @@ export function TransferPanel({ name, onNameChange }: PanelProps) {
             </div>
           )}
 
-          {(action === "request" || action === "status") && (
-            <div>
+          <div className="flex flex-wrap gap-2">
+            {(action === "request" || action === "status") && (
               <SubmitButton pending={transfer.pending}>{action === "request" ? t("domains.transfer.submitRequest") : t("domains.transfer.submitStatus")}</SubmitButton>
-            </div>
-          )}
+            )}
+            <ResetButton draft={draft} to={TRANSFER_DEFAULTS}>
+              {t("shared.form.clear")}
+            </ResetButton>
+          </div>
         </form>
       </FormProvider>
 

@@ -13,6 +13,7 @@ export function DeletePanel({ name, onNameChange }: PanelProps) {
   const remove = useOperation(
     (variables: string, signal) => workflows.remove(variables, { signal }),
     (_result, variables) => store.forget(variables),
+    { keep: "hosts/delete.remove" },
   );
   const target = tryParseHostName(name)?.name;
 

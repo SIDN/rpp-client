@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from "react";
+import { useDraftState } from "../shared/drafts";
 import { useSearchParams } from "react-router-dom";
 import { objectSupport } from "@/application/capability";
 import { useConnection } from "@/app/connection-context";
@@ -22,8 +23,9 @@ export function HostsPage() {
   const { session } = useConnection();
   const support = objectSupport(discovery, "host");
   const [params] = useSearchParams();
-  const [workflow, setWorkflow] = useState<WorkflowId>(() => WORKFLOW_IDS.find((id) => id === params.get("tab")) ?? "info");
-  const [name, setName] = useState(() => params.get("name") ?? "");
+  // Kept for the connection, so that the screen is as it was left; a link that names a tab or a name wins.
+  const [workflow, setWorkflow] = useDraftState<WorkflowId>("hosts/workflow", "info", WORKFLOW_IDS.find((id) => id === params.get("tab")));
+  const [name, setName] = useDraftState("hosts/name", "", params.get("name") ?? undefined);
   const [lookUpAtOnce] = useState(() => params.get("run") === "1");
 
   const workflows = [

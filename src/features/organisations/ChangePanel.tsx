@@ -1,5 +1,7 @@
 import { t } from "@/i18n";
-import { FormProvider, useForm, useWatch } from "react-hook-form";
+import { FormProvider, useWatch } from "react-hook-form";
+import { useDraftForm } from "../shared/drafts";
+import { ResetButton } from "../shared/DraftActions";
 import {
   buildOrganisationPatch,
   describeOrganisationOperation,
@@ -12,7 +14,7 @@ import type { PatchOperation } from "@/rpp/operations/patch";
 import { OperationOutcome } from "../shared/OperationOutcome";
 import { SubmitButton } from "../shared/SubmitButton";
 import { useOperation, type Operation } from "../shared/useOperation";
-import { useCachedOrganisation, useOrganisationStore, useOrganisationWorkflows } from "./organisationHooks";
+import { useCachedOrganisation, useLoadedOrganisation, useOrganisationStore, useOrganisationWorkflows } from "./organisationHooks";
 import { OrganisationDetails } from "./OrganisationDetails";
 import { OrganisationFields } from "./OrganisationFields";
 import { toData, toValues, type OrganisationValues } from "./organisationValues";
@@ -32,8 +34,11 @@ function planOf(organisation: Organisation, data: OrganisationData): { operation
   }
 }
 
-function ChangeForm({ organisation, change }: { organisation: Organisation; change: Operation<Change, Organisation> }) {
-  const form = useForm<OrganisationValues>({ defaultValues: toValues(organisationEditOf(organisation)) });
+/** `version` names the organisation as loaded: what was typed for another one or state of it is not given back. */
+function ChangeForm({ organisation, version, change }: { organisation: Organisation; version: string; change: Operation<Change, Organisation> }) {
+  const loaded = toValues(organisationEditOf(organisation));
+  const draft = useDraftForm<OrganisationValues>("organisations/change", loaded, version);
+  const { form } = draft;
   const values = useWatch({ control: form.control });
   const { operations, problem } = planOf(organisation, toData(values as Partial<OrganisationValues>));
 
@@ -66,10 +71,13 @@ function ChangeForm({ organisation, change }: { organisation: Organisation; chan
           </p>
         </section>
 
-        <div>
+        <div className="flex flex-wrap gap-2">
           <SubmitButton pending={change.pending} disabled={operations.length === 0}>
             {t("organisations.action.saveChanges")}
           </SubmitButton>
+          <ResetButton draft={draft} to={loaded}>
+            {t("shared.form.discard")}
+          </ResetButton>
         </div>
       </form>
     </FormProvider>
@@ -80,12 +88,16 @@ export function ChangePanel({ organisationId, onOrganisationChange }: PanelProps
   const workflows = useOrganisationWorkflows();
   const store = useOrganisationStore();
   const organisation = useCachedOrganisation(organisationId);
+  const { setLoaded } = useLoadedOrganisation();
 
   const load = useOperation(
     (variables: string, signal) => workflows.info(variables, { signal }),
     (result, variables) => {
-      if (result.data) store.remember(variables, result.data);
+      if (!result.data) return;
+      store.remember(variables, result.data);
+      setLoaded(variables);
     },
+    { keep: "organisations/change.load" },
   );
   // Held here, not in the form: the form starts over when the saved organisation replaces the loaded one.
   const change = useOperation(
@@ -93,6 +105,7 @@ export function ChangePanel({ organisationId, onOrganisationChange }: PanelProps
     (result, variables) => {
       if (result.data) store.remember(variables.id, result.data);
     },
+    { keep: "organisations/change.change" },
   );
 
   return (
@@ -117,7 +130,14 @@ export function ChangePanel({ organisationId, onOrganisationChange }: PanelProps
           {t("organisations.change.loadFirstDescription")}
         </Callout>
       )}
-      {organisation && <ChangeForm key={JSON.stringify([organisation.id, organisationEditOf(organisation)])} organisation={organisation} change={change} />}
+      {organisation && (
+        <ChangeForm
+          key={JSON.stringify([organisation.id, organisationEditOf(organisation)])}
+          version={JSON.stringify([organisation.id, organisationEditOf(organisation)])}
+          organisation={organisation}
+          change={change}
+        />
+      )}
       <OperationOutcome operation={change} success={t("organisations.outcome.changed", { name: change.variables?.id ?? t("organisations.noun.organisation") })}>
         {(changed) => <OrganisationDetails organisation={changed} />}
       </OperationOutcome>

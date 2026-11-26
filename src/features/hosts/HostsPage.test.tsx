@@ -234,6 +234,23 @@ describe("check and create", () => {
 describe("change", () => {
   const RENAMED = { ...HOST, hostName: "ns9.example.test" };
 
+  it("fills a new host in from the host loaded in Change, and clears it on request", async () => {
+    renderPage(() => answer(HOST));
+    openTab("Change");
+    typeName("ns1.example.test");
+    press("Load the host");
+    await waitFor(() => expect(panel().getByLabelText("IP address 1")).toHaveValue("192.0.2.1"));
+
+    openTab("Create");
+    expect(panel().getByText("Filled in from ns1.example.test")).toBeInTheDocument();
+    expect(panel().getByLabelText("IP address 1")).toHaveValue("192.0.2.1");
+    expect(panel().getByLabelText("IP address 2")).toHaveValue("2001:db8::1");
+
+    press("Clear form");
+    expect(panel().queryByLabelText("IP address 1")).toBeNull();
+    expect(panel().getByRole("button", { name: "Fill in from ns1.example.test" })).toBeInTheDocument();
+  });
+
   it("loads the host, shows what will be sent and sends only that", async () => {
     const changed = { ...HOST, status: [...HOST.status, { "@type": "hostStatus", label: "clientUpdateProhibited" }] };
     const { calls } = renderPage((request) => (request.method === "PATCH" ? answer(changed) : answer(HOST)));

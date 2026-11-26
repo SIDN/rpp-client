@@ -1,4 +1,4 @@
-import { FormProvider, useForm, useFormContext, useWatch } from "react-hook-form";
+import { FormProvider, useFormContext, useWatch } from "react-hook-form";
 import { t } from "@/i18n";
 import type { RestoreReportInput } from "@/application/domains/domainWorkflows";
 import { DefinitionList, DefinitionRow, Nothing } from "@/components/common/definition";
@@ -14,6 +14,8 @@ import { useDomainWorkflows } from "./useDomainWorkflows";
 import { Timestamp } from "../shared/objectParts";
 import { SubmitButton } from "../shared/SubmitButton";
 import { useOperation } from "../shared/useOperation";
+import { useDraftForm } from "../shared/drafts";
+import { ResetButton } from "../shared/DraftActions";
 
 type RestoreAction = "request" | "report" | "status";
 
@@ -114,7 +116,8 @@ function RestoreResult({ process }: { process: RestoreProcess }) {
 export function RestorePanel({ name, onNameChange }: PanelProps) {
   const workflows = useDomainWorkflows();
   const store = useDomainStore();
-  const form = useForm<RestoreValues>({ defaultValues: DEFAULTS });
+  const draft = useDraftForm<RestoreValues>("domains/restore", DEFAULTS);
+  const { form } = draft;
   const action = useWatch({ control: form.control, name: "action" });
   const withReport = useWatch({ control: form.control, name: "withReport" });
 
@@ -132,6 +135,7 @@ export function RestorePanel({ name, onNameChange }: PanelProps) {
     (_result, command) => {
       if (command.kind !== "status") store.forget(command.name);
     },
+    { keep: "domains/restore.restore" },
   );
 
   const submit = form.handleSubmit((values) => {
@@ -167,10 +171,13 @@ export function RestorePanel({ name, onNameChange }: PanelProps) {
           {showSent && <SentReport report={sent} />}
           {!showSent && (action === "report" || (action === "request" && withReport)) && <ReportFields />}
           {!showSent && (
-            <div>
+            <div className="flex flex-wrap gap-2">
               <SubmitButton pending={restore.pending} disabled={action === "request" && requested}>
                 {action === "request" ? t("domains.restore.submitRequest") : action === "report" ? t("domains.restore.submitReport") : t("domains.restore.submitStatus")}
               </SubmitButton>
+              <ResetButton draft={draft} to={DEFAULTS}>
+                {t("shared.form.clear")}
+              </ResetButton>
             </div>
           )}
         </form>

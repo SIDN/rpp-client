@@ -1,26 +1,37 @@
 import { t } from "@/i18n";
-import { FormProvider, useForm } from "react-hook-form";
-import { EMPTY_ORGANISATION, type CreateOrganisationInput } from "@/application/organisations/organisationData";
+import { FormProvider } from "react-hook-form";
+import { EMPTY_ORGANISATION, organisationEditOf, type CreateOrganisationInput } from "@/application/organisations/organisationData";
+import { useDraftForm, usePrefill } from "../shared/drafts";
+import { PrefillNote, ResetButton } from "../shared/DraftActions";
 import { Callout } from "@/components/ui/callout";
 import { OperationOutcome } from "../shared/OperationOutcome";
 import { SubmitButton } from "../shared/SubmitButton";
 import { useOperation } from "../shared/useOperation";
-import { useOrganisationStore, useOrganisationWorkflows } from "./organisationHooks";
+import { useLoadedOrganisation, useOrganisationStore, useOrganisationWorkflows } from "./organisationHooks";
 import { OrganisationDetails } from "./OrganisationDetails";
 import { OrganisationFields } from "./OrganisationFields";
 import { toData, toValues, type OrganisationValues } from "./organisationValues";
 import { OrganisationField, type PanelProps } from "./parts";
 
+const EMPTY = toValues(EMPTY_ORGANISATION);
+
 export function CreatePanel({ organisationId, onOrganisationChange }: PanelProps) {
   const workflows = useOrganisationWorkflows();
   const store = useOrganisationStore();
-  const form = useForm<OrganisationValues>({ defaultValues: toValues(EMPTY_ORGANISATION) });
+  const draft = useDraftForm<OrganisationValues>("organisations/create", EMPTY);
+  const { form } = draft;
+
+  // An organisation loaded in Info or Change fills the form in.
+  const loaded = useLoadedOrganisation().organisation;
+  const source = loaded && { id: loaded.id, values: toValues(organisationEditOf(loaded)) };
+  usePrefill(draft, source);
 
   const create = useOperation(
     (input: CreateOrganisationInput, signal) => workflows.create(input, { signal }),
     (result, input) => {
       if (result.data) store.remember(input.id, result.data);
     },
+    { keep: "organisations/create.create" },
   );
 
   const submit = form.handleSubmit((values) => create.start({ id: organisationId, data: toData(values) }));
@@ -34,6 +45,7 @@ export function CreatePanel({ organisationId, onOrganisationChange }: PanelProps
             onOrganisationChange={onOrganisationChange}
             hint={t("organisations.create.idHint")}
           />
+          <PrefillNote draft={draft} source={source} />
           <OrganisationFields />
           <Callout tone="info" title={t("organisations.create.usersAfterwardTitle")}>
             {t("organisations.create.usersAfterwardDescription")}
@@ -41,8 +53,11 @@ export function CreatePanel({ organisationId, onOrganisationChange }: PanelProps
           <Callout tone="info" title={t("organisations.create.requirementsTitle")}>
             {t("organisations.create.requirementsDescription")}
           </Callout>
-          <div>
+          <div className="flex flex-wrap gap-2">
             <SubmitButton pending={create.pending}>{t("organisations.action.createOrganisation")}</SubmitButton>
+            <ResetButton draft={draft} to={EMPTY}>
+              {t("shared.form.clear")}
+            </ResetButton>
           </div>
         </form>
       </FormProvider>

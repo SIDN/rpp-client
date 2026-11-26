@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Callout } from "@/components/ui/callout";
 import type { CapabilitySnapshot } from "@/rpp/discovery/capability-types";
 import { advertisedExtensions } from "@/rpp/discovery/capabilities";
+import { t } from "@/i18n";
 
 function Row({ term, children }: { term: string; children: ReactNode }) {
   return (
@@ -37,16 +38,12 @@ export function CapabilitySummary({
   return (
     <div className="flex flex-col gap-4">
       {otherOrigin.length > 0 && (
-        <Callout tone="warning" title="The server advertises another address">
-          This client keeps using the address you entered. The server lists{" "}
-          {otherOrigin.map((version) => (
-            <code key={version.version}>{version.baseUrl}</code>
-          ))}
-          .
+        <Callout tone="warning" title={t("connection.capability.otherAddress")}>
+          {t("connection.capability.keepAddressLead")} {otherOrigin.map((version) => <code key={version.version}>{version.baseUrl}</code>)}{t("connection.capability.keepAddressEnd")}
         </Callout>
       )}
       {warnings.length > 0 && (
-        <Callout tone="warning" title={`The discovery document has ${warnings.length} remark(s)`}>
+        <Callout tone="warning" title={t("connection.capability.remarks", { count: warnings.length })}>
           <ul className="list-disc pl-5">
             {warnings.map((warning) => (
               <li key={warning}>{warning}</li>
@@ -56,40 +53,40 @@ export function CapabilitySummary({
       )}
       <dl className="divide-y divide-border border-y border-border">
         {snapshot.environment && (
-          <Row term="Environment">
+          <Row term={t("connection.capability.environment")}>
             {snapshot.environment.name}, {snapshot.environment.status}
           </Row>
         )}
-        <Row term="RPP versions">
+        <Row term={t("connection.capability.versions")}>
           {snapshot.versions.length === 0
-            ? "None listed"
+            ? t("connection.capability.noneListed")
             : snapshot.versions.map((version) => (
                 <div key={version.version}>
-                  {version.version} at <code>{version.baseUrl}</code>
+                  {version.version} {t("connection.capability.at")} <code>{version.baseUrl}</code>
                 </div>
               ))}
         </Row>
-        <Row term="Objects">{snapshot.objects.length === 0 ? "None listed" : snapshot.objects.join(", ")}</Row>
-        <Row term="Presets">
+        <Row term={t("connection.capability.objects")}>{snapshot.objects.length === 0 ? t("connection.capability.noneListed") : snapshot.objects.join(", ")}</Row>
+        <Row term={t("connection.capability.presets")}>
           {snapshot.presets.length === 0 ? (
-            "None listed"
+            t("connection.capability.noneListed")
           ) : (
             <ul className="flex flex-col gap-1">
               {snapshot.presets.map((preset) => (
                 <li key={`${preset.id}@${preset.version}`} className="flex flex-wrap items-center gap-2">
                   <code>{preset.id}</code>
-                  <span className="text-muted-foreground">version {preset.version}</span>
-                  {preset.isDefault && <Badge tone="info">default</Badge>}
+                  <span className="text-muted-foreground">{t("connection.capability.version", { version: preset.version })}</span>
+                  {preset.isDefault && <Badge tone="info">{t("connection.capability.default")}</Badge>}
                 </li>
               ))}
             </ul>
           )}
         </Row>
-        <Row term="Extensions">
-          {extensions.length === 0 ? "None advertised" : extensions.map((extension) => `${extension.name ?? extension.id} ${extension.version}`).join(", ")}
+        <Row term={t("connection.capability.extensions")}>
+          {extensions.length === 0 ? t("connection.capability.noneAdvertised") : extensions.map((extension) => `${extension.name ?? extension.id} ${extension.version}`).join(", ")}
         </Row>
-        <Row term="TLDs">{snapshot.tlds.length === 0 ? "None listed" : snapshot.tlds.join(", ")}</Row>
-        <Row term="Read">{new Date(snapshot.source.retrievedAt).toLocaleString()}</Row>
+        <Row term={t("connection.capability.tlds")}>{snapshot.tlds.length === 0 ? t("connection.capability.noneListed") : snapshot.tlds.join(", ")}</Row>
+        <Row term={t("connection.capability.read")}>{new Date(snapshot.source.retrievedAt).toLocaleString()}</Row>
       </dl>
     </div>
   );

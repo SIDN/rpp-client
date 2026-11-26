@@ -1,6 +1,7 @@
 import { useId, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/field";
+import { t } from "@/i18n";
 
 /**
  * An action that cannot be taken back asks first, naming what it acts on. With `expected`, the person types that name,
@@ -55,7 +56,7 @@ export function ConfirmAction({
       {expected !== undefined && (
         <div className="flex flex-col gap-1.5">
           <label htmlFor={`${id}-typed`} className="text-sm font-medium">
-            Type <code>{expected}</code> to confirm
+            {t("shared.confirm.typePrefix")} <code>{expected}</code> {t("shared.confirm.typeSuffix")}
           </label>
           <Input id={`${id}-typed`} value={typed} onChange={(event) => setTyped(event.target.value)} autoComplete="off" spellCheck={false} className="max-w-96 font-mono" />
         </div>
@@ -72,7 +73,7 @@ export function ConfirmAction({
           {confirmLabel}
         </Button>
         <Button variant="secondary" onClick={close}>
-          Do not do it
+          {t("shared.confirm.cancel")}
         </Button>
       </div>
     </div>

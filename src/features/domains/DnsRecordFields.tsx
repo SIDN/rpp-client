@@ -1,3 +1,4 @@
+import { t } from "@/i18n";
 import { Plus, X } from "lucide-react";
 import { useFieldArray, useFormContext, useWatch } from "react-hook-form";
 import {
@@ -14,11 +15,11 @@ import type { DomainDataValues } from "./parts";
 
 const VALUE_FIELD: Record<EditableRecordType, RecordField> = { ns: "nsdname", a: "address", aaaa: "address", mx: "exchange" };
 
-const VALUE_LABEL: Record<EditableRecordType, { label: string; placeholder: string }> = {
-  ns: { label: "Name server", placeholder: "ns1.example.net" },
-  a: { label: "IPv4 address", placeholder: "192.0.2.1" },
-  aaaa: { label: "IPv6 address", placeholder: "2001:db8::1" },
-  mx: { label: "Mail server", placeholder: "mail.example.net" },
+const VALUE_LABEL: Record<EditableRecordType, { labelKey: string; placeholder: string }> = {
+  ns: { labelKey: "domains.dnsRecords.nameServer", placeholder: "ns1.example.net" },
+  a: { labelKey: "domains.dnsRecords.ipv4", placeholder: "192.0.2.1" },
+  aaaa: { labelKey: "domains.dnsRecords.ipv6", placeholder: "2001:db8::1" },
+  mx: { labelKey: "domains.dnsRecords.mailServer", placeholder: "mail.example.net" },
 };
 
 const NEW_ROW: Record<EditableRecordType, DnsRecordRow> = {
@@ -55,11 +56,9 @@ export function DnsRecordFields({ domain }: { domain: string }) {
 
   return (
     <fieldset className="flex flex-col gap-2">
-      <legend className="mb-1 text-sm font-medium">DNS records</legend>
+      <legend className="mb-1 text-sm font-medium">{t("domains.dnsRecords.legend")}</legend>
       {fields.length === 0 && (
-        <p className="text-sm text-muted-foreground">
-          None. To delegate without hosts, add NS records here instead of name servers, with A or AAAA glue records for name servers inside the domain.
-        </p>
+        <p className="text-sm text-muted-foreground">{t("domains.dnsRecords.none")}</p>
       )}
       {fields.map((field, index) => {
         const row = rows[index] ?? field;
@@ -67,9 +66,9 @@ export function DnsRecordFields({ domain }: { domain: string }) {
         const problem = rowErrors?.type?.message ?? rowErrors?.name?.message ?? rowErrors?.preference?.message ?? rowErrors?.value?.message;
         const valueLabel = VALUE_LABEL[row.type];
         return (
-          <div key={field.id} role="group" aria-label={`DNS record ${index + 1}`} className="flex flex-col">
+          <div key={field.id} role="group" aria-label={t("domains.dnsRecords.recordGroup", { number: index + 1 })} className="flex flex-col">
             <div className="flex flex-wrap items-start gap-2">
-              <Field label="Type" className="w-24">
+              <Field label={t("domains.dnsRecords.type")} className="w-24">
                 {(controlProps) => (
                   <Select
                     {...controlProps}
@@ -78,8 +77,8 @@ export function DnsRecordFields({ domain }: { domain: string }) {
                         const filledRow = values.dnsRecords[index];
                         if (!filledRow || !isFilled(filledRow) || !values.nameservers.some((server) => server.host.trim())) return true;
                         return isDelegationType(type)
-                          ? "Remove the name servers above to delegate with NS records, or remove this record"
-                          : "DNS records cannot be sent with name servers given as hosts";
+                          ? t("domains.dnsRecords.errors.removeHosts")
+                          : t("domains.errors.recordsWithHosts");
                       },
                     })}
                   >
@@ -91,7 +90,7 @@ export function DnsRecordFields({ domain }: { domain: string }) {
                   </Select>
                 )}
               </Field>
-              <Field label="Name" className="w-36">
+              <Field label={t("domains.dnsRecords.name")} className="w-36">
                 {(controlProps) => (
                   <Input
                     {...controlProps}
@@ -105,7 +104,7 @@ export function DnsRecordFields({ domain }: { domain: string }) {
                 )}
               </Field>
               {row.type === "mx" && (
-                <Field label="Preference" className="w-24">
+                <Field label={t("domains.dnsRecords.preference")} className="w-24">
                   {(controlProps) => (
                     <Input
                       {...controlProps}
@@ -117,7 +116,7 @@ export function DnsRecordFields({ domain }: { domain: string }) {
                   )}
                 </Field>
               )}
-              <Field label={valueLabel.label} className="min-w-40 flex-1">
+              <Field label={t(valueLabel.labelKey)} className="min-w-40 flex-1">
                 {(controlProps) => (
                   <Input
                     {...controlProps}
@@ -130,7 +129,7 @@ export function DnsRecordFields({ domain }: { domain: string }) {
                   />
                 )}
               </Field>
-              <Button variant="ghost" size="icon" aria-label={`Remove DNS record ${index + 1}`} className="mt-7 shrink-0" onClick={() => remove(index)}>
+              <Button variant="ghost" size="icon" aria-label={t("domains.dnsRecords.removeRecord", { number: index + 1 })} className="mt-7 shrink-0" onClick={() => remove(index)}>
                 <X aria-hidden />
               </Button>
             </div>
@@ -141,24 +140,21 @@ export function DnsRecordFields({ domain }: { domain: string }) {
       <div className="flex flex-wrap gap-2">
         <Button variant="secondary" size="sm" onClick={() => append(NEW_ROW.ns)}>
           <Plus aria-hidden />
-          Add an NS record
+          {t("domains.dnsRecords.addNs")}
         </Button>
         <Button variant="secondary" size="sm" onClick={() => append(NEW_ROW.a)}>
           <Plus aria-hidden />
-          Add a glue record
+          {t("domains.dnsRecords.addGlue")}
         </Button>
         <Button variant="secondary" size="sm" onClick={() => append(NEW_ROW.mx)}>
           <Plus aria-hidden />
-          Add an MX record
+          {t("domains.dnsRecords.addMx")}
         </Button>
       </div>
-      <p className="text-sm text-muted-foreground">
-        Name: <code>@</code> for the domain itself, a name relative to it (<code>ns1</code>), or an absolute name ending in a dot. The registry decides which
-        record types it accepts.
-      </p>
+      <p className="text-sm text-muted-foreground">{t("domains.dnsRecords.nameHint")}</p>
       {hasHosts && hasRecords && (
         <p role="alert" className="text-sm font-medium text-danger-ink">
-          {hasDelegation ? "Delegate with name servers (hosts) or with NS records, not both." : "DNS records cannot be sent with name servers given as hosts."}
+          {hasDelegation ? t("domains.errors.hostsOrNsRecords") : t("domains.errors.recordsWithHosts")}
         </p>
       )}
     </fieldset>

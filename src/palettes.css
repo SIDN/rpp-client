@@ -1,0 +1,125 @@
+/*
+ * Colour schemes. The default scheme is the one in index.css; each one below replaces the base colours of both
+ * the light and the dark appearance. Everything else (soft fills, ink on them, the sidebar's secondary tones) is
+ * derived from those base colours, so a scheme only needs to state 18 values per appearance.
+ * The id in `data-palette` is set on <html> by src/lib/theme.ts; keep the list in src/lib/palettes.ts in step.
+ */
+
+:root[data-palette]:not([data-palette="default"]) {
+  --surface-foreground: var(--foreground);
+  --secondary: var(--muted);
+  --secondary-foreground: var(--foreground);
+  --destructive: var(--danger);
+  --destructive-foreground: #ffffff;
+
+  --success-soft: color-mix(in srgb, var(--success) 16%, var(--surface));
+  --success-ink: color-mix(in srgb, var(--success) 62%, var(--foreground));
+  --warning-soft: color-mix(in srgb, var(--warning) 18%, var(--surface));
+  --warning-ink: color-mix(in srgb, var(--warning) 55%, var(--foreground));
+  --danger-soft: color-mix(in srgb, var(--danger) 15%, var(--surface));
+  --danger-ink: color-mix(in srgb, var(--danger) 62%, var(--foreground));
+  --info-soft: color-mix(in srgb, var(--info) 15%, var(--surface));
+  --info-ink: color-mix(in srgb, var(--info) 62%, var(--foreground));
+
+  --sidebar-muted: color-mix(in srgb, var(--sidebar-foreground) 62%, var(--sidebar));
+  --sidebar-border: color-mix(in srgb, var(--sidebar-foreground) 14%, var(--sidebar));
+  --sidebar-active: color-mix(in srgb, var(--sidebar-foreground) 13%, var(--sidebar));
+}
+
+/* SIDN's navy, blue, cyan and orange brand palette. */
+:root[data-palette="sidn"] {
+  --background: #f4f4f4; --foreground: #002154; --surface: #ffffff; --muted: #e6edf4; --muted-foreground: #464646;
+  --border: #c6d3e2; --input: #7189a7; --primary: #1961ac; --primary-foreground: #ffffff; --accent: #e85422;
+  --accent-foreground: #141414; --ring: #1961ac; --success: #178d30; --warning: #e85422; --danger: #e10000;
+  --info: #30a8cb; --sidebar: #002154; --sidebar-foreground: #ffffff;
+}
+:root[data-palette="sidn"].dark {
+  --background: #002154; --foreground: #f4f4f4; --surface: #0b2f67; --muted: #123b75; --muted-foreground: #d3e0ee;
+  --border: #31527c; --input: #7189a7; --primary: #30a8cb; --primary-foreground: #002154; --accent: #fd7344;
+  --accent-foreground: #002154; --ring: #4fc2e3; --success: #26a040; --warning: #fd7344; --danger: #f75823;
+  --info: #4fc2e3; --sidebar: #001735; --sidebar-foreground: #f4f4f4;
+}
+
+/* Nord */
+:root[data-palette="nord"] {
+  --background: #eceff4; --foreground: #2e3440; --surface: #ffffff; --muted: #e5e9f0; --muted-foreground: #4c566a;
+  --border: #d8dee9; --input: #8f9aae; --primary: #4c6a92; --primary-foreground: #eceff4; --accent: #ebcb8b;
+  --accent-foreground: #2e3440; --ring: #4c6a92; --success: #4f7a45; --warning: #a8741a; --danger: #a8434d;
+  --info: #4c6a92; --sidebar: #2e3440; --sidebar-foreground: #d8dee9;
+}
+:root[data-palette="nord"].dark {
+  --background: #2e3440; --foreground: #eceff4; --surface: #3b4252; --muted: #434c5e; --muted-foreground: #aeb8cc;
+  --border: #4c566a; --input: #6b7791; --primary: #88c0d0; --primary-foreground: #2e3440; --accent: #ebcb8b;
+  --accent-foreground: #2e3440; --ring: #88c0d0; --success: #a3be8c; --warning: #ebcb8b; --danger: #bf616a;
+  --info: #81a1c1; --sidebar: #242933; --sidebar-foreground: #d8dee9;
+}
+
+/* Solarized */
+:root[data-palette="solarized"] {
+  --background: #fdf6e3; --foreground: #073642; --surface: #fffbec; --muted: #eee8d5; --muted-foreground: #586e75;
+  --border: #ddd6c1; --input: #93a1a1; --primary: #2075b5; --primary-foreground: #fdf6e3; --accent: #b58900;
+  --accent-foreground: #1f1700; --ring: #2075b5; --success: #6b7a00; --warning: #a67700; --danger: #c42b28;
+  --info: #2075b5; --sidebar: #073642; --sidebar-foreground: #eee8d5;
+}
+:root[data-palette="solarized"].dark {
+  --background: #002b36; --foreground: #d6d0bd; --surface: #073642; --muted: #0b3c49; --muted-foreground: #93a1a1;
+  --border: #1a4b58; --input: #586e75; --primary: #2aa198; --primary-foreground: #002b36; --accent: #b58900;
+  --accent-foreground: #1f1700; --ring: #2aa198; --success: #859900; --warning: #b58900; --danger: #dc322f;
+  --info: #268bd2; --sidebar: #00212b; --sidebar-foreground: #93a1a1;
+}
+
+/* Catppuccin (Latte and Mocha) */
+:root[data-palette="catppuccin"] {
+  --background: #eff1f5; --foreground: #4c4f69; --surface: #ffffff; --muted: #e6e9ef; --muted-foreground: #5c5f77;
+  --border: #ccd0da; --input: #8c8fa1; --primary: #8839ef; --primary-foreground: #eff1f5; --accent: #df8e1d;
+  --accent-foreground: #2a1d00; --ring: #8839ef; --success: #368a24; --warning: #b8710f; --danger: #d20f39;
+  --info: #1e66f5; --sidebar: #292c3c; --sidebar-foreground: #c6d0f5;
+}
+:root[data-palette="catppuccin"].dark {
+  --background: #1e1e2e; --foreground: #cdd6f4; --surface: #262637; --muted: #313244; --muted-foreground: #a6adc8;
+  --border: #45475a; --input: #6c7086; --primary: #cba6f7; --primary-foreground: #1e1e2e; --accent: #f9e2af;
+  --accent-foreground: #1e1e2e; --ring: #cba6f7; --success: #a6e3a1; --warning: #f9e2af; --danger: #f38ba8;
+  --info: #89b4fa; --sidebar: #11111b; --sidebar-foreground: #bac2de;
+}
+
+/* Gruvbox */
+:root[data-palette="gruvbox"] {
+  --background: #fbf1c7; --foreground: #3c3836; --surface: #f9f5d7; --muted: #ebdbb2; --muted-foreground: #665c54;
+  --border: #d5c4a1; --input: #928374; --primary: #076678; --primary-foreground: #fbf1c7; --accent: #d79921;
+  --accent-foreground: #282828; --ring: #076678; --success: #79740e; --warning: #b57614; --danger: #9d0006;
+  --info: #2e6f8a; --sidebar: #3c3836; --sidebar-foreground: #ebdbb2;
+}
+:root[data-palette="gruvbox"].dark {
+  --background: #282828; --foreground: #ebdbb2; --surface: #32302f; --muted: #3c3836; --muted-foreground: #bdae93;
+  --border: #504945; --input: #7c6f64; --primary: #83a598; --primary-foreground: #282828; --accent: #fabd2f;
+  --accent-foreground: #282828; --ring: #83a598; --success: #b8bb26; --warning: #fabd2f; --danger: #fb4934;
+  --info: #83a598; --sidebar: #1d2021; --sidebar-foreground: #d5c4a1;
+}
+
+/* Tokyo Night (Day and Night) */
+:root[data-palette="tokyo-night"] {
+  --background: #e1e2e7; --foreground: #343b58; --surface: #f5f5fa; --muted: #d5d6db; --muted-foreground: #565f89;
+  --border: #c4c8da; --input: #8990b3; --primary: #34548a; --primary-foreground: #e1e2e7; --accent: #e0af68;
+  --accent-foreground: #2a1f08; --ring: #2e7de9; --success: #587539; --warning: #8c6c3e; --danger: #c64343;
+  --info: #2a6ad0; --sidebar: #1a1b26; --sidebar-foreground: #c0caf5;
+}
+:root[data-palette="tokyo-night"].dark {
+  --background: #1a1b26; --foreground: #c0caf5; --surface: #24283b; --muted: #2f334d; --muted-foreground: #9aa5ce;
+  --border: #3b4261; --input: #565f89; --primary: #7aa2f7; --primary-foreground: #1a1b26; --accent: #e0af68;
+  --accent-foreground: #1a1b26; --ring: #7aa2f7; --success: #9ece6a; --warning: #e0af68; --danger: #f7768e;
+  --info: #7dcfff; --sidebar: #16161e; --sidebar-foreground: #a9b1d6;
+}
+
+/* Rosé Pine (Dawn and Moon) */
+:root[data-palette="rose-pine"] {
+  --background: #faf4ed; --foreground: #575279; --surface: #fffaf3; --muted: #f2e9e1; --muted-foreground: #6e6a86;
+  --border: #dfdad9; --input: #9893a5; --primary: #7a6494; --primary-foreground: #faf4ed; --accent: #ea9d34;
+  --accent-foreground: #2a1a00; --ring: #7a6494; --success: #3e7d5a; --warning: #b87415; --danger: #b4637a;
+  --info: #3f7f8a; --sidebar: #26233a; --sidebar-foreground: #e0def4;
+}
+:root[data-palette="rose-pine"].dark {
+  --background: #232136; --foreground: #e0def4; --surface: #2a273f; --muted: #393552; --muted-foreground: #908caa;
+  --border: #44415a; --input: #6e6a86; --primary: #c4a7e7; --primary-foreground: #232136; --accent: #f6c177;
+  --accent-foreground: #232136; --ring: #c4a7e7; --success: #7fc8a0; --warning: #f6c177; --danger: #eb6f92;
+  --info: #9ccfd8; --sidebar: #191724; --sidebar-foreground: #e0def4;
+}

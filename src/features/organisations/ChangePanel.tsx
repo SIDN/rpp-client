@@ -1,3 +1,4 @@
+import { t } from "@/i18n";
 import { FormProvider, useForm, useWatch } from "react-hook-form";
 import {
   buildOrganisationPatch,
@@ -40,19 +41,19 @@ function ChangeForm({ organisation, change }: { organisation: Organisation; chan
     <FormProvider {...form}>
       <form onSubmit={form.handleSubmit(() => change.start({ id: organisation.id, operations }))} noValidate className="flex max-w-xl flex-col gap-8">
         <h3>
-          Change <code>{organisation.id}</code>
+          {t("organisations.change.heading", { id: organisation.id })}
         </h3>
 
         <OrganisationFields />
 
-        <p className="text-sm text-muted-foreground">The users of the organisation are changed on the User tabs.</p>
+        <p className="text-sm text-muted-foreground">{t("organisations.change.usersHint")}</p>
 
-        <section aria-label="Changes to send" className="flex flex-col gap-2 rounded-md border border-border p-4">
-          <h4 className="font-semibold">Changes to send</h4>
+        <section aria-label={t("organisations.change.preview")} className="flex flex-col gap-2 rounded-md border border-border p-4">
+          <h4 className="font-semibold">{t("organisations.change.preview")}</h4>
           {problem ? (
-            <p className="text-muted-foreground">{problem}.</p>
+            <p className="text-muted-foreground">{t("organisations.form.problem", { message: problem })}</p>
           ) : operations.length === 0 ? (
-            <p className="text-muted-foreground">Nothing has been changed yet.</p>
+            <p className="text-muted-foreground">{t("organisations.change.noChanges")}</p>
           ) : (
             <ul className="list-disc pl-5">
               {operations.map((operation, index) => (
@@ -61,13 +62,13 @@ function ChangeForm({ organisation, change }: { organisation: Organisation; chan
             </ul>
           )}
           <p className="text-sm text-muted-foreground">
-            Only these changes are sent, as one partial update that the registry carries out completely or not at all. The registry decides which of them it allows.
+            {t("organisations.change.previewHint")}
           </p>
         </section>
 
         <div>
           <SubmitButton pending={change.pending} disabled={operations.length === 0}>
-            Save changes
+            {t("organisations.action.saveChanges")}
           </SubmitButton>
         </div>
       </form>
@@ -104,20 +105,20 @@ export function ChangePanel({ organisationId, onOrganisationChange }: PanelProps
         className="flex max-w-xl flex-col gap-5"
       >
         <OrganisationField organisationId={organisationId} onOrganisationChange={onOrganisationChange} />
-        <p className="text-sm text-muted-foreground">What changes is worked out from what the registry holds now, so the organisation is loaded first.</p>
+        <p className="text-sm text-muted-foreground">{t("organisations.change.loadHint")}</p>
         <div>
-          <SubmitButton pending={load.pending}>{organisation ? "Load again" : "Load the organisation"}</SubmitButton>
+          <SubmitButton pending={load.pending}>{organisation ? t("organisations.change.loadAgain") : t("organisations.change.load")}</SubmitButton>
         </div>
       </form>
-      <OperationOutcome operation={load} success="Loaded the current data" />
+      <OperationOutcome operation={load} success={t("organisations.change.loaded")} />
 
       {!organisation && !load.pending && !load.failure && !load.cancelled && !load.result && (
-        <Callout tone="info" title="Load the organisation to change it">
-          The form appears here with the roles, contacts and locks of the organisation as they are now.
+        <Callout tone="info" title={t("organisations.change.loadFirstTitle")}>
+          {t("organisations.change.loadFirstDescription")}
         </Callout>
       )}
       {organisation && <ChangeForm key={JSON.stringify([organisation.id, organisationEditOf(organisation)])} organisation={organisation} change={change} />}
-      <OperationOutcome operation={change} success={`Changed ${change.variables?.id ?? "the organisation"}`}>
+      <OperationOutcome operation={change} success={t("organisations.outcome.changed", { name: change.variables?.id ?? t("organisations.noun.organisation") })}>
         {(changed) => <OrganisationDetails organisation={changed} />}
       </OperationOutcome>
     </div>

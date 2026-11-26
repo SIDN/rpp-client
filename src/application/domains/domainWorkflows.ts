@@ -1,3 +1,4 @@
+import { t } from "@/i18n";
 import { toALabel, isAscii } from "@/rpp/core/idn";
 import type {
   Availability,
@@ -27,9 +28,9 @@ export interface DomainRef {
 /** Whitespace around the name is dropped; nothing else is changed. A name without an A-label form is refused. */
 export function parseDomainName(input: string): DomainRef {
   const typed = input.trim();
-  if (typed === "") throw invalidRequest("Enter a domain name");
+  if (typed === "") throw invalidRequest(t("domains.errors.emptyDomain"));
   const name = toALabel(typed);
-  if (name === undefined || name === "") throw invalidRequest(`${typed} cannot be converted to an A-label, so it cannot be a domain name`);
+  if (name === undefined || name === "") throw invalidRequest(t("domains.errors.invalidDomain", { name: typed }));
   return { name, unicode: isAscii(typed) ? undefined : typed };
 }
 
@@ -56,20 +57,31 @@ export const CONTACT_ROLES = ["admin", "billing", "tech"] as const;
 export type DsRdata = Record<"keyTag" | "algorithm" | "digestType" | "digest", string>;
 export type DnskeyRdata = Record<"flags" | "protocol" | "algorithm" | "publicKey", string>;
 
-export type DnssecInput =
+export type DnssecInput = (
   | { type: "ds"; records: readonly DsRdata[] }
-  | { type: "dnskey"; records: readonly DnskeyRdata[] };
+  | { type: "dnskey"; records: readonly DnskeyRdata[] }
+) & {
+  /** Seconds: the child's preference for how long the parent's signature over these records lives (`dns.controls.maxSigLifetime`). */
+  maxSigLife?: number;
+};
 
 function dnsDataOf(domain: string, dnssec: DnssecInput | undefined, records: readonly DnsRecordInput[]): DnsData | undefined {
   for (const record of records) {
     const problems = Object.values(recordProblems(record, domain));
-    if (problems.length > 0) throw invalidRequest(`DNS record ${describeRecord(record)}: ${problems.join("; ")}`);
+    if (problems.length > 0) throw invalidRequest(t("domains.errors.dnsRecordProblem", { record: describeRecord(record), problems: problems.join("; ") }));
   }
+  const dnssecRecords = dnssec?.records ?? [];
   const all = [
     ...records.map(dnsRecordOf),
-    ...(dnssec?.records ?? []).map((rdata) => ({ "@type": "dnsRecord" as const, name: "@", type: dnssec?.type ?? "", rdata: { ...rdata } })),
+    ...dnssecRecords.map((rdata) => ({ "@type": "dnsRecord" as const, name: "@", type: dnssec?.type ?? "", rdata: { ...rdata } })),
   ];
-  return all.length === 0 ? undefined : { "@type": "dnsData", records: all };
+  if (all.length === 0) return undefined;
+  const maxSigLife = dnssec && dnssecRecords.length > 0 ? dnssec.maxSigLife : undefined;
+  return {
+    "@type": "dnsData",
+    records: all,
+    ...(dnssec && maxSigLife !== undefined && { controls: { "@type": "dnsControls", maxSigLifetime: { [dnssec.type]: maxSigLife } } }),
+  };
 }
 
 export interface RegisterInput {
@@ -92,6 +104,10 @@ export interface RegisterInput {
   /** The transfer password, set as the domain's authorisation information (method `authinfo`, the EPP-compatible one). */
   authInfo?: string;
 }
+
+/** Which host information a domain name read returns (data objects, Domain Name Read): all, delegated, subordinate or none. */
+export const HOSTS_FILTERS = ["all", "del", "sub", "none"] as const;
+export type HostsFilter = (typeof HOSTS_FILTERS)[number];
 
 export interface RestoreReportInput {
   preData: string;
@@ -127,13 +143,13 @@ export function registerBody(input: RegisterInput): DomainNameCreate {
   const uName = input.uName?.trim();
   const ref = parseDomainName(input.name.trim() === "" && uName ? uName : input.name);
   if (uName && !isAscii(uName) && ref.unicode === undefined) {
-    if (toALabel(uName) !== ref.name) throw invalidRequest(`${uName} is not the Unicode form of ${ref.name}`);
+    if (toALabel(uName) !== ref.name) throw invalidRequest(t("domains.errors.unicodeNameMismatch", { uName, name: ref.name }));
     ref.unicode = uName;
   }
-  if (ref.unicode !== undefined && !input.lgr) throw invalidRequest("A Unicode name needs the name of its Label Generation Ruleset");
+  if (ref.unicode !== undefined && !input.lgr) throw invalidRequest(t("domains.errors.unicodeNeedsLgr"));
   const contacts = present(input.contacts);
   for (const { label } of contacts ?? []) {
-    if (!(CONTACT_ROLES as readonly string[]).includes(label)) throw invalidRequest(`A contact role is admin, billing or tech, not ${label}`);
+    if (!(CONTACT_ROLES as readonly string[]).includes(label)) throw invalidRequest(t("domains.errors.invalidContactRole", { label }));
   }
   const nameservers = present(input.nameservers);
   const records = input.records ?? [];
@@ -142,8 +158,8 @@ export function registerBody(input: RegisterInput): DomainNameCreate {
   if (nameservers && records.length > 0) {
     throw invalidRequest(
       records.some((record) => isDelegationType(record.type))
-        ? "Delegate with name servers (hosts) or with NS records, not both"
-        : "DNS records cannot be sent together with name servers given as hosts",
+        ? t("domains.errors.hostsOrNsRecords")
+        : t("domains.errors.recordsWithHosts"),
     );
   }
   const dns = dnsDataOf(ref.name, input.dnssec, records);
@@ -169,7 +185,7 @@ export function createDomainWorkflows(client: RppClient) {
   const { domains } = client;
   const processOf = <Kind extends "renew" | "restore" | "transfer">(kind: Kind) => {
     const operations = domains.processes[kind];
-    if (!operations) throw invalidRequest(`Domain names have no ${kind} process`);
+    if (!operations) throw invalidRequest(t("domains.errors.noProcess", { kind }));
     return operations;
   };
   const typed = async <T>(result: Promise<OperationSuccess<unknown>>) => (await result) as OperationSuccess<T>;
@@ -181,10 +197,11 @@ export function createDomainWorkflows(client: RppClient) {
     },
 
     /** The domain with everything the server shows. `authInfo` is only sent on request, and only to the sponsoring client. */
-    async info(input: string, options: Signal & { authInfo?: boolean } = {}): Promise<OperationSuccess<DomainName>> {
+    async info(input: string, options: Signal & { authInfo?: boolean; hostsFilter?: HostsFilter } = {}): Promise<OperationSuccess<DomainName>> {
       return domains.read(parseDomainName(input).name, {
         signal: options.signal,
         includeElements: options.authInfo ? ["authInfo"] : undefined,
+        parameters: options.hostsFilter ? { hostsFilter: options.hostsFilter } : undefined,
       });
     },
 

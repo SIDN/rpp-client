@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Check, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { t } from "@/i18n";
 import type { RequestActivity } from "@/rpp/client/progress";
 import { Button } from "@/components/ui/button";
 import { formatMs, stepsOf, type Step } from "./requestSteps";
@@ -17,12 +18,20 @@ function useNow(running: boolean): number {
 
 function summary(activity: RequestActivity | undefined, steps: readonly Step[]): string {
   if (activity?.stage === "finished") {
-    return activity.failed ? "No answer came." : `The registry answered with HTTP ${activity.status ?? ""}`.trim() + ".";
+    if (activity.failed) return t("protocol.progress.noAnswer");
+    return activity.status === undefined ? t("protocol.progress.answeredNoStatus") : t("protocol.progress.answered", { status: activity.status });
   }
-  return steps.find((step) => step.state === "active")?.doing ?? "Preparing the request";
+  return steps.find((step) => step.state === "active")?.doing ?? t("protocol.progress.preparingRequest");
 }
 
-const STATE_TEXT = { done: ", done", failed: ", failed", active: ", in progress", pending: ", not started" } as const;
+function stateText(state: Step["state"]): string {
+  switch (state) {
+    case "done": return t("protocol.progress.stateDone");
+    case "failed": return t("protocol.progress.stateFailed");
+    case "active": return t("protocol.progress.stateActive");
+    case "pending": return t("protocol.progress.statePending");
+  }
+}
 
 function Track({ activity, now }: { activity: RequestActivity | undefined; now: number }) {
   const steps = stepsOf(activity, now);
@@ -35,7 +44,7 @@ function Track({ activity, now }: { activity: RequestActivity | undefined; now: 
           <code className="min-w-0 break-all text-muted-foreground">{activity.url ?? "…"}</code>
         </p>
       )}
-      <ol className="grid grid-cols-3 gap-2" aria-label="Progress of the request">
+      <ol className="grid grid-cols-3 gap-2" aria-label={t("protocol.progress.stepsLabel")}>
         {steps.map((step) => (
           <li key={step.label} aria-current={step.state === "active" ? "step" : undefined} className="flex flex-col gap-1.5">
             <span
@@ -56,7 +65,7 @@ function Track({ activity, now }: { activity: RequestActivity | undefined; now: 
                 {step.state === "done" && <Check aria-hidden className="size-3.5" />}
                 {step.state === "failed" && <X aria-hidden className="size-3.5 text-danger-ink" />}
                 {step.label}
-                <span className="sr-only">{STATE_TEXT[step.state]}</span>
+                <span className="sr-only">{stateText(step.state)}</span>
               </span>
               <span className="font-mono text-xs tabular-nums text-muted-foreground">{formatMs(step.ms)}</span>
             </span>
@@ -65,7 +74,7 @@ function Track({ activity, now }: { activity: RequestActivity | undefined; now: 
       </ol>
       <p className="flex items-center justify-between gap-3 text-sm">
         <span role="status">{summary(activity, steps)}</span>
-        {total !== undefined && <span className="font-mono text-xs tabular-nums text-muted-foreground">{formatMs(total)} in all</span>}
+        {total !== undefined && <span className="font-mono text-xs tabular-nums text-muted-foreground">{t("protocol.progress.totalTime", { time: formatMs(total) })}</span>}
       </p>
     </div>
   );
@@ -94,12 +103,12 @@ export function RequestProgress({
   if (activity === undefined && !pending) return null;
 
   return (
-    <section aria-label="Request progress" aria-busy={running} className={cn("flex flex-col gap-4 rounded-md border border-border bg-surface p-4", className)}>
+    <section aria-label={t("protocol.progress.regionLabel")} aria-busy={running} className={cn("flex flex-col gap-4 rounded-md border border-border bg-surface p-4", className)}>
       <Track key={activity?.id ?? "preparing"} activity={activity} now={now} />
       {running && onCancel && (
         <div>
           <Button variant="secondary" size="sm" onClick={onCancel}>
-            Cancel the request
+            {t("protocol.progress.cancel")}
           </Button>
         </div>
       )}

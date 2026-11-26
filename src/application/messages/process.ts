@@ -1,3 +1,4 @@
+import { t } from "@/i18n";
 import { isJsonObject } from "@/rpp/core/types/json";
 import type { ProcessKind } from "@/rpp/operations/definitions";
 
@@ -19,22 +20,42 @@ export interface ProcessView {
 }
 
 /** The members the Process Objects of the draft define (§9.17, §10 and §11.4), in the order shown. */
-const MEMBERS: readonly { member: string; term: string; time?: boolean }[] = [
-  { member: "trStatus", term: "Transfer status" },
-  { member: "restoreStatus", term: "Restore status" },
-  { member: "transferDir", term: "Direction" },
-  { member: "gainingClientId", term: "Gaining client" },
-  { member: "reqClientId", term: "Requested by" },
-  { member: "requestDate", term: "Requested", time: true },
-  { member: "actClientId", term: "Acting client" },
-  { member: "actionDate", term: "Action date", time: true },
-  { member: "reportDate", term: "Report accepted", time: true },
-  { member: "reportDueDate", term: "Report due", time: true },
-  { member: "expiryDate", term: "Expiry", time: true },
-  { member: "period", term: "Period" },
-  { member: "transferPeriod", term: "Transfer period" },
-  { member: "renewalPeriod", term: "Renewal period" },
+const MEMBERS: readonly { member: string; termKey: string; time?: boolean }[] = [
+  { member: "trStatus", termKey: "messages.processField.0" },
+  { member: "restoreStatus", termKey: "messages.processField.1" },
+  { member: "transferDir", termKey: "messages.processField.2" },
+  { member: "gainingClientId", termKey: "messages.processField.3" },
+  { member: "reqClientId", termKey: "messages.processField.4" },
+  { member: "requestDate", termKey: "messages.processField.5", time: true },
+  { member: "actClientId", termKey: "messages.processField.6" },
+  { member: "actionDate", termKey: "messages.processField.7", time: true },
+  { member: "reportDate", termKey: "messages.processField.8", time: true },
+  { member: "reportDueDate", termKey: "messages.processField.9", time: true },
+  { member: "expiryDate", termKey: "messages.processField.10", time: true },
+  { member: "period", termKey: "messages.processField.11" },
+  { member: "transferPeriod", termKey: "messages.processField.12" },
+  { member: "renewalPeriod", termKey: "messages.processField.13" },
 ];
+
+
+function termText(key: string): string {
+  switch (key) {
+    case "messages.processField.0": return t("messages.processField.0");
+    case "messages.processField.1": return t("messages.processField.1");
+    case "messages.processField.2": return t("messages.processField.2");
+    case "messages.processField.3": return t("messages.processField.3");
+    case "messages.processField.4": return t("messages.processField.4");
+    case "messages.processField.5": return t("messages.processField.5");
+    case "messages.processField.6": return t("messages.processField.6");
+    case "messages.processField.7": return t("messages.processField.7");
+    case "messages.processField.8": return t("messages.processField.8");
+    case "messages.processField.9": return t("messages.processField.9");
+    case "messages.processField.10": return t("messages.processField.10");
+    case "messages.processField.11": return t("messages.processField.11");
+    case "messages.processField.12": return t("messages.processField.12");
+    default: return t("messages.processField.13");
+  }
+}
 
 const KNOWN = new Set(["@type", "processId", ...MEMBERS.map((entry) => entry.member)]);
 
@@ -51,11 +72,11 @@ export function processViewOf(process: unknown): ProcessView | undefined {
   if (!isJsonObject(process)) return undefined;
   const type = typeof process["@type"] === "string" ? process["@type"] : "";
   const fields: ProcessField[] = [];
-  for (const { member, term, time } of MEMBERS) {
+  for (const { member, termKey, time } of MEMBERS) {
     const value = process[member];
     if (value === undefined || value === null || value === "") continue;
-    if (typeof value === "string") fields.push({ term, value, kind: time ? "time" : "code" });
-    else fields.push({ term, value: JSON.stringify(value), kind: "code" });
+    if (typeof value === "string") fields.push({ term: termText(termKey), value, kind: time ? "time" : "code" });
+    else fields.push({ term: termText(termKey), value: JSON.stringify(value), kind: "code" });
   }
   return {
     type,

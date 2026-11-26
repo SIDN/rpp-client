@@ -22,6 +22,7 @@ import { env } from "@/config/env";
 import { lookupRppPort } from "@/rpp/discovery/lookupPort";
 import { defaultBookmark } from "@/config/defaultConnection";
 import type { DiscoveryError } from "@/rpp/errors/DiscoveryError";
+import { t } from "@/i18n";
 import { BookmarkBar } from "./BookmarkBar";
 import { CapabilitySummary } from "./CapabilitySummary";
 import { OverwriteConfirm } from "./OverwriteConfirm";
@@ -41,12 +42,12 @@ const resolver: Resolver<ConnectionFormValues> = async (values) => {
 function failureHint(error: DiscoveryError): string {
   switch (error.kind) {
     case "transport":
-      return "Check the address and your network. A browser also refuses answers from a server that does not allow requests from this page (CORS), which looks the same as being offline.";
+      return t("connection.discovery.transportHint");
     case "http":
-      return "The address answered, but not with the discovery document. Check that it is the RPP server and not a login or error page.";
+      return t("connection.discovery.httpHint");
     case "content":
     case "invalid-document":
-      return "The address answered, but not with an RPP discovery document. Check that the address is the RPP server itself.";
+      return t("connection.discovery.documentHint");
   }
 }
 
@@ -83,7 +84,7 @@ export function ConnectionPage() {
   const lookupPort = async () => {
     const host = getValues("host").trim();
     if (host === "") {
-      setError("host", { type: "required", message: "Enter the host name of the RPP server" });
+      setError("host", { type: "required", message: t("config.connection.hostRequired") });
       return;
     }
     setLookup({ status: "busy" });
@@ -94,7 +95,7 @@ export function ConnectionPage() {
       clearErrors("port");
       setLookup({ status: "done", queried: host, port: result.port, portFound: result.portFound, target: result.target });
     } catch (error) {
-      setLookup({ status: "failed", message: error instanceof Error ? error.message : "The DNS lookup failed" });
+      setLookup({ status: "failed", message: error instanceof Error ? error.message : t("connection.server.dnsLookupFailed") });
     }
   };
 
@@ -187,7 +188,7 @@ export function ConnectionPage() {
       connect({ ...profile, preset: presetFor(profile.baseUrl) }, credentials);
       setValue("password", "");
     } catch (error) {
-      setError("root", { message: error instanceof Error ? error.message : "The connection could not be set up" });
+      setError("root", { message: error instanceof Error ? error.message : t("connection.server.setupFailed") });
     }
   });
 
@@ -196,8 +197,8 @@ export function ConnectionPage() {
   return (
     <>
       <PageHeader
-        title="Connection"
-        description="Manage RPP server connections."
+        title={t("connection.page.title")}
+        description={t("connection.page.description")}
       />
 
       <BookmarkBar
@@ -211,16 +212,16 @@ export function ConnectionPage() {
         onDelete={deleteBookmark}
       />
 
-      <Section id="server" title="Server">
+      <Section id="server" title={t("connection.server.title")}>
         {active && !editing && (
-          <Callout title={`Bookmark ${active.name} is in the form`} className="max-w-xl">
-            {active.profile.auth.type === "basic" ? "Enter the password and connect." : "Connect when you are ready."}
+          <Callout title={t("connection.bookmark.inForm", { name: active.name })} className="max-w-xl">
+            {active.profile.auth.type === "basic" ? t("connection.bookmark.passwordNeeded") : t("connection.bookmark.ready")}
           </Callout>
         )}
         <form onSubmit={submit} noValidate className="flex max-w-xl flex-col gap-6">
           <Field
-            label="Connection name"
-            hint="Name for connection in your bookmarks. Needed only to save the connection as a bookmark."
+            label={t("connection.bookmark.name")}
+            hint={t("connection.bookmark.nameHint")}
             error={nameError}
           >
             {(control) => (
@@ -236,97 +237,97 @@ export function ConnectionPage() {
 
           <div className="flex flex-col gap-6 sm:flex-row sm:items-start">
             <Field
-              label="Server hostname or TLD"
-              hint="The host name of the RPP server, for example rpp.example"
+              label={t("connection.server.host")}
+              hint={t("connection.server.hostHint")}
               error={errors.host?.message}
               className="flex-1"
             >
               {(control) => (
                 <div className="flex gap-2">
                   <Input {...control} inputMode="url" autoComplete="off" autoCapitalize="none" spellCheck={false} {...register("host")} />
-                  <Button variant="secondary" title="Perform DNS-based bootstrap" onClick={lookupPort} disabled={lookup.status === "busy"}>
-                    {lookup.status === "busy" ? "Looking up" : "Lookup"}
+                  <Button variant="secondary" title={t("connection.server.lookupTitle")} onClick={lookupPort} disabled={lookup.status === "busy"}>
+                    {lookup.status === "busy" ? t("connection.server.lookingUp") : t("connection.server.lookup")}
                   </Button>
                 </div>
               )}
             </Field>
-            <Field label="Port" error={errors.port?.message} className="sm:w-28">
+            <Field label={t("connection.server.port")} error={errors.port?.message} className="sm:w-28">
               {(control) => <Input {...control} type="number" inputMode="numeric" min={1} max={65535} {...register("port")} />}
             </Field>
           </div>
           {lookup.status === "done" && (
-            <Callout tone={lookup.portFound || lookup.target ? "success" : "info"} title={`Lookup of _rpp.${lookup.queried}`}>
+            <Callout tone={lookup.portFound || lookup.target ? "success" : "info"} title={t("connection.server.lookupResult", { host: lookup.queried })}>
               <ul className="list-disc space-y-1 pl-5">
                 <li>
                   {lookup.portFound
-                    ? `The HTTPS record names port ${lookup.port}.`
-                    : `No port was found: no HTTPS record names one. The default port ${lookup.port} is used, or enter another port by hand.`}
+                    ? t("connection.server.httpsPortFound", { port: lookup.port })
+                    : t("connection.server.httpsPortMissing", { port: lookup.port })}
                 </li>
                 <li>
                   {lookup.target
-                    ? `The HTTPS record names the target server ${lookup.target}, which now replaces the server address.`
-                    : `No target server was found: no HTTPS record names one. The server address stays ${lookup.queried}.`}
+                    ? t("connection.server.httpsTargetFound", { target: lookup.target })
+                    : t("connection.server.httpsTargetMissing", { host: lookup.queried })}
                 </li>
               </ul>
             </Callout>
           )}
           {lookup.status === "failed" && (
-            <Callout tone="warning" title="The port could not be looked up">
-              {lookup.message}. Enter the port by hand.
+            <Callout tone="warning" title={t("connection.server.lookupFailed")}>
+              {lookup.message}. {t("connection.server.enterPortManually")}
             </Callout>
           )}
 
           <Choice
             type="checkbox"
-            label="Allow plain HTTP"
-            hint="For a server on your own machine or network while developing. Everything sent is readable on the way."
+            label={t("connection.server.plainHttp")}
+            hint={t("connection.server.plainHttpHint")}
             {...register("allowInsecureHttp")}
           />
 
           <fieldset className="flex flex-col gap-3">
-            <legend className="mb-1 font-medium">Authentication</legend>
-            <Choice type="radio" value="none" label="None" hint="Requests carry no credentials." {...register("authType")} />
+            <legend className="mb-1 font-medium">{t("connection.server.authentication")}</legend>
+            <Choice type="radio" value="none" label={t("connection.server.authNone")} hint={t("connection.server.authNoneHint")} {...register("authType")} />
             <Choice
               type="radio"
               value="basic"
-              label="User name and password"
-              hint="HTTP Basic. The password is kept in memory only and is gone when you reload or disconnect."
+              label={t("connection.server.authBasic")}
+              hint={t("connection.server.authBasicHint")}
               {...register("authType")}
             />
           </fieldset>
 
           {authType === "basic" && (
             <div className="flex flex-col gap-4 border-l-2 border-border pl-5">
-              <Field label="User name" error={errors.username?.message}>
+              <Field label={t("connection.server.username")} error={errors.username?.message}>
                 {(control) => <Input {...control} autoComplete="off" spellCheck={false} {...register("username")} />}
               </Field>
-              <Field label="Password" error={errors.password?.message}>
+              <Field label={t("connection.server.password")} error={errors.password?.message}>
                 {(control) => <Input {...control} type="password" autoComplete="off" {...register("password")} />}
               </Field>
               {insecureBasic && (
-                <Callout tone="warning" title="The password would travel unprotected">
-                  Basic authentication over plain HTTP exposes the password to anyone on the network.
+                <Callout tone="warning" title={t("connection.server.passwordUnprotected")}>
+                  {t("connection.server.passwordExposure")}
                 </Callout>
               )}
             </div>
           )}
 
           {errors.root?.message && (
-            <Callout tone="danger" title="The connection could not be set up">
+            <Callout tone="danger" title={t("connection.server.setupFailed")}>
               {errors.root.message}
             </Callout>
           )}
 
           <fieldset className="flex flex-col gap-3 rounded-md border border-border p-4">
-            <legend className="px-1 font-medium">{editing && active ? `Editing bookmark ${active.name}` : "Bookmark"}</legend>
+            <legend className="px-1 font-medium">{editing && active ? t("connection.bookmark.editingName", { name: active.name }) : t("connection.bookmark.title")}</legend>
             <p className="text-sm text-muted-foreground">
-              Saves the connection name, the address, the authentication and user name, and the preset settings. Not the password.
+              {t("connection.bookmark.saveExplanation")}
             </p>
             <div className="flex flex-wrap gap-2">
               {editing && active ? (
                 <>
                   <Button variant="secondary" onClick={saveBookmark}>
-                    Save changes to the bookmark
+                    {t("connection.bookmark.saveChanges")}
                   </Button>
                   <Button
                     variant="ghost"
@@ -337,12 +338,12 @@ export function ConnectionPage() {
                       setOverwrite(undefined);
                     }}
                   >
-                    Stop editing
+                    {t("connection.bookmark.stopEditing")}
                   </Button>
                 </>
               ) : (
                 <Button variant="secondary" onClick={saveBookmark}>
-                  Save as a bookmark
+                  {t("connection.bookmark.save")}
                 </Button>
               )}
             </div>
@@ -357,36 +358,36 @@ export function ConnectionPage() {
 
           <div className="flex flex-wrap gap-2">
             <Button type="submit" disabled={busy}>
-              {session ? "Reconnect" : "Connect"}
+              {session ? t("connection.server.reconnect") : t("connection.server.connect")}
             </Button>
             {session && (
               <Button variant="secondary" onClick={disconnect}>
-                Disconnect
+                {t("connection.server.disconnect")}
               </Button>
             )}
           </div>
         </form>
       </Section>
 
-      <Section id="capabilities" title="Capabilities">
+      <Section id="capabilities" title={t("connection.capabilities.title")}>
         {discovery.status === "not-started" && (
-          <EmptyState title="Not connected">
-            Connect to read what the server offers.
+          <EmptyState title={t("connection.capabilities.notConnected")}>
+            {t("connection.capabilities.connectToRead")}
           </EmptyState>
         )}
-        {discovery.status === "loading" && <Callout title="Reading the capabilities of the server" />}
+        {discovery.status === "loading" && <Callout title={t("connection.capabilities.reading")} />}
         {discovery.status === "failed" && (
-          <Callout tone="danger" title="The capabilities of the server could not be read">
+          <Callout tone="danger" title={t("connection.capabilities.readFailed")}>
             <p>{discovery.error.message}</p>
             <p className="mt-2">{failureHint(discovery.error)}</p>
           </Callout>
         )}
         {(discovery.status === "ready" || discovery.status === "partial") && session && (
           <>
-            <Callout tone={discovery.status === "partial" ? "warning" : "success"} title="Capabilities read">
+            <Callout tone={discovery.status === "partial" ? "warning" : "success"} title={t("connection.capabilities.read")}>
               {session.authentication.state.status === "credentials-supplied"
-                ? `Signing in as ${session.authentication.state.principal}. The server checks the credentials when you first use it.`
-                : "Using the server without credentials."}
+                ? t("connection.capabilities.credentialsSupplied", { principal: session.authentication.state.principal })
+                : t("connection.capabilities.withoutCredentials")}
             </Callout>
             <CapabilitySummary
               snapshot={discovery.snapshot}
@@ -398,7 +399,7 @@ export function ConnectionPage() {
       </Section>
 
       {(discovery.status === "ready" || discovery.status === "partial") && session && (
-        <Section id="preset" title="Preset" description="Requests name the preset they are made under. Change it here at any time.">
+        <Section id="preset" title={t("connection.preset.title")} description={t("connection.preset.description")}>
           <PresetPanel snapshot={discovery.snapshot} />
         </Section>
       )}

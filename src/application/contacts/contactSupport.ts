@@ -1,4 +1,5 @@
 import type { RppTransport } from "@/rpp/client/RppTransport";
+import { t } from "@/i18n";
 import { loadPresetSchema } from "@/rpp/schemas/presetSchemaLoader";
 import { createSchemaRegistry, type PresetSchemaKey, type SchemaRegistry } from "@/rpp/schemas/SchemaRegistry";
 import { issueTarget, type ValidationIssue } from "@/rpp/schemas/validation";
@@ -74,5 +75,5 @@ export async function readContactSupport(transport: RppTransport, preset: Preset
   const support = probeContactSupport(registry, preset);
   return support
     ? { kind: "known", support }
-    : { kind: "unknown", reason: `The schema of ${preset.id} has no definition ${DEFINITION} that can be checked` };
+    : { kind: "unknown", reason: t("contacts.form.schemaDefinitionMissing", { preset: preset.id, definition: DEFINITION }) };
 }

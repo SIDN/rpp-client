@@ -1,4 +1,5 @@
 import { ipVersionOf } from "@/application/hosts/hostData";
+import { t } from "@/i18n";
 import { isAscii } from "@/rpp/core/idn";
 import { isJsonObject } from "@/rpp/core/types/json";
 import type { DnsRecord } from "@/rpp/core/types/objects";
@@ -102,23 +103,23 @@ export type RecordField = "name" | "nsdname" | "address" | "preference" | "excha
  */
 export function ownerNameProblem(name: string, domain: string): string | undefined {
   const owner = name.trim();
-  if (owner === "") return "Enter @ for the domain, a name relative to it, or an absolute name ending in a dot";
+  if (owner === "") return t("domains.dnsRecords.errors.emptyOwner");
   if (owner === "@") return undefined;
-  if (!isAscii(owner)) return "Use the A-label (xn--) form of the name";
-  if (!OWNER_NAME.test(owner)) return "This is not a DNS name";
+  if (!isAscii(owner)) return t("domains.dnsRecords.errors.useALabel");
+  if (!OWNER_NAME.test(owner)) return t("domains.dnsRecords.errors.notDnsName");
   if (owner.endsWith(".") && domain.trim() !== "") {
     const apex = `${domain.trim().replace(/\.$/, "")}.`.toLowerCase();
     const absolute = owner.toLowerCase();
-    if (absolute !== apex && !absolute.endsWith(`.${apex}`)) return `An absolute name must be ${apex} or end in .${apex}`;
+    if (absolute !== apex && !absolute.endsWith(`.${apex}`)) return t("domains.dnsRecords.errors.outsideDomain", { apex });
   }
   return undefined;
 }
 
 const hostNameProblem = (value: string): string | undefined => {
   const host = value.trim();
-  if (host === "") return "Enter a host name";
-  if (!isAscii(host)) return "Use the A-label (xn--) form of the name";
-  return HOST_NAME.test(host) ? undefined : "This is not a host name";
+  if (host === "") return t("domains.dnsRecords.errors.emptyHost");
+  if (!isAscii(host)) return t("domains.dnsRecords.errors.useALabel");
+  return HOST_NAME.test(host) ? undefined : t("domains.dnsRecords.errors.notHostName");
 };
 
 /**
@@ -139,12 +140,12 @@ export function recordProblems(input: DnsRecordInput, domain: string): Partial<R
     case "aaaa": {
       const wanted = input.type === "a" ? 4 : 6;
       const version = ipVersionOf(input.address);
-      if (version !== wanted) problems.address = input.type === "a" ? "Enter an IPv4 address" : "Enter an IPv6 address";
+      if (version !== wanted) problems.address = input.type === "a" ? t("domains.dnsRecords.errors.ipv4") : t("domains.dnsRecords.errors.ipv6");
       break;
     }
     case "mx": {
       const preference = input.preference.trim();
-      if (!/^\d{1,5}$/.test(preference) || Number(preference) > 65535) problems.preference = "Use a whole number from 0 to 65535";
+      if (!/^\d{1,5}$/.test(preference) || Number(preference) > 65535) problems.preference = t("domains.dnsRecords.errors.preference");
       // The root `.` is a valid exchange: `0 .` is the null MX of RFC 7505.
       const problem = input.exchange.trim() === "." ? undefined : hostNameProblem(input.exchange);
       if (problem) problems.exchange = problem;

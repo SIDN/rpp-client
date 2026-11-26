@@ -1,5 +1,6 @@
 import { addressRecordsOf, ipVersionOf } from "@/application/hosts/hostData";
 import { DefinitionList, DefinitionRow, Nothing } from "@/components/common/definition";
+import { t } from "@/i18n";
 import { StatusLabel } from "@/components/protocol/protocol-badges";
 import type { Host } from "@/rpp/core/types/objects";
 import { Provisioning, Timestamp } from "../shared/objectParts";
@@ -7,7 +8,7 @@ import { Provisioning, Timestamp } from "../shared/objectParts";
 const MODELLED = new Set(["@type", "hostName", "provMetadata", "status", "dns", "processes"]);
 
 function Addresses({ label, addresses }: { label: string; addresses: readonly string[] }) {
-  if (addresses.length === 0) return <Nothing>No {label} address</Nothing>;
+  if (addresses.length === 0) return <Nothing>{t("hosts.details.noAddress", { version: label })}</Nothing>;
   return (
     <ul className="flex flex-wrap gap-x-4 gap-y-1">
       {addresses.map((address) => (
@@ -32,8 +33,8 @@ export function HostDetails({ host }: { host: Host }) {
         <h3 className="text-xl">
           <code>{host.hostName}</code>
         </h3>
-        <ul aria-label="Status" className="flex flex-wrap gap-2">
-          {host.status.length === 0 && <li className="text-muted-foreground">No status listed</li>}
+        <ul aria-label={t("hosts.details.status")} className="flex flex-wrap gap-2">
+          {host.status.length === 0 && <li className="text-muted-foreground">{t("hosts.details.noStatus")}</li>}
           {host.status.map((status, index) => (
             <li key={`${status.label}-${index}`} className="flex flex-col gap-0.5">
               <StatusLabel type="hostStatus" label={status.label} />
@@ -41,7 +42,7 @@ export function HostDetails({ host }: { host: Host }) {
                 <span className="text-xs text-muted-foreground">
                   {status.reason}
                   {status.reason && status.due ? ", " : ""}
-                  {status.due && <>due <Timestamp value={status.due} /></>}
+                  {status.due && <>{t("hosts.details.due")} <Timestamp value={status.due} /></>}
                 </span>
               )}
             </li>
@@ -50,25 +51,25 @@ export function HostDetails({ host }: { host: Host }) {
       </div>
 
       <DefinitionList>
-        <DefinitionRow term="IPv4 addresses">
+        <DefinitionRow term={t("hosts.details.ipv4Addresses")}>
           <Addresses label="IPv4" addresses={addresses.filter((address) => ipVersionOf(address) === 4)} />
         </DefinitionRow>
-        <DefinitionRow term="IPv6 addresses">
+        <DefinitionRow term={t("hosts.details.ipv6Addresses")}>
           <Addresses label="IPv6" addresses={addresses.filter((address) => ipVersionOf(address) === 6)} />
         </DefinitionRow>
-        <DefinitionRow term="DNS data">
+        <DefinitionRow term={t("hosts.details.dnsData")}>
           {records.length === 0 && !host.dns?.controls ? (
-            <Nothing />
+            <Nothing>{t("hosts.details.none")}</Nothing>
           ) : (
             <div className="flex flex-col gap-2">
               {records.length > 0 && (
                 <table className="w-full table-fixed text-sm">
-                  <caption className="sr-only">DNS records</caption>
+                  <caption className="sr-only">{t("hosts.details.dnsRecords")}</caption>
                   <thead className="text-left text-muted-foreground">
                     <tr>
-                      <th scope="col" className="w-1/4 pr-3 font-medium">Name</th>
-                      <th scope="col" className="w-16 pr-3 font-medium">Type</th>
-                      <th scope="col" className="font-medium">Data</th>
+                      <th scope="col" className="w-1/4 pr-3 font-medium">{t("hosts.details.name")}</th>
+                      <th scope="col" className="w-16 pr-3 font-medium">{t("hosts.details.type")}</th>
+                      <th scope="col" className="font-medium">{t("hosts.details.data")}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
@@ -86,12 +87,12 @@ export function HostDetails({ host }: { host: Host }) {
             </div>
           )}
         </DefinitionRow>
-        <DefinitionRow term="Provisioning">
+        <DefinitionRow term={t("hosts.details.provisioning")}>
           <Provisioning metadata={host.provMetadata} />
         </DefinitionRow>
-        <DefinitionRow term="Processes">
+        <DefinitionRow term={t("hosts.details.processes")}>
           {processes.length === 0 ? (
-            <Nothing />
+            <Nothing>{t("hosts.details.none")}</Nothing>
           ) : (
             <ul className="flex flex-col gap-1">
               {processes.map(([kind, list]) => (
@@ -104,7 +105,7 @@ export function HostDetails({ host }: { host: Host }) {
           )}
         </DefinitionRow>
         {others.length > 0 && (
-          <DefinitionRow term="Other members">
+          <DefinitionRow term={t("hosts.details.otherMembers")}>
             <dl className="flex flex-col gap-2">
               {others.map(([key, member]) => (
                 <div key={key}>
@@ -118,8 +119,8 @@ export function HostDetails({ host }: { host: Host }) {
       </DefinitionList>
 
       <details className="rounded-md border border-border">
-        <summary className="cursor-pointer px-3 py-2 font-medium">Show the JSON</summary>
-        <pre tabIndex={0} aria-label="Host as received" className="max-h-[28rem] overflow-auto border-t border-border p-3 font-mono text-xs">
+        <summary className="cursor-pointer px-3 py-2 font-medium">{t("hosts.details.showJson")}</summary>
+        <pre tabIndex={0} aria-label={t("hosts.details.rawHost")} className="max-h-[28rem] overflow-auto border-t border-border p-3 font-mono text-xs">
           {JSON.stringify(host, null, 2)}
         </pre>
       </details>

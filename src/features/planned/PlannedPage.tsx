@@ -1,11 +1,11 @@
-import { Link } from "react-router-dom";
 import { objectSupport } from "@/application/capability";
 import { useDiscoveryState } from "@/app/discovery-context";
 import type { NavItem } from "@/app/navigation";
 import { EmptyState, PageHeader } from "@/components/common/layout";
+import { NotConnected } from "@/components/common/NotConnected";
 import { Badge } from "@/components/ui/badge";
 import { Callout } from "@/components/ui/callout";
-import { buttonVariants } from "@/components/ui/button-variants";
+import { t } from "@/i18n";
 
 /** A screen whose workflow is not built yet. It still tells the truth about the server. */
 export function PlannedPage({ item }: { item: NavItem }) {
@@ -14,30 +14,21 @@ export function PlannedPage({ item }: { item: NavItem }) {
 
   return (
     <>
-      <PageHeader title={item.label} description={item.purpose} actions={<Badge tone="info">Not built yet</Badge>} />
+      <PageHeader title={t(item.labelKey)} description={t(item.purposeKey)} actions={<Badge tone="info">{t("planned.notBuiltYet")}</Badge>} />
 
       {support === "not-offered" && (
-        <Callout tone="warning" title="This server does not offer this">
-          Its discovery document does not list {item.label.toLowerCase()}. Nothing on this screen can work against it.
+        <Callout tone="warning" title={t("planned.notOffered.title")}>
+          {t("planned.notOffered.description", { feature: t(item.labelKey).toLowerCase() })}
         </Callout>
       )}
 
       {support === "unknown" && (
-        <EmptyState
-          title="Connect to a server first"
-          action={
-            <Link to="/connection" className={buttonVariants({ variant: "secondary" })}>
-              Set up a connection
-            </Link>
-          }
-        >
-          What a server offers is only known after its capabilities have been read. This screen stays empty until then.
-        </EmptyState>
+        <NotConnected />
       )}
 
       {support !== "unknown" && support !== "not-offered" && (
-        <EmptyState title="This screen is not built yet">
-          Until it is, the same work is not available in this app.
+        <EmptyState title={t("planned.notBuilt.title")}>
+          {t("planned.notBuilt.description")}
         </EmptyState>
       )}
     </>

@@ -1,3 +1,4 @@
+import { t } from "@/i18n";
 import { useState } from "react";
 import { userLinksOf } from "@/application/organisations/organisationData";
 import { Callout } from "@/components/ui/callout";
@@ -46,7 +47,7 @@ export function DeletePanel({ organisationId, onOrganisationChange }: PanelProps
     },
   );
 
-  const noun = users.length === 1 ? "1 user" : `${users.length} users`;
+  const noun = users.length === 1 ? t("organisations.delete.userCount.one") : t("organisations.delete.userCount.other", { count: users.length });
 
   return (
     <div className="flex flex-col gap-6">
@@ -63,23 +64,23 @@ export function DeletePanel({ organisationId, onOrganisationChange }: PanelProps
             setDeleteUsers(false);
             onOrganisationChange(next);
           }}
-          hint="The organisation is checked first, for users that are still linked to it."
+          hint={t("organisations.delete.organisationHint")}
         />
         <div>
-          <SubmitButton pending={check.pending}>{organisation ? "Check again" : "Check the organisation"}</SubmitButton>
+          <SubmitButton pending={check.pending}>{organisation ? t("organisations.delete.checkAgain") : t("organisations.delete.checkOrganisation")}</SubmitButton>
         </div>
       </form>
-      <OperationOutcome operation={check} success={`Checked ${check.variables?.trim() || "the organisation"}`} />
+      <OperationOutcome operation={check} success={t("organisations.outcome.checked", { name: check.variables?.trim() || t("organisations.noun.organisation") })} />
 
       {organisation && (
-        <section aria-label="Before deleting" className="flex max-w-xl flex-col gap-4">
+        <section aria-label={t("organisations.delete.beforeDeleting")} className="flex max-w-xl flex-col gap-4">
           {users.length === 0 ? (
-            <Callout tone="info" title="No users are linked to this organisation">
-              Deleting <code>{id}</code> removes only the organisation.
+            <Callout tone="info" title={t("organisations.delete.noUsersTitle")}>
+              {t("organisations.delete.onlyOrganisation", { id })}
             </Callout>
           ) : (
             <>
-              <Callout tone="warning" title={`This organisation still has ${noun}`}>
+              <Callout tone="warning" title={t("organisations.delete.hasUsers", { noun })}>
                 <ul className="list-disc pl-5">
                   {users.map((user) => (
                     <li key={user}>
@@ -87,18 +88,18 @@ export function DeletePanel({ organisationId, onOrganisationChange }: PanelProps
                     </li>
                   ))}
                 </ul>
-                <p className="mt-2">An organisation with users cannot be deleted, unless its users are deleted with it.</p>
+                <p className="mt-2">{t("organisations.delete.usersMustBeDeletedFirst")}</p>
               </Callout>
               <Choice
                 type="checkbox"
-                label="Delete all organisation users"
-                hint="Optional. The users are deleted first, one at a time, and then the organisation."
+                label={t("organisations.delete.deleteUsersLabel")}
+                hint={t("organisations.delete.deleteUsersHint")}
                 checked={deleteUsers}
                 onChange={(event) => setDeleteUsers(event.target.checked)}
               />
               {deleteUsers && (
-                <Callout tone="warning" title={`${noun} will be deleted as well`}>
-                  Deleting a user cannot be undone, and neither can deleting the organisation. If a user cannot be deleted, the organisation is left as it is, with the users that were already deleted gone.
+                <Callout tone="warning" title={t("organisations.delete.usersWillAlsoBeDeleted", { noun })}>
+                  {t("organisations.delete.irreversibleDescription")}
                 </Callout>
               )}
             </>
@@ -106,7 +107,7 @@ export function DeletePanel({ organisationId, onOrganisationChange }: PanelProps
 
           {users.length > 0 && !deleteUsers && (
             <p className="text-sm text-muted-foreground">
-              Check the box to delete the users with the organisation, or delete them one at a time on the Delete user tab.
+              {t("organisations.delete.deleteUsersAlternative")}
             </p>
           )}
         </section>
@@ -116,9 +117,9 @@ export function DeletePanel({ organisationId, onOrganisationChange }: PanelProps
         <ConfirmAction
           destructive
           disabled={id === "" || (users.length > 0 && !deleteUsers)}
-          trigger="Delete this organisation"
-          title={`Delete ${id}?`}
-          confirmLabel={`Delete ${id}`}
+          trigger={t("organisations.delete.trigger")}
+          title={t("organisations.delete.confirmTitle", { id })}
+          confirmLabel={t("organisations.delete.confirm", { id })}
           expected={id}
           pending={remove.pending}
           onConfirm={() => {
@@ -126,21 +127,22 @@ export function DeletePanel({ organisationId, onOrganisationChange }: PanelProps
             remove.start({ id, deleteUsers });
           }}
         >
-          The registry is asked to delete <code>{id}</code>
-          {users.length > 0 && <> and its {noun}</>}. Generally only a registry may do this.
+          {users.length > 0
+            ? t("organisations.delete.confirmDescriptionWithUsers", { id, noun })
+            : t("organisations.delete.confirmDescription", { id })}
         </ConfirmAction>
       </div>
 
       {deleted.length > 0 && !remove.result && (
         <p role="status" className="text-sm">
-          Users deleted so far: {deleted.map((user) => (
+          {t("organisations.delete.usersDeletedSoFar")} {deleted.map((user) => (
             <code key={user} className="mr-2">
               {user}
             </code>
           ))}
         </p>
       )}
-      <OperationOutcome operation={remove} success={`Deleted ${remove.variables?.id ?? "the organisation"}`}>
+      <OperationOutcome operation={remove} success={t("organisations.outcome.deleted", { name: remove.variables?.id ?? t("organisations.noun.organisation") })}>
         {(removed) =>
           removed.deletedUsers.length > 0 ? (
             <p className="text-sm">

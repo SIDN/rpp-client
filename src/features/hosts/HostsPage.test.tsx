@@ -61,7 +61,7 @@ const answer = (body: unknown, init: { status?: number; code?: string } = {}) =>
     headers: { ...(body === undefined ? {} : { "Content-Type": "application/rpp+json" }), "RPP-Code": init.code ?? "01000", "RPP-Svtrid": "S-7" },
   });
 
-function renderPage(responder: Responder, discovery: DiscoveryState = discoveryWith(["host"])) {
+function renderPage(responder: Responder, discovery: DiscoveryState = discoveryWith(["host"]), entry = "/") {
   const calls: { method: string; path: string; body: unknown }[] = [];
   const session = createSession(PROFILE, undefined, {
     fetch: async (input, init) => {
@@ -78,7 +78,7 @@ function renderPage(responder: Responder, discovery: DiscoveryState = discoveryW
   const snapshot = discovery.status === "ready" ? discovery.snapshot : undefined;
   render(
     <Providers>
-      <MemoryRouter>
+      <MemoryRouter initialEntries={[entry]}>
         <ConnectionContext.Provider value={{ session, resolvedPreset: resolvePreset(DEFAULT_PRESET_SETTINGS, snapshot) } as ConnectionApi}>
           <DiscoveryContext.Provider value={discovery}>
             <HostsPage />
@@ -94,6 +94,22 @@ const panel = () => within(screen.getByRole("tabpanel"));
 const openTab = (name: string) => fireEvent.click(screen.getByRole("tab", { name }));
 const typeName = (value: string) => fireEvent.change(panel().getByLabelText("Host name"), { target: { value } });
 const press = (name: string) => fireEvent.click(panel().getByRole("button", { name }));
+
+describe("a link to a host", () => {
+  it("opens the info of the host and asks the registry for it at once", async () => {
+    const { calls } = renderPage(() => answer(HOST), discoveryWith(["host"]), "/hosts?tab=info&name=ns1.example.test&run=1");
+    await waitFor(() => expect(calls).toHaveLength(1));
+    expect(calls[0]).toMatchObject({ method: "GET", path: "/hosts/ns1.example.test" });
+    expect(panel().getByLabelText("Host name")).toHaveValue("ns1.example.test");
+    expect(await panel().findByText("Found ns1.example.test")).toBeInTheDocument();
+  });
+
+  it("only fills in the name without the run flag", () => {
+    const { calls } = renderPage(() => answer(HOST), discoveryWith(["host"]), "/hosts?tab=info&name=ns1.example.test");
+    expect(panel().getByLabelText("Host name")).toHaveValue("ns1.example.test");
+    expect(calls).toHaveLength(0);
+  });
+});
 
 describe("hosts screen", () => {
   it("waits for a connection, and says so when the server has no hosts", () => {

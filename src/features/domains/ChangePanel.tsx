@@ -1,8 +1,10 @@
+import { t } from "@/i18n";
 import { FormProvider, useForm, useWatch, type DeepPartial } from "react-hook-form";
-import { buildDomainPatch, CLIENT_STATUSES, describePatchOperation, editOf, type AuthInfoEdit } from "@/application/domains/domainPatch";
+import { buildDomainPatch, CLIENT_STATUSES, describePatchOperation, dnssecEditOf, editOf, type AuthInfoEdit } from "@/application/domains/domainPatch";
 import { Callout } from "@/components/ui/callout";
 import { Choice } from "@/components/ui/choice";
 import { Field, Input } from "@/components/ui/field";
+import { DnssecFields, type DnssecValues } from "./DnssecFields";
 import type { DomainName } from "@/rpp/core/types/objects";
 import type { PatchOperation } from "@/rpp/operations/patch";
 import { useCachedDomain, useDomainStore } from "./domainCache";
@@ -15,7 +17,7 @@ import { useDomainWorkflows } from "./useDomainWorkflows";
 import { SubmitButton } from "../shared/SubmitButton";
 import { useOperation, type Operation } from "../shared/useOperation";
 
-interface ChangeValues extends DomainDataValues, DnsRecordValues {
+interface ChangeValues extends DomainDataValues, DnssecValues, DnsRecordValues {
   clientStatuses: string[];
   authAction: "keep" | "set" | "remove";
   authValue: string;
@@ -28,6 +30,7 @@ interface Change {
 
 const toValues = (domain: DomainName): ChangeValues => {
   const edit = editOf(domain);
+  const dnssec = dnssecEditOf(domain);
   return {
     registrant: edit.registrant,
     contacts: edit.contacts,
@@ -36,6 +39,9 @@ const toValues = (domain: DomainName): ChangeValues => {
     authAction: "keep",
     authValue: "",
     dnsRecords: edit.records.map(recordRowOf),
+    dsRecords: dnssec.ds as unknown as DnssecValues["dsRecords"],
+    keyRecords: dnssec.keys as unknown as DnssecValues["keyRecords"],
+    maxSigLife: dnssec.maxSigLife,
   };
 };
 
@@ -52,6 +58,11 @@ function editOfValues(values: DeepPartial<ChangeValues>) {
     records: (values.dnsRecords ?? []).filter((row): row is DnsRecordRow => Boolean(row?.type)).map((row) =>
       recordInputOf({ type: row.type, name: row.name ?? "", value: row.value ?? "", preference: row.preference ?? "" }),
     ),
+    dnssec: {
+      ds: (values.dsRecords ?? []).map((record) => ({ ...record }) as Record<string, string>),
+      keys: (values.keyRecords ?? []).map((record) => ({ ...record }) as Record<string, string>),
+      maxSigLife: values.maxSigLife ?? "",
+    },
   };
 }
 
@@ -64,35 +75,37 @@ function ChangeForm({ domain, change }: { domain: DomainName; change: Operation<
     <FormProvider {...form}>
       <form onSubmit={form.handleSubmit(() => change.start({ name: domain.name, operations }))} noValidate className="flex max-w-xl flex-col gap-6">
         <h3>
-          Change <code>{domain.name}</code>
+          {t("domains.change.heading")} <code>{domain.name}</code>
         </h3>
         <DomainDataFields />
         <DnsRecordFields domain={domain.name} />
 
         <fieldset className="flex flex-col gap-3">
-          <legend className="mb-1 text-sm font-medium">Locks set by you</legend>
+          <legend className="mb-1 text-sm font-medium">{t("domains.change.locks")}</legend>
           {CLIENT_STATUSES.map((label) => (
             <Choice key={label} type="checkbox" value={label} label={<code>{label}</code>} {...form.register("clientStatuses")} />
           ))}
-          <p className="text-sm text-muted-foreground">Statuses the registry sets itself cannot be changed here.</p>
+          <p className="text-sm text-muted-foreground">{t("domains.change.statusHint")}</p>
         </fieldset>
 
+        <DnssecFields />
+
         <fieldset className="flex flex-col gap-3">
-          <legend className="mb-1 text-sm font-medium">Transfer password</legend>
-          <Choice type="radio" value="keep" label="Leave as it is" {...form.register("authAction")} />
-          <Choice type="radio" value="set" label="Set a new one" {...form.register("authAction")} />
-          <Choice type="radio" value="remove" label="Remove it" {...form.register("authAction")} />
+          <legend className="mb-1 text-sm font-medium">{t("domains.change.transferPasswordLegend")}</legend>
+          <Choice type="radio" value="keep" label={t("domains.change.leavePassword")} {...form.register("authAction")} />
+          <Choice type="radio" value="set" label={t("domains.change.setPassword")} {...form.register("authAction")} />
+          <Choice type="radio" value="remove" label={t("domains.change.removePassword")} {...form.register("authAction")} />
           {values.authAction === "set" && (
-            <Field label="New transfer password">
+            <Field label={t("domains.change.newTransferPassword")}>
               {(control) => <Input {...control} type="password" autoComplete="off" className="max-w-64" {...form.register("authValue")} />}
             </Field>
           )}
         </fieldset>
 
-        <section aria-label="Changes to send" className="flex flex-col gap-2 rounded-md border border-border p-4">
-          <h4 className="font-semibold">Changes to send</h4>
+        <section aria-label={t("domains.change.sendLabel")} className="flex flex-col gap-2 rounded-md border border-border p-4">
+          <h4 className="font-semibold">{t("domains.change.sendLabel")}</h4>
           {operations.length === 0 ? (
-            <p className="text-muted-foreground">Nothing has been changed yet.</p>
+            <p className="text-muted-foreground">{t("domains.change.nothingChanged")}</p>
           ) : (
             <ul className="list-disc pl-5">
               {operations.map((operation, index) => (
@@ -101,13 +114,13 @@ function ChangeForm({ domain, change }: { domain: DomainName; change: Operation<
             </ul>
           )}
           <p className="text-sm text-muted-foreground">
-            Only these changes are sent, as one partial update that the registry carries out completely or not at all. DNSSEC records are not changed on this screen.
+            {t("domains.change.partialUpdate")}
           </p>
         </section>
 
         <div>
           <SubmitButton pending={change.pending} disabled={operations.length === 0}>
-            Save changes
+            {t("domains.change.save")}
           </SubmitButton>
         </div>
       </form>
@@ -145,20 +158,20 @@ export function ChangePanel({ name, onNameChange }: PanelProps) {
         className="flex max-w-xl flex-col gap-5"
       >
         <NameField name={name} onNameChange={onNameChange} />
-        <p className="text-sm text-muted-foreground">What changes is worked out from what the registry holds now, so the domain is loaded first.</p>
+        <p className="text-sm text-muted-foreground">{t("domains.change.loadExplanation")}</p>
         <div>
-          <SubmitButton pending={load.pending}>{domain ? "Load again" : "Load the domain"}</SubmitButton>
+          <SubmitButton pending={load.pending}>{domain ? t("domains.change.loadAgain") : t("domains.change.loadDomain")}</SubmitButton>
         </div>
       </form>
-      <OperationOutcome operation={load} success="Loaded the current data" />
+      <OperationOutcome operation={load} success={t("domains.change.loaded")} />
 
       {!domain && !load.pending && !load.failure && !load.cancelled && !load.result && (
-        <Callout tone="info" title="Load the domain to change it">
-          The form appears here with the registrant, contacts, name servers and DNS records as they are now.
+        <Callout tone="info" title={t("domains.change.loadCallout")}>
+          {t("domains.change.loadHint")}
         </Callout>
       )}
       {domain && <ChangeForm key={JSON.stringify(editOf(domain))} domain={domain} change={change} />}
-      <OperationOutcome operation={change} success={`Changed ${change.variables?.name ?? "the domain"}`}>
+      <OperationOutcome operation={change} success={t("domains.change.success", { name: change.variables?.name ?? t("domains.name.generic") })}>
         {(changed) => <DomainDetails domain={changed} />}
       </OperationOutcome>
     </div>

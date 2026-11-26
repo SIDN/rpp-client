@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { t } from "@/i18n";
 
 export type AuthChoice = "none" | "basic";
 
@@ -38,14 +39,14 @@ function checkAddress(baseUrl: string, allowInsecureHttp: boolean, ctx: z.Refine
   try {
     url = new URL(baseUrl);
   } catch {
-    return issue("Enter the full address, starting with https://");
+    return issue(t("config.connection.fullAddress"));
   }
-  if (url.protocol !== "https:" && url.protocol !== "http:") return issue("The address must start with https://");
+  if (url.protocol !== "https:" && url.protocol !== "http:") return issue(t("config.connection.httpsAddress"));
   if (url.protocol === "http:" && !allowInsecureHttp) {
-    return issue("Plain HTTP sends everything readable. Use https://, or allow plain HTTP for development.");
+    return issue(t("config.connection.httpWarning"));
   }
-  if (url.username !== "" || url.password !== "") return issue("Do not put a user name or password in the address");
-  if (url.search !== "" || url.hash !== "") return issue("The address cannot have a query or a fragment");
+  if (url.username !== "" || url.password !== "") return issue(t("config.connection.noCredentialsInAddress"));
+  if (url.search !== "" || url.hash !== "") return issue(t("config.connection.noQueryFragment"));
 }
 
 /** The URL of the server: https unless plain HTTP is allowed. */
@@ -58,11 +59,11 @@ function checkHost(host: string, ctx: z.RefinementCtx): boolean {
   try {
     url = new URL(`https://${host}`);
   } catch {
-    ctx.addIssue({ code: "custom", path: ["host"], message: "Enter a host name, for example rpp.example" });
+    ctx.addIssue({ code: "custom", path: ["host"], message: t("config.connection.hostExample") });
     return false;
   }
   if (url.port !== "" || url.username !== "" || url.password !== "" || url.href !== `https://${host.toLowerCase()}/`) {
-    ctx.addIssue({ code: "custom", path: ["host"], message: "Enter only the host name, without scheme, port, path or credentials" });
+    ctx.addIssue({ code: "custom", path: ["host"], message: t("config.connection.hostOnly") });
     return false;
   }
   return true;
@@ -70,8 +71,8 @@ function checkHost(host: string, ctx: z.RefinementCtx): boolean {
 
 export const connectionFormSchema = z
   .object({
-    host: z.string().trim().min(1, "Enter the host name of the RPP server"),
-    port: z.string().trim().regex(/^\d+$/, "Enter a port number").refine((value) => Number(value) >= 1 && Number(value) <= 65535, "The port must be between 1 and 65535"),
+    host: z.string().trim().min(1, { error: () => t("config.connection.hostRequired") }),
+    port: z.string().trim().regex(/^\d+$/, { error: () => t("config.connection.portNumber") }).refine((value) => Number(value) >= 1 && Number(value) <= 65535, { error: () => t("config.connection.portRange") }),
     allowInsecureHttp: z.boolean(),
     authType: z.enum(["none", "basic"]),
     username: z.string(),
@@ -81,11 +82,11 @@ export const connectionFormSchema = z
     const hostOk = form.host ? checkHost(form.host, ctx) : false;
     if (hostOk && /^\d+$/.test(form.port)) checkAddress(buildBaseUrl(form.host, form.port, form.allowInsecureHttp), form.allowInsecureHttp, ctx, ["host"]);
     if (form.authType !== "basic") return;
-    if (form.username === "") ctx.addIssue({ code: "custom", path: ["username"], message: "Enter the user name" });
-    else if (form.username.includes(":")) ctx.addIssue({ code: "custom", path: ["username"], message: "A user name cannot contain a colon" });
-    else if (CONTROL.test(form.username)) ctx.addIssue({ code: "custom", path: ["username"], message: "Remove the control characters" });
-    if (form.password === "") ctx.addIssue({ code: "custom", path: ["password"], message: "Enter the password" });
-    else if (CONTROL.test(form.password)) ctx.addIssue({ code: "custom", path: ["password"], message: "Remove the control characters" });
+    if (form.username === "") ctx.addIssue({ code: "custom", path: ["username"], message: t("config.connection.usernameRequired") });
+    else if (form.username.includes(":")) ctx.addIssue({ code: "custom", path: ["username"], message: t("config.connection.usernameColon") });
+    else if (CONTROL.test(form.username)) ctx.addIssue({ code: "custom", path: ["username"], message: t("config.connection.removeControls") });
+    if (form.password === "") ctx.addIssue({ code: "custom", path: ["password"], message: t("config.connection.passwordRequired") });
+    else if (CONTROL.test(form.password)) ctx.addIssue({ code: "custom", path: ["password"], message: t("config.connection.removeControls") });
   });
 
 export type ConnectionFormValues = z.infer<typeof connectionFormSchema>;

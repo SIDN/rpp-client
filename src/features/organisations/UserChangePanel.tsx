@@ -1,3 +1,4 @@
+import { t } from "@/i18n";
 import { useState } from "react";
 import { FormProvider, useForm, useWatch } from "react-hook-form";
 import { buildUserPatch, describeUserOperation, userEditOf } from "@/application/organisations/userData";
@@ -32,15 +33,15 @@ function ChangeForm({ target, user, change }: { target: Target; user: User; chan
     <FormProvider {...form}>
       <form onSubmit={form.handleSubmit(() => change.start({ ...target, operations }))} noValidate className="flex max-w-xl flex-col gap-8">
         <h3>
-          Change <code>{user.id}</code> of <code>{target.organisationId}</code>
+          {t("organisations.userChange.heading", { user: user.id, organisation: target.organisationId })}
         </h3>
 
-        <UserFields statusHint="The registry sets the other statuses itself. Leaving this as it is keeps the current status." />
+        <UserFields statusHint={t("organisations.userChange.statusHint")} />
 
-        <section aria-label="Changes to send" className="flex flex-col gap-2 rounded-md border border-border p-4">
-          <h4 className="font-semibold">Changes to send</h4>
+        <section aria-label={t("organisations.change.preview")} className="flex flex-col gap-2 rounded-md border border-border p-4">
+          <h4 className="font-semibold">{t("organisations.change.preview")}</h4>
           {operations.length === 0 ? (
-            <p className="text-muted-foreground">Nothing has been changed yet.</p>
+            <p className="text-muted-foreground">{t("organisations.change.noChanges")}</p>
           ) : (
             <ul className="list-disc pl-5">
               {operations.map((operation, index) => (
@@ -49,13 +50,13 @@ function ChangeForm({ target, user, change }: { target: Target; user: User; chan
             </ul>
           )}
           <p className="text-sm text-muted-foreground">
-            Only these changes are sent, as one partial update that the registry carries out completely or not at all. The registry decides which of them it allows.
+            {t("organisations.change.previewHint")}
           </p>
         </section>
 
         <div>
           <SubmitButton pending={change.pending} disabled={operations.length === 0}>
-            Save changes
+            {t("organisations.action.saveChanges")}
           </SubmitButton>
         </div>
       </form>
@@ -112,27 +113,27 @@ export function UserChangePanel({ organisationId, onOrganisationChange, onUserCh
             setSelected(undefined);
             onOrganisationChange(id);
           }}
-          hint="The organisation whose user you want to change."
+          hint={t("organisations.userChange.organisationHint")}
         />
         <div>
-          <SubmitButton pending={loadUsers.pending}>{organisation ? "Load the users again" : "Show the users"}</SubmitButton>
+          <SubmitButton pending={loadUsers.pending}>{organisation ? t("organisations.userChange.loadUsersAgain") : t("organisations.userChange.showUsers")}</SubmitButton>
         </div>
       </form>
-      <OperationOutcome operation={loadUsers} success={`Loaded ${loadUsers.variables?.trim() || "the organisation"}`} />
+      <OperationOutcome operation={loadUsers} success={t("organisations.outcome.organisationLoaded", { organisation: loadUsers.variables?.trim() || t("organisations.noun.organisation") })} />
 
       {organisationId.trim() !== "" && (organisation || users.length > 0) && (
-        <section aria-label="Users" className="flex flex-col gap-3">
-          <h3>Users of {organisationId.trim()}</h3>
-          <UserTable organisationId={organisationId.trim()} users={users} selected={selected} busy={load.pending} action="Edit" onSelect={choose} />
+        <section aria-label={t("organisations.details.users")} className="flex flex-col gap-3">
+          <h3>{t("organisations.userTable.caption", { id: organisationId.trim() })}</h3>
+          <UserTable organisationId={organisationId.trim()} users={users} selected={selected} busy={load.pending} action="edit" onSelect={choose} />
         </section>
       )}
       {!organisation && users.length === 0 && !loadUsers.pending && !loadUsers.failure && !loadUsers.cancelled && !loadUsers.result && (
-        <Callout tone="info" title="Show the users of an organisation to pick one">
-          The users the organisation lists appear here. Choose one to change it.
+        <Callout tone="info" title={t("organisations.userChange.pickUserTitle")}>
+          {t("organisations.userChange.pickUserDescription")}
         </Callout>
       )}
 
-      <OperationOutcome operation={load} success={`Loaded ${load.variables?.userId ?? "the user"}`} />
+      <OperationOutcome operation={load} success={t("organisations.outcome.userLoaded", { user: load.variables?.userId ?? t("organisations.noun.user") })} />
       {selected && user && !load.pending && (
         <ChangeForm
           key={JSON.stringify([organisationId.trim(), selected, userEditOf(user)])}
@@ -141,7 +142,7 @@ export function UserChangePanel({ organisationId, onOrganisationChange, onUserCh
           change={change}
         />
       )}
-      <OperationOutcome operation={change} success={`Changed ${change.variables?.userId ?? "the user"} in ${change.variables?.organisationId ?? "the organisation"}`}>
+      <OperationOutcome operation={change} success={t("organisations.outcome.userChanged", { user: change.variables?.userId ?? t("organisations.noun.user"), organisation: change.variables?.organisationId ?? t("organisations.noun.organisation") })}>
         {(changed) => <UserDetails user={changed} />}
       </OperationOutcome>
     </div>

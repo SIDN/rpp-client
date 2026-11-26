@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { getLocale, t } from "@/i18n";
 
 const envSchema = z.object({
   VITE_APP_TITLE: z.string().trim().min(1).optional(),
@@ -15,8 +16,11 @@ export interface AppEnv {
 export function readEnv(raw: Record<string, unknown>): AppEnv {
   const parsed = envSchema.safeParse(raw);
   if (!parsed.success) {
-    const problems = parsed.error.issues.map((issue) => `${issue.path.join(".")}: ${issue.message}`).join("; ");
-    throw new Error(`Invalid environment configuration: ${problems}`);
+    const problems = parsed.error.issues.map((issue) => {
+      const message = getLocale() === "en" ? issue.message : issue.code === "invalid_format" ? t("config.env.invalidUrl") : t("config.env.invalidValue");
+      return `${issue.path.join(".")}: ${message}`;
+    }).join("; ");
+    throw new Error(t("config.env.invalid", { problems }));
   }
   return {
     appTitle: parsed.data.VITE_APP_TITLE ?? "RPP Client",

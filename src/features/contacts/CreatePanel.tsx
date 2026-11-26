@@ -1,5 +1,8 @@
+import { useState } from "react";
+import { t } from "@/i18n";
 import { FormProvider, useForm } from "react-hook-form";
 import { toData, EMPTY_VALUES, type ContactValues } from "./formValues";
+import { Button } from "@/components/ui/button";
 import { Callout } from "@/components/ui/callout";
 import { Field, Input } from "@/components/ui/field";
 import { OperationOutcome } from "../shared/OperationOutcome";
@@ -20,6 +23,7 @@ export function CreatePanel({ id, onIdChange }: PanelProps) {
   const store = useContactStore();
   const form = useForm<CreateValues>({ defaultValues: { ...EMPTY_VALUES, authInfo: "" } });
   const shape = useContactForm();
+  const [authInfoShown, setAuthInfoShown] = useState(false);
 
   const create = useOperation(
     (input: CreateContactInput, signal) => workflows.create(input, { signal }),
@@ -45,21 +49,28 @@ export function CreatePanel({ id, onIdChange }: PanelProps) {
               <SchemaNote note={shape.note} />
               <ContactFields withKind addresses={ADDRESSES[shape.mode]} />
               {shape.authInfo && (
-                <Field label="Transfer password" hint="Set now, or later in Change. Another registrar needs it to take the contact over.">
-                  {(control) => <Input {...control} type="password" autoComplete="off" className="max-w-64" {...form.register("authInfo")} />}
+                <Field label={t("contacts.create.authInfo")} hint={t("contacts.create.authInfoHint")}>
+                  {(control) => (
+                    <div className="flex items-center gap-2">
+                      <Input {...control} type={authInfoShown ? "text" : "password"} autoComplete="off" className="max-w-64" {...form.register("authInfo")} />
+                      <Button variant="ghost" size="sm" aria-pressed={authInfoShown} onClick={() => setAuthInfoShown((current) => !current)}>
+                        {authInfoShown ? t("contacts.create.hide") : t("contacts.create.show")}
+                      </Button>
+                    </div>
+                  )}
                 </Field>
               )}
-              <Callout tone="info" title="What the registry requires varies">
-                Most registries need a name, an address with a country, and an email address. If one is missing, the registry says which.
+              <Callout tone="info" title={t("contacts.create.requirementsVary")}>
+                {t("contacts.create.requirementsDescription")}
               </Callout>
               <div>
-                <SubmitButton pending={create.pending}>Create contact</SubmitButton>
+                <SubmitButton pending={create.pending}>{t("contacts.create.submit")}</SubmitButton>
               </div>
             </>
           )}
         </form>
       </FormProvider>
-      <OperationOutcome operation={create} success={`Created ${create.variables?.id.trim() || "the contact"}`}>
+      <OperationOutcome operation={create} success={t("contacts.create.success", { contact: create.variables?.id.trim() || "the contact" })}>
         {(contact) => <ContactDetails contact={contact} />}
       </OperationOutcome>
     </div>

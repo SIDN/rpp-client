@@ -1,3 +1,4 @@
+import { t } from "@/i18n";
 import { STATUS_VOCABULARIES } from "@/rpp/core/status/statuses";
 import { isJsonObject } from "@/rpp/core/types/json";
 import type { User, UserCreate } from "@/rpp/core/types/objects";
@@ -31,7 +32,7 @@ export function userEditOf(user: User): UserData {
 /** Whitespace around the identifier is dropped; nothing else is changed. */
 export function parseUserId(input: string): string {
   const id = input.trim();
-  if (id === "") throw invalidRequest("Enter a user identifier");
+  if (id === "") throw invalidRequest(t("organisations.validation.userId"));
   return id;
 }
 
@@ -44,7 +45,7 @@ export interface CreateUserInput {
 export function createBody(input: CreateUserInput): UserCreate {
   const description = input.data.description.trim();
   if (input.data.status !== "" && !USER_CLIENT_STATUSES.includes(input.data.status)) {
-    throw invalidRequest(`A new user cannot be given the status ${input.data.status}`);
+    throw invalidRequest(t("organisations.validation.newUserStatus", { status: input.data.status }));
   }
   return {
     "@type": "user",
@@ -81,13 +82,19 @@ export function buildUserPatch(current: User, wanted: UserData): PatchOperation[
 /** One operation as a line a registrar can read before sending it. */
 export function describeUserOperation(operation: PatchOperation): string {
   const member = operation.path.split("/")[2];
-  const verb = operation.op === "remove" ? "Remove" : operation.op === "add" ? "Add" : "Change";
-  if (operation.path === "/description") return `${verb} the description`;
+  if (operation.path === "/description") {
+    if (operation.op === "remove") return t("organisations.operation.removeDescription");
+    if (operation.op === "add") return t("organisations.operation.addDescription");
+    return t("organisations.operation.changeDescription");
+  }
   if (operation.path === "/status" && operation.op !== "remove") {
-    return `Set the status to ${text(isJsonObject(operation.value) ? operation.value.label : undefined)}`;
+    return t("organisations.operation.setUserStatus", { status: text(isJsonObject(operation.value) ? operation.value.label : undefined) });
   }
   if (operation.path.startsWith("/details")) {
-    return `${verb} ${member === "name" ? "the name" : member === "emails" ? "the email address" : member === "phones" ? "the phone number" : "the details"}`;
+    const subject = member === "name" ? t("organisations.operation.subject.name") : member === "emails" ? t("organisations.operation.subject.email") : member === "phones" ? t("organisations.operation.subject.phone") : t("organisations.operation.subject.details");
+    if (operation.op === "remove") return t("organisations.operation.removeSubject", { subject });
+    if (operation.op === "add") return t("organisations.operation.addSubject", { subject });
+    return t("organisations.operation.changeSubject", { subject });
   }
   return `${operation.op} ${operation.path}`;
 }

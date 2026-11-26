@@ -255,6 +255,16 @@ describe("failures, cancellation and timeouts", () => {
     const { transport } = setup(hang, { timeoutMs: 10 });
     expect((await failure(transport.send({ method: "GET", target: "a" }))).kind).toBe("timeout");
   });
+
+  it("asks for the timeout on every request, and a request can still set its own", async () => {
+    const asked = vi.fn(() => 10);
+    const { transport } = setup(hang, { timeoutMs: asked });
+    expect((await failure(transport.send({ method: "GET", target: "a" }))).kind).toBe("timeout");
+    expect((await failure(transport.send({ method: "GET", target: "b" }))).kind).toBe("timeout");
+    expect(asked).toHaveBeenCalledTimes(2);
+    await failure(transport.send({ method: "GET", target: "c", timeoutMs: 10 }));
+    expect(asked).toHaveBeenCalledTimes(2);
+  });
 });
 
 describe("diagnostics", () => {

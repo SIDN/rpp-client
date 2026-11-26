@@ -1,11 +1,12 @@
 import { Callout } from "@/components/ui/callout";
 import { Field, Input } from "@/components/ui/field";
+import { t } from "@/i18n";
 
 /** Shown instead of a form while the schema that shapes it is read. */
 export function SchemaLoading() {
   return (
-    <Callout tone="info" title="Reading the preset schema">
-      The form shows what the preset allows once its schema has been read.
+    <Callout tone="info" title={t("contacts.form.readingSchema")}>
+      {t("contacts.form.schemaLoadingDescription")}
     </Callout>
   );
 }
@@ -14,7 +15,7 @@ export function SchemaLoading() {
 export function SchemaNote({ note }: { note: string | undefined }) {
   if (!note) return null;
   return (
-    <Callout tone="warning" title="The preset schema did not shape this form">
+    <Callout tone="warning" title={t("contacts.form.schemaDidNotShape")}>
       {note}
     </Callout>
   );
@@ -29,7 +30,7 @@ export interface PanelProps {
 /** The contact identifier field every workflow starts with. */
 export function IdField({ id, onIdChange }: PanelProps) {
   return (
-    <Field label="Contact identifier" hint="The identifier the registry knows the contact by, for example FO-1234">
+    <Field label={t("contacts.form.identifier")} hint={t("contacts.form.identifierHint")}>
       {(control) => (
         <Input
           {...control}

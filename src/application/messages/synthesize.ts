@@ -1,3 +1,4 @@
+import { t } from "@/i18n";
 import type { Message } from "@/rpp/core/types/objects";
 import { MESSAGE_TYPES, messageTypeOf } from "./messages";
 
@@ -23,7 +24,7 @@ export function synthesizeMessages(options: { now?: Date; types?: readonly strin
         clientTransactionId: "CLT-1001",
         serverTransactionId: "SRV-5001",
         completionDate: at(-6 * DAY),
-        message: "The registration was approved after review.",
+        message: t("messages.synthetic.registrationApproved"),
         process: { "@type": "createProcess", processId: "P-1001" },
       },
       {
@@ -32,7 +33,7 @@ export function synthesizeMessages(options: { now?: Date; types?: readonly strin
         approved: false,
         serverTransactionId: "SRV-5002",
         completionDate: at(-5 * DAY),
-        message: "The update was denied: the postal address could not be verified.",
+        message: t("messages.synthetic.updateDenied"),
       },
     ],
     transferRequestMessage: [
@@ -67,8 +68,8 @@ export function synthesizeMessages(options: { now?: Date; types?: readonly strin
       { objectType: "domainName", objectId: "also-renewed.example.test", renewalDate: at(-DAY), expiryDate: at(364 * DAY) },
     ],
     serviceNoticeMessage: [
-      { message: "Planned maintenance on Saturday between 02:00 and 04:00 UTC. The registry is unavailable then." },
-      { message: "New terms and conditions apply from the first day of next month." },
+      { message: t("messages.synthetic.maintenance") },
+      { message: t("messages.synthetic.newTerms") },
     ],
   };
 

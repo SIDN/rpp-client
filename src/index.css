@@ -1,6 +1,7 @@
 @import "@fontsource-variable/schibsted-grotesk";
 @import "@fontsource-variable/jetbrains-mono";
 @import "tailwindcss";
+@import "./palettes.css";
 
 /*
  * Design tokens. Names follow shadcn/ui so components added later fit; values are this product's.

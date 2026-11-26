@@ -3,8 +3,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/field";
 import type { Bookmark } from "@/config/bookmarks";
+import { t } from "@/i18n";
 
-const authText = (bookmark: Bookmark) => (bookmark.profile.auth.type === "basic" ? `User ${bookmark.profile.auth.username}` : "No authentication");
+const authText = (bookmark: Bookmark) => (bookmark.profile.auth.type === "basic" ? t("connection.bookmarks.authUser", { username: bookmark.profile.auth.username }) : t("connection.bookmarks.noAuthentication"));
 
 /**
  * The bar at the top of the connection screen: pick a saved server in the list, then use it (fill the form, so that only
@@ -36,13 +37,13 @@ export function BookmarkBar({
   const asking = picked !== undefined && confirming === picked.id;
 
   return (
-    <div role="toolbar" aria-label="Bookmarks" className="flex flex-col gap-2 rounded-md border border-border bg-muted/50 px-4 py-3">
+    <div role="toolbar" aria-label={t("connection.bookmarks.toolbar")} className="flex flex-col gap-2 rounded-md border border-border bg-muted/50 px-4 py-3">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
         <span id={`${id}-label`} className="text-sm font-medium">
-          Bookmarks
+          {t("connection.bookmarks.label")}
         </span>
         <Select
-          aria-label="Bookmark"
+          aria-label={t("connection.bookmarks.select")}
           value={picked?.id ?? ""}
           disabled={bookmarks.length === 0}
           onChange={(event) => {
@@ -51,7 +52,7 @@ export function BookmarkBar({
           }}
           className="w-full min-w-48 sm:w-72"
         >
-          <option value="">{bookmarks.length === 0 ? "No bookmarks yet" : "Choose a bookmark"}</option>
+          <option value="">{bookmarks.length === 0 ? t("connection.bookmarks.empty") : t("connection.bookmarks.choose")}</option>
           {bookmarks.map((bookmark) => (
             <option key={bookmark.id} value={bookmark.id}>
               {bookmark.name}
@@ -60,13 +61,13 @@ export function BookmarkBar({
         </Select>
         <div className="flex flex-wrap gap-2">
           <Button disabled={!picked} onClick={() => picked && onUse(picked)}>
-            Use
+            {t("connection.bookmarks.use")}
           </Button>
           <Button variant="secondary" disabled={!picked} onClick={() => picked && onEdit(picked)}>
-            Edit
+            {t("connection.bookmarks.edit")}
           </Button>
           <Button variant="secondary" disabled={!picked} onClick={() => picked && setConfirming(picked.id)}>
-            Delete
+            {t("connection.bookmarks.delete")}
           </Button>
         </div>
       </div>
@@ -76,20 +77,20 @@ export function BookmarkBar({
           <code>{picked.profile.baseUrl}</code>
           <span aria-hidden>·</span>
           {authText(picked)}
-          {picked.id === activeId && <Badge tone="info">{editing ? "Being edited" : "In the form"}</Badge>}
+          {picked.id === activeId && <Badge tone="info">{editing ? t("connection.bookmarks.editing") : t("connection.bookmarks.inForm")}</Badge>}
         </p>
       ) : (
         <p className="text-sm text-muted-foreground">
-          {bookmarks.length === 0 ? "Save the connection below as a bookmark to find it here later." : "A bookmark saves everything about a connection except the password."}
+          {bookmarks.length === 0 ? t("connection.bookmarks.noneSaved") : t("connection.bookmarks.exceptPassword")}
         </p>
       )}
 
       {picked && asking && (
         <div role="group" aria-labelledby={`${id}-confirm`} className="flex max-w-xl flex-col gap-3 rounded-md border-2 border-danger bg-background p-4">
           <h4 id={`${id}-confirm`} className="font-semibold">
-            Delete the bookmark {picked.name}?
+            {t("connection.bookmarks.confirmDelete", { name: picked.name })}
           </h4>
-          <p className="text-sm">Only the bookmark is removed. The server and its data are not touched.</p>
+          <p className="text-sm">{t("connection.bookmarks.deleteExplanation")}</p>
           <div className="flex flex-wrap gap-2">
             <Button
               variant="destructive"
@@ -98,10 +99,10 @@ export function BookmarkBar({
                 onDelete(picked);
               }}
             >
-              Delete {picked.name}
+              {t("connection.bookmarks.confirmDeleteButton", { name: picked.name })}
             </Button>
             <Button variant="secondary" onClick={() => setConfirming(undefined)}>
-              Do not do it
+              {t("connection.bookmarks.cancelDelete")}
             </Button>
           </div>
         </div>

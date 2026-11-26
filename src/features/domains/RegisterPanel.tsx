@@ -1,9 +1,9 @@
+import { t } from "@/i18n";
 import { useEffect } from "react";
 import { FormProvider, useForm } from "react-hook-form";
 import { useDiscoveryState } from "@/app/discovery-context";
 import { idnLgrsFor } from "@/application/capability";
 import { tryParseDomainName } from "@/application/domains/domainWorkflows";
-import { Callout } from "@/components/ui/callout";
 import { Field, Input, Select } from "@/components/ui/field";
 import { useDomainStore } from "./domainCache";
 import { DomainDetails } from "./DomainDetails";
@@ -66,43 +66,40 @@ export function RegisterPanel({ name, onNameChange }: PanelProps) {
         <form onSubmit={submit} noValidate className="flex max-w-xl flex-col gap-6">
           <NameField name={name} onNameChange={onNameChange} />
           <Field
-            label="Unicode name"
-            hint={idnOffered ? "The Unicode form of the name, for an internationalized domain name." : "Disabled: the discovery document of the server lists no IDN rulesets."}
+            label={t("domains.register.unicodeName")}
+            hint={idnOffered ? t("domains.register.unicodeHint") : t("domains.register.disabledIdn")}
           >
             {(control) => <Input {...control} disabled={!idnOffered} autoComplete="off" spellCheck={false} className="font-mono" {...form.register("uName")} />}
           </Field>
           <Field
-            label="Label Generation Ruleset"
-            hint={idnOffered ? "The ruleset the Unicode name follows, from the discovery document." : "Disabled: the discovery document of the server lists no IDN rulesets."}
+            label={t("domains.register.lgr")}
+            hint={idnOffered ? t("domains.register.lgrHint") : t("domains.register.disabledIdn")}
           >
             {(control) => (
               <Select {...control} disabled={!idnOffered} className="max-w-64" {...form.register("lgr")}>
-                {!defaultLgr && <option value="">Choose a ruleset</option>}
+                {!defaultLgr && <option value="">{t("domains.register.chooseRuleset")}</option>}
                 {lgrs.map((lgr) => (
                   <option key={lgr.name} value={lgr.name}>
                     {lgr.name}
-                    {lgr.isDefault ? " (default)" : ""}
+                    {lgr.isDefault ? t("domains.register.default") : ""}
                   </option>
                 ))}
               </Select>
             )}
           </Field>
-          <PeriodFields label="Registration period" />
+          <PeriodFields label={t("domains.register.period")} />
           <DomainDataFields />
           <DnsRecordFields domain={tryParseDomainName(name)?.name ?? ""} />
           <DnssecFields />
-          <Field label="Transfer password" hint="Set now, or later in Change. Another registrar needs it to take the domain over.">
+          <Field label={t("domains.register.transferPassword")} hint={t("domains.register.transferPasswordHint")}>
             {(control) => <Input {...control} type="password" autoComplete="off" className="max-w-64" {...form.register("authInfo")} />}
           </Field>
-          <Callout tone="info" title="Registering may be billed">
-            The registry decides what a registration costs and when it is charged. Check that the name is available first.
-          </Callout>
           <div>
-            <SubmitButton pending={register.pending}>Register domain</SubmitButton>
+            <SubmitButton pending={register.pending}>{t("domains.register.submit")}</SubmitButton>
           </div>
         </form>
       </FormProvider>
-      <OperationOutcome operation={register} success={`Registered ${register.variables?.name ?? "the domain"}`}>
+      <OperationOutcome operation={register} success={t("domains.register.success", { name: register.variables?.name ?? t("domains.name.generic") })}>
         {(domain) => <DomainDetails domain={domain} />}
       </OperationOutcome>
     </div>

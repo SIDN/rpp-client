@@ -1,7 +1,7 @@
 import { RefreshCw } from "lucide-react";
 import { useState } from "react";
+import { t } from "@/i18n";
 import { useQueryClient } from "@tanstack/react-query";
-import { Link } from "react-router-dom";
 import { useConnection } from "@/app/connection-context";
 import { useDiscoveryState } from "@/app/discovery-context";
 import { useSettings } from "@/app/settings-context";
@@ -28,23 +28,40 @@ import {
 } from "@/application/processes/processList";
 import { Nothing } from "@/components/common/definition";
 import { EmptyState, PageHeader } from "@/components/common/layout";
+import { NotConnected } from "@/components/common/NotConnected";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { buttonVariants } from "@/components/ui/button-variants";
 import { Callout } from "@/components/ui/callout";
 import { Field, Select } from "@/components/ui/field";
 import { seenKey } from "../shared/seenObjects";
 import { MAX_READS, useProcessDetails, useSeenObjects } from "./processHooks";
 
-const header = (
-  <PageHeader
-    title="Processes"
-    description="Manage active and completed object processes."
-  />
-);
+const header = () => <PageHeader title={t("processes.page.title")} description={t("processes.page.description")} />;
 
-const objectLabel = (type: string) => OBJECT_TYPES.find((entry) => entry.id === type)?.label ?? type;
-const kindLabel = (kind: string) => PROCESS_KINDS.find((entry) => entry.id === kind)?.label ?? kind;
+const objectLabel = (type: string) => {
+  switch (type) {
+    case "domainName": return t("processes.object.domainNames");
+    case "contact": return t("processes.object.contacts");
+    case "host": return t("processes.object.hosts");
+    default: return type;
+  }
+};
+const kindLabel = (kind: string) => {
+  switch (kind) {
+    case "transfer": return t("processes.kind.transfer");
+    case "renew": return t("processes.kind.renew");
+    case "restore": return t("processes.kind.restore");
+    case "create": return t("processes.kind.create");
+    default: return kind;
+  }
+};
+
+const processWord = (count: number) => count === 1 ? t("processes.summary.process.one") : t("processes.summary.process.other");
+const objectCounts = (objects: number, processes: number) => {
+  const params = { objects, processes, processWord: processWord(processes) };
+  return objects === 1 ? t("processes.summary.counts.oneObject", params) : t("processes.summary.counts.otherObjects", params);
+};
+const noProcessesText = (count: number) => count === 1 ? t("processes.empty.noProcesses.one", { count }) : t("processes.empty.noProcesses.other", { count });
 
 export function ProcessesPage() {
   const discovery = useDiscoveryState();
@@ -53,41 +70,32 @@ export function ProcessesPage() {
   if (discovery.status === "not-started") {
     return (
       <>
-        {header}
-        <EmptyState
-          title="Connect to a server first"
-          action={
-            <Link to="/connection" className={buttonVariants({ variant: "secondary" })}>
-              Set up a connection
-            </Link>
-          }
-        >
-          The processes shown here belong to objects read from the server, so there is nothing until you are connected.
-        </EmptyState>
+        {header()}
+        <NotConnected />
       </>
     );
   }
   if (discovery.status === "loading") {
     return (
       <>
-        {header}
-        <Callout tone="info" title="Reading the capabilities of the server" />
+        {header()}
+        <Callout tone="info" title={t("processes.connection.readingCapabilities")} />
       </>
     );
   }
   if (!session) {
     return (
       <>
-        {header}
-        <Callout tone="warning" title={discovery.status === "failed" ? "The capabilities of the server could not be read" : "There is no connection"}>
-          {discovery.status === "failed" ? discovery.error.message : "Set up a connection first."}
+        {header()}
+        <Callout tone="warning" title={discovery.status === "failed" ? t("processes.connection.capabilitiesFailed") : t("processes.connection.noConnection")}>
+          {discovery.status === "failed" ? discovery.error.message : t("processes.connection.setUpFirst")}
         </Callout>
       </>
     );
   }
   return (
     <>
-      {header}
+      {header()}
       <ProcessList />
     </>
   );
@@ -104,17 +112,17 @@ function StatusCell({ row }: { row: ProcessRow }) {
   }
   switch (row.detail.state) {
     case "loading":
-      return <span className="text-muted-foreground">Reading…</span>;
+      return <span className="text-muted-foreground">{t("processes.status.reading")}</span>;
     case "failed":
       return (
         <span title={row.detail.message} className="text-danger-ink">
-          Could not be read
+          {t("processes.status.couldNotRead")}
         </span>
       );
     case "unreadable":
-      return <Nothing>Cannot be read</Nothing>;
+      return <Nothing>{t("processes.status.cannotBeRead")}</Nothing>;
     case "ready":
-      return <Nothing>No status</Nothing>;
+      return <Nothing>{t("processes.status.none")}</Nothing>;
   }
 }
 
@@ -176,35 +184,35 @@ function ProcessList() {
     <div className="flex flex-col gap-6">
 
       <div className="flex flex-wrap items-end gap-x-4 gap-y-3">
-        <Field label="Object type" className="w-48">
+        <Field label={t("processes.filter.objectType")} className="w-48">
           {(control) => (
             <Select {...control} value={filter.objectType} onChange={(event) => change({ objectType: event.target.value as ProcessFilter["objectType"] })}>
-              <option value={ANY}>All objects</option>
+              <option value={ANY}>{t("processes.filter.allObjects")}</option>
               {OBJECT_TYPES.map((type) => (
                 <option key={type.id} value={type.id}>
-                  {type.label}
+                  {objectLabel(type.id)}
                 </option>
               ))}
             </Select>
           )}
         </Field>
-        <Field label="Process type" className="w-48">
+        <Field label={t("processes.filter.processType")} className="w-48">
           {(control) => (
             <Select {...control} value={filter.kind} onChange={(event) => change({ kind: event.target.value as ProcessFilter["kind"] })}>
-              <option value={ANY}>All processes</option>
+              <option value={ANY}>{t("processes.filter.allProcesses")}</option>
               {PROCESS_KINDS.map((kind) => (
                 <option key={kind.id} value={kind.id}>
-                  {kind.label}
+                  {kindLabel(kind.id)}
                 </option>
               ))}
             </Select>
           )}
         </Field>
-        <Field label="Status" className="w-56">
+        <Field label={t("processes.filter.status")} className="w-56">
           {(control) => (
             <Select {...control} value={filter.status} onChange={(event) => change({ status: event.target.value })}>
-              <option value={ANY}>Any status</option>
-              <option value={ACTIVE}>Active (not ended)</option>
+              <option value={ANY}>{t("processes.filter.anyStatus")}</option>
+              <option value={ACTIVE}>{t("processes.filter.active")}</option>
               {statusOptions(rows, filter.kind).map((status) => (
                 <option key={status} value={status}>
                   {status}
@@ -216,42 +224,40 @@ function ProcessList() {
         <div className="flex gap-2">
           {filtered && (
             <Button variant="ghost" onClick={() => change({ ...NO_FILTER })}>
-              Clear filters
+              {t("processes.filter.clear")}
             </Button>
           )}
           <Button variant="secondary" disabled={objects.length === 0 || refreshing !== undefined} onClick={() => void refresh()}>
             <RefreshCw aria-hidden className={refreshing ? "animate-spin motion-reduce:animate-none" : undefined} />
-            Read again
+            {t("processes.action.readAgain")}
           </Button>
         </div>
       </div>
 
       <p role="status" className="text-sm text-muted-foreground">
         {refreshing
-          ? `Reading the objects again: ${refreshing.done} of ${refreshing.total}${refreshing.failed > 0 ? `, ${refreshing.failed} could not be read` : ""}.`
-          : `${objects.length} ${objects.length === 1 ? "object" : "objects"} seen, ${rows.length} ${rows.length === 1 ? "process" : "processes"}.${reading > 0 ? ` Reading the status of ${reading}.` : ""}${unread > 0 ? ` The status of ${unread} is not read: the most read at once is ${MAX_READS}.` : ""}`}
+          ? t("processes.summary.refreshing", { done: refreshing.done, total: refreshing.total, failure: refreshing.failed > 0 ? t("processes.summary.refreshFailures", { count: refreshing.failed }) : "" })
+          : `${objectCounts(objects.length, rows.length)}${reading > 0 ? ` ${t("processes.summary.reading", { count: reading })}` : ""}${unread > 0 ? ` ${t("processes.summary.unread", { count: unread, max: MAX_READS })}` : ""}`}
       </p>
 
       {objects.length === 0 ? (
-        <EmptyState title="No objects seen yet">Get the info of, create or change a domain name, contact or host, and its processes appear here.</EmptyState>
+        <EmptyState title={t("processes.empty.noObjects.title")}>{t("processes.empty.noObjects.description")}</EmptyState>
       ) : rows.length === 0 ? (
-        <EmptyState title="These objects have no processes">The {objects.length === 1 ? "object" : "objects"} you have worked with name no transfer, renewal, restore or creation.</EmptyState>
+        <EmptyState title={t("processes.empty.noProcesses.title")}>{noProcessesText(objects.length)}</EmptyState>
       ) : matching.length === 0 ? (
-        <EmptyState title="No process matches">
-          None of the {rows.length} processes has this object type, process type and status together.
-        </EmptyState>
+        <EmptyState title={t("processes.empty.noMatch.title")}>{t("processes.empty.noMatch.description", { count: rows.length })}</EmptyState>
       ) : (
         <div className="overflow-x-auto rounded-md border border-border">
           <table className="w-full text-sm">
-            <caption className="sr-only">Processes of the objects seen in this session</caption>
+            <caption className="sr-only">{t("processes.table.caption")}</caption>
             <thead className="bg-muted/50 text-left">
               <tr>
-                <th scope="col" className="px-3 py-2 font-medium">Object</th>
-                <th scope="col" className="px-3 py-2 font-medium">Process</th>
-                <th scope="col" className="px-3 py-2 font-medium">Process id</th>
-                <th scope="col" className="px-3 py-2 font-medium">Status</th>
-                <th scope="col" className="px-3 py-2 font-medium">Requested</th>
-                <th scope="col" className="px-3 py-2 font-medium">Registrars</th>
+                <th scope="col" className="px-3 py-2 font-medium">{t("processes.table.object")}</th>
+                <th scope="col" className="px-3 py-2 font-medium">{t("processes.table.process")}</th>
+                <th scope="col" className="px-3 py-2 font-medium">{t("processes.table.processId")}</th>
+                <th scope="col" className="px-3 py-2 font-medium">{t("processes.table.status")}</th>
+                <th scope="col" className="px-3 py-2 font-medium">{t("processes.table.requested")}</th>
+                <th scope="col" className="px-3 py-2 font-medium">{t("processes.table.registrars")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -283,7 +289,7 @@ function ProcessList() {
 
       {matching.length > 0 && (
         <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
-          <Field label="Results per page" className="w-40">
+          <Field label={t("processes.pagination.resultsPerPage")} className="w-40">
             {(control) => (
               <Select
                 {...control}
@@ -302,17 +308,17 @@ function ProcessList() {
             )}
           </Field>
           <p role="status" className="pb-2 text-sm">
-            Showing {shown.from}–{shown.to} of {shown.total}
+            {t("processes.pagination.showing", { from: shown.from, to: shown.to, total: shown.total })}
           </p>
-          <nav aria-label="Pages" className="flex items-center gap-3">
+          <nav aria-label={t("processes.pagination.pages")} className="flex items-center gap-3">
             <Button variant="secondary" disabled={shown.page <= 1} onClick={() => setPage(shown.page - 1)}>
-              Previous
+              {t("processes.pagination.previous")}
             </Button>
             <span className="text-sm">
-              Page {shown.page} of {shown.pages}
+              {t("processes.pagination.page", { page: shown.page, pages: shown.pages })}
             </span>
             <Button variant="secondary" disabled={shown.page >= shown.pages} onClick={() => setPage(shown.page + 1)}>
-              Next
+              {t("processes.pagination.next")}
             </Button>
           </nav>
         </div>

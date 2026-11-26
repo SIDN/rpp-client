@@ -4,6 +4,7 @@ import { ResultCodeChip } from "@/components/protocol/protocol-badges";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { t } from "@/i18n";
 import { formatBody, targetOf } from "@/features/exchanges/exchangeView";
 import type { ErrorEntry, ErrorLog } from "@/rpp/errors/errorLog";
 import { useConnection } from "./connection-context";
@@ -23,7 +24,7 @@ function Body({ label, text, truncated = false }: { label: string; text: string 
     <div className="flex flex-col gap-1">
       <p className="text-xs text-sidebar-muted">
         {label}
-        {truncated && " (cut off)"}
+        {truncated && t("errors.console.cutOff")}
       </p>
       <pre tabIndex={0} aria-label={label} className="max-h-48 overflow-auto rounded-sm border border-sidebar-border bg-black/20 p-2 font-mono text-xs">
         {body.text}
@@ -40,7 +41,7 @@ function ErrorRow({ entry }: { entry: ErrorEntry }) {
         <span className="font-mono text-xs text-sidebar-muted">{timeOf(entry.at)}</span>
         <span>
           <Badge tone="danger" dot>
-            {entry.status === undefined ? "No response" : entry.status}
+            {entry.status === undefined ? t("errors.console.noResponse") : entry.status}
           </Badge>
         </span>
         <span className="col-span-2 min-w-0 sm:col-span-1">
@@ -70,7 +71,7 @@ function ErrorRow({ entry }: { entry: ErrorEntry }) {
           </ul>
         )}
         <dl className="grid grid-cols-[max-content_minmax(0,1fr)] gap-x-4 gap-y-0.5 text-xs">
-          <dt className="text-sidebar-muted">Address</dt>
+          <dt className="text-sidebar-muted">{t("errors.console.address")}</dt>
           <dd>
             <code className="break-all">{entry.url}</code>
           </dd>
@@ -90,13 +91,13 @@ function ErrorRow({ entry }: { entry: ErrorEntry }) {
               </dd>
             </>
           )}
-          <dt className="text-sidebar-muted">Exchange</dt>
+          <dt className="text-sidebar-muted">{t("protocol.exchange.label")}</dt>
           <dd>
-            <code>{entry.exchangeId}</code> after {Math.round(entry.durationMs)} ms
+            <code>{entry.exchangeId}</code> {t("errors.console.exchangeAfter", { duration: Math.round(entry.durationMs) })}
           </dd>
         </dl>
-        <Body label="Request body" text={entry.requestBody} />
-        <Body label="Response body" text={entry.responseBody} truncated={entry.responseBodyTruncated} />
+        <Body label={t("errors.console.requestBody")} text={entry.requestBody} />
+        <Body label={t("errors.console.responseBody")} text={entry.responseBody} truncated={entry.responseBodyTruncated} />
       </div>
     </details>
   );
@@ -112,6 +113,9 @@ function Console({ log }: { log: ErrorLog | undefined }) {
   const lastSeq = entries.at(-1)?.seq ?? 0;
   const unread = open ? 0 : entries.filter((entry) => entry.seq > seen).length;
   const latest = entries.at(-1);
+  const entryCount = t(entries.length === 1 ? "errors.console.aria.one" : "errors.console.aria.other", { count: entries.length });
+  const unreadCount = unread > 0 ? t(unread === 1 ? "errors.console.unread.one" : "errors.console.unread.other", { count: unread }) : undefined;
+  const badgeLabel = unread > 0 ? t(unread === 1 ? "errors.console.new.one" : "errors.console.new.other", { count: unread }) : entries.length;
 
   const flip = () => {
     setOpen(!open);
@@ -133,7 +137,7 @@ function Console({ log }: { log: ErrorLog | undefined }) {
         className={cn("transition-[height] duration-300 ease-out lg:col-span-2", open ? "h-[calc(40dvh+2.25rem+1px)]" : "h-0")}
       />
       <section
-        aria-label="Error console"
+        aria-label={t("errors.console.regionLabel")}
         onKeyDown={onKeyDown}
         className="fixed inset-x-0 bottom-0 z-20 border-t border-sidebar-border bg-sidebar text-sidebar-foreground shadow-[0_-8px_24px_-12px_rgb(0_0_0/0.5)] lg:left-[var(--sidebar-width,18rem)]"
       >
@@ -142,14 +146,14 @@ function Console({ log }: { log: ErrorLog | undefined }) {
           type="button"
           aria-expanded={open}
           aria-controls={panelId}
-          aria-label={`Error console, ${entries.length} ${entries.length === 1 ? "error" : "errors"}${unread > 0 ? `, ${unread} new` : ""}`}
+          aria-label={`${entryCount}${unreadCount ? `, ${unreadCount}` : ""}`}
           onClick={flip}
           className="flex h-9 w-full items-center gap-3 px-4 text-left text-sm hover:bg-sidebar-active"
         >
           <Terminal aria-hidden className="size-4 shrink-0" />
-          <span className="font-medium">Errors</span>
+          <span className="font-medium">{t("errors.console.title")}</span>
           <Badge tone={unread > 0 ? "danger" : "neutral"} className={unread > 0 ? undefined : "bg-sidebar-active text-sidebar-foreground"}>
-            {unread > 0 ? `${unread} new` : entries.length}
+            {badgeLabel}
           </Badge>
           {!open && latest && <span className="min-w-0 flex-1 truncate text-sidebar-muted">{latest.summary}</span>}
           <ChevronUp aria-hidden className={cn("ml-auto size-4 shrink-0 transition-transform duration-300", open && "rotate-180")} />
@@ -158,20 +162,20 @@ function Console({ log }: { log: ErrorLog | undefined }) {
         <div id={panelId} inert={!open} className={cn("overflow-hidden transition-[height] duration-300 ease-out", open ? "h-[40dvh]" : "h-0")}>
           <div className="flex h-[40dvh] flex-col">
             <div className="flex items-center gap-2 border-y border-sidebar-border px-4 py-1.5">
-              <h2 className="text-sm font-semibold">Errors received, newest first</h2>
+              <h2 className="text-sm font-semibold">{t("errors.console.heading")}</h2>
               <div className="ml-auto flex gap-1">
                 <Button variant="ghost" size="sm" disabled={entries.length === 0} onClick={() => log?.clear()} className="text-sidebar-foreground hover:bg-sidebar-active">
                   <Trash2 aria-hidden />
-                  Clear
+                  {t("errors.console.clear")}
                 </Button>
-                <Button variant="ghost" size="sm" aria-label="Close the error console" onClick={flip} className="text-sidebar-foreground hover:bg-sidebar-active">
+                <Button variant="ghost" size="sm" aria-label={t("errors.console.close")} onClick={flip} className="text-sidebar-foreground hover:bg-sidebar-active">
                   <X aria-hidden />
                 </Button>
               </div>
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto">
               {entries.length === 0 ? (
-                <p className="px-4 py-6 text-sidebar-muted">No errors yet. Errors the registry returns, and requests that get no answer, are listed here.</p>
+                <p className="px-4 py-6 text-sidebar-muted">{t("errors.console.empty")}</p>
               ) : (
                 [...entries].reverse().map((entry) => <ErrorRow key={entry.seq} entry={entry} />)
               )}

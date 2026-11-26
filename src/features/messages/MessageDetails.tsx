@@ -1,3 +1,4 @@
+import { t } from "@/i18n";
 import { isSynthetic } from "@/application/messages/synthesize";
 import { viewOf } from "@/application/messages/messages";
 import { processViewOf } from "@/application/messages/process";
@@ -24,35 +25,35 @@ export function MessageDetails({
   const synthetic = isSynthetic(message);
 
   return (
-    <article aria-label={`Message ${view.id}`} className="flex flex-col gap-4 rounded-md border border-border p-4">
+    <article aria-label={t("messages.details.ariaLabel", { id: view.id })} className="flex flex-col gap-4 rounded-md border border-border p-4">
       <header className="flex flex-wrap items-center gap-x-3 gap-y-2">
         <h3 className="text-xl">
           <code>{view.id}</code>
         </h3>
         <Badge tone={view.known ? "neutral" : "warning"}>{view.typeLabel}</Badge>
-        {synthetic && <Badge tone="warning">Synthesized example</Badge>}
+        {synthetic && <Badge tone="warning">{t("messages.synthetic.example")}</Badge>}
       </header>
 
       {!view.known && (
-        <Callout tone="warning" title="This client does not know this message type">
-          The draft does not define <code>{view.type || "(none)"}</code>, or this client has no view for it. All of it is shown as received.
+        <Callout tone="warning" title={t("messages.warning.unknownType")}>
+          {t("messages.warning.unknownTypeDescription", { type: view.type || "(none)" })}
         </Callout>
       )}
 
       <DefinitionList>
-        <DefinitionRow term="Type">{view.type ? <code>{view.type}</code> : <Nothing>Not given</Nothing>}</DefinitionRow>
-        <DefinitionRow term="Status">{view.status ? <code>{view.status}</code> : <Nothing>Not given</Nothing>}</DefinitionRow>
-        <DefinitionRow term="Created">
+        <DefinitionRow term={t("messages.details.type")}>{view.type ? <code>{view.type}</code> : <Nothing>{t("messages.value.notGiven")}</Nothing>}</DefinitionRow>
+        <DefinitionRow term={t("messages.details.status")}>{view.status ? <code>{view.status}</code> : <Nothing>{t("messages.value.notGiven")}</Nothing>}</DefinitionRow>
+        <DefinitionRow term={t("messages.details.created")}>
           <Timestamp value={view.createdAt || undefined} />
         </DefinitionRow>
-        <DefinitionRow term="About">
+        <DefinitionRow term={t("messages.details.about")}>
           {view.objectId ? (
             <span>
               {view.objectType && <span className="text-muted-foreground">{view.objectType} </span>}
               <code>{view.objectId}</code>
             </span>
           ) : (
-            <Nothing>Not about a specific object</Nothing>
+            <Nothing>{t("messages.value.notAboutObject")}</Nothing>
           )}
         </DefinitionRow>
         {view.fields.map((entry) => (
@@ -61,12 +62,12 @@ export function MessageDetails({
           </DefinitionRow>
         ))}
         {view.process !== undefined && processView === undefined && (
-          <DefinitionRow term="Process">
+          <DefinitionRow term={t("messages.details.process")}>
             <code className="break-all text-xs">{JSON.stringify(view.process)}</code>
           </DefinitionRow>
         )}
         {view.others.length > 0 && (
-          <DefinitionRow term="Other members">
+          <DefinitionRow term={t("messages.details.otherMembers")}>
             <OtherMembers members={view.others} />
           </DefinitionRow>
         )}
@@ -76,19 +77,19 @@ export function MessageDetails({
 
       <div className="flex flex-col gap-2">
         <ConfirmAction
-          trigger="Acknowledge message"
-          title={`Acknowledge ${view.id}?`}
-          confirmLabel={`Acknowledge ${view.id}`}
+          trigger={t("messages.action.acknowledge")}
+          title={t("messages.confirm.acknowledgeTitle", { id: view.id })}
+          confirmLabel={t("messages.confirm.acknowledge", { id: view.id })}
           pending={pending}
           onConfirm={() => onAcknowledge(view.id)}
         >
           {synthetic
-            ? "This message is a synthesized example: it is only removed from this list, and nothing is sent to the server."
-            : "The server removes the message from your queue and does not deliver it again. Until you do, it is delivered again."}
+            ? t("messages.confirm.syntheticAcknowledge")
+            : t("messages.confirm.acknowledgeDescription")}
         </ConfirmAction>
       </div>
 
-      <JsonView label={`Message ${view.id} as received`} value={message} />
+      <JsonView label={t("messages.details.rawMessage", { id: view.id })} value={message} />
     </article>
   );
 }

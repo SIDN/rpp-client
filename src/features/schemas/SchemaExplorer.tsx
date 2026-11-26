@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNod
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/field";
+import { t } from "@/i18n";
 import { cn } from "@/lib/utils";
 import { branchIds, filterTree, type SchemaNode, type SchemaTree } from "./schemaTree";
 
@@ -128,7 +129,7 @@ export function SchemaExplorer({ tree }: { tree: SchemaTree }) {
   };
 
   const renderNodes = (nodes: readonly SchemaNode[], level: number): ReactNode => (
-    <ul role={level === 1 ? "tree" : "group"} aria-label={level === 1 ? "Schema definitions" : undefined} onKeyDown={level === 1 ? onKeyDown : undefined} className="flex flex-col">
+    <ul role={level === 1 ? "tree" : "group"} aria-label={level === 1 ? t("schemas.tree.definitions") : undefined} onKeyDown={level === 1 ? onKeyDown : undefined} className="flex flex-col">
       {nodes.map((node, position) => {
         const hasChildren = node.children.length > 0;
         const expandedNow = hasChildren && isOpen(node.id);
@@ -161,7 +162,7 @@ export function SchemaExplorer({ tree }: { tree: SchemaTree }) {
               <span className={cn("font-mono text-sm", node.kind === "definition" || node.kind === "property" ? "font-semibold" : "text-muted-foreground italic")}>
                 <Highlight text={node.label} query={query} />
               </span>
-              {node.required && <Badge tone="info">required</Badge>}
+              {node.required && <Badge tone="info">{t("schemas.tree.required")}</Badge>}
               {node.summary && (
                 <span className="text-sm text-muted-foreground">
                   <Highlight text={node.summary} query={query} />
@@ -171,14 +172,14 @@ export function SchemaExplorer({ tree }: { tree: SchemaTree }) {
                 <button
                   type="button"
                   tabIndex={-1}
-                  aria-label={`Go to ${target.node.label}`}
+                  aria-label={t("schemas.tree.goToLabel", { label: target.node.label })}
                   onClick={(event) => {
                     event.stopPropagation();
                     jump(target.node.id);
                   }}
                   className="rounded-sm px-1 text-xs font-medium text-foreground underline underline-offset-2 hover:bg-muted"
                 >
-                  go to
+                  {t("schemas.tree.goTo")}
                 </button>
               )}
               {node.facts.map((fact) => (
@@ -202,7 +203,7 @@ export function SchemaExplorer({ tree }: { tree: SchemaTree }) {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-end gap-x-4 gap-y-3">
-        <Field label="Search the schema" hint="Matches names, types, constraints and descriptions." className="w-full max-w-md">
+        <Field label={t("schemas.search.label")} hint={t("schemas.search.hint")} className="w-full max-w-md">
           {(control) => (
             <Input
               {...control}
@@ -225,7 +226,7 @@ export function SchemaExplorer({ tree }: { tree: SchemaTree }) {
               setClosed(new Set());
             }}
           >
-            Expand all
+            {t("schemas.tree.expandAll")}
           </Button>
           <Button
             variant="secondary"
@@ -234,17 +235,17 @@ export function SchemaExplorer({ tree }: { tree: SchemaTree }) {
               setClosed(new Set(branchIds(filtered.nodes)));
             }}
           >
-            Collapse all
+            {t("schemas.tree.collapseAll")}
           </Button>
         </div>
       </div>
 
       <p role="status" className="text-sm text-muted-foreground">
         {query.trim() === ""
-          ? `${tree.nodes.length} ${tree.nodes.length === 1 ? "definition" : "definitions"}`
+          ? t("schemas.tree.definitionCount", { count: tree.nodes.length })
           : filtered.nodes.length === 0
-            ? "Nothing matches."
-            : `${filtered.matches} ${filtered.matches === 1 ? "match" : "matches"} in ${filtered.nodes.length} ${filtered.nodes.length === 1 ? "definition" : "definitions"}`}
+            ? t("schemas.tree.noMatches")
+            : `${t("schemas.tree.matchCount", { count: filtered.matches })}${t("schemas.tree.matchCountIn")}${t("schemas.tree.definitionCount", { count: filtered.nodes.length })}`}
       </p>
 
       {filtered.nodes.length > 0 && <div className="max-h-[70dvh] overflow-auto rounded-md border border-border py-2">{renderNodes(filtered.nodes, 1)}</div>}

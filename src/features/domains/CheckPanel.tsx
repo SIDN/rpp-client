@@ -1,3 +1,4 @@
+import { t } from "@/i18n";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { OperationOutcome } from "../shared/OperationOutcome";
@@ -24,22 +25,22 @@ export function CheckPanel({ name, onNameChange, onRegister }: PanelProps & { on
       >
         <NameField name={name} onNameChange={onNameChange} />
         <div>
-          <SubmitButton pending={check.pending}>Check availability</SubmitButton>
+          <SubmitButton pending={check.pending}>{t("domains.check.submit")}</SubmitButton>
         </div>
       </form>
-      <OperationOutcome operation={check} success="The registry answered">
+      <OperationOutcome operation={check} success={t("domains.check.success")}>
         {({ available, reason }) => (
           <div className="flex flex-col items-start gap-3">
             <p className="flex flex-wrap items-center gap-3 text-lg">
               <code>{check.variables}</code>
               <Badge tone={available ? "success" : "danger"} dot>
-                {available ? "Available" : "Not available"}
+                {available ? t("domains.check.available") : t("domains.check.unavailable")}
               </Badge>
             </p>
             {reason && <p className="max-w-[62ch]">{reason}</p>}
             {available && (
               <Button variant="secondary" onClick={onRegister}>
-                Register this name
+                {t("domains.check.register")}
               </Button>
             )}
           </div>

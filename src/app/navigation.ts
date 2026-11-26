@@ -10,6 +10,7 @@ import {
   Radar,
   Server,
   Settings,
+  Terminal,
   UserRound,
   type LucideIcon,
 } from "lucide-react";
@@ -20,18 +21,18 @@ export const APP_TITLE: string = env.appTitle;
 
 export interface NavItem {
   to: string;
-  label: string;
+  labelKey: string;
   icon: LucideIcon;
   /** The object type the server has to offer for this screen to work. */
   requires?: ResourceType;
   /** What the screen is for, shown while it is not built yet. */
-  purpose: string;
+  purposeKey: string;
 }
 
 export interface NavGroup {
   id: string;
   /** Undefined for the group that has no heading. */
-  label?: string;
+  labelKey?: string;
   items: readonly NavItem[];
 }
 
@@ -41,41 +42,42 @@ export const NAVIGATION: readonly NavGroup[] = [
     items: [
       {
         to: "/",
-        label: "Overview",
+        labelKey: "nav.overview.label",
         icon: LayoutDashboard,
-        purpose: "The state of the connection and where to start.",
+        purposeKey: "nav.overview.purpose",
       },
     ],
   },
   {
     id: "registry",
-    label: "Registry",
+    labelKey: "nav.group.registry",
     items: [
-      { to: "/domains", label: "Domain names", icon: Globe, requires: "domainName", purpose: "Manage domain names." },
-      { to: "/contacts", label: "Contacts", icon: UserRound, requires: "contact", purpose: "Manage contacts." },
-      { to: "/hosts", label: "Hosts", icon: Server, requires: "host", purpose: "Manage name servers." },
-      { to: "/organisations", label: "Organisations", icon: Building2, requires: "organisation", purpose: "Manage organisations and users." },
-      { to: "/messages", label: "Messages", icon: Inbox, requires: "message", purpose: "Read and acknowledge message." },
-      { to: "/processes", label: "Processes", icon: ListChecks, purpose: "Transfers, restores and other processes of the objects you have worked with." },
+      { to: "/domains", labelKey: "nav.domainNames.label", icon: Globe, requires: "domainName", purposeKey: "nav.domainNames.purpose" },
+      { to: "/contacts", labelKey: "nav.contacts.label", icon: UserRound, requires: "contact", purposeKey: "nav.contacts.purpose" },
+      { to: "/hosts", labelKey: "nav.hosts.label", icon: Server, requires: "host", purposeKey: "nav.hosts.purpose" },
+      { to: "/organisations", labelKey: "nav.organisations.label", icon: Building2, requires: "organisation", purposeKey: "nav.organisations.purpose" },
+      { to: "/messages", labelKey: "nav.messages.label", icon: Inbox, requires: "message", purposeKey: "nav.messages.purpose" },
+      { to: "/processes", labelKey: "nav.processes.label", icon: ListChecks, purposeKey: "nav.processes.purpose" },
     ],
   },
   {
     id: "developer",
-    label: "Developer",
+    labelKey: "nav.group.developer",
     items: [
-      { to: "/developer/capabilities", label: "Capabilities", icon: Radar, purpose: "The discovery document of the server: versions, presets, extensions and profiles." },
-      { to: "/developer/exchanges", label: "Exchanges", icon: ArrowLeftRight, purpose: "Every request and response of this session, with secrets removed." },
-      { to: "/developer/schemas", label: "Schemas", icon: Braces, purpose: "The JSON Schema of each preset, as a tree you can search and as the raw schema." },
-      { to: "/developer/settings", label: "Settings", icon: Settings, purpose: "How this client behaves, such as showing synthesized data instead of asking the server." },
+      { to: "/developer/capabilities", labelKey: "nav.capabilities.label", icon: Radar, purposeKey: "nav.capabilities.purpose" },
+      { to: "/developer/exchanges", labelKey: "nav.exchanges.label", icon: ArrowLeftRight, purposeKey: "nav.exchanges.purpose" },
+      { to: "/developer/requests", labelKey: "nav.rawRequest.label", icon: Terminal, purposeKey: "nav.rawRequest.purpose" },
+      { to: "/developer/schemas", labelKey: "nav.schemas.label", icon: Braces, purposeKey: "nav.schemas.purpose" },
+      { to: "/developer/settings", labelKey: "nav.settings.label", icon: Settings, purposeKey: "nav.settings.purpose" },
     ],
   },
 ];
 
 export const CONNECTION_ITEM: NavItem = {
   to: "/connection",
-  label: "Connection",
+  labelKey: "nav.connection.label",
   icon: Cable,
-  purpose: "Choose the server to work against and how to sign in.",
+  purposeKey: "nav.connection.purpose",
 };
 
 export const ALL_ITEMS: readonly NavItem[] = [...NAVIGATION.flatMap((group) => group.items), CONNECTION_ITEM];

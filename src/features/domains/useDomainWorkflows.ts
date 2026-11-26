@@ -1,3 +1,4 @@
+import { t } from "@/i18n";
 import { useMemo } from "react";
 import { useConnection } from "@/app/connection-context";
 import { createDomainWorkflows, type DomainWorkflows } from "@/application/domains/domainWorkflows";
@@ -6,7 +7,7 @@ import { createDomainWorkflows, type DomainWorkflows } from "@/application/domai
 export function useDomainWorkflows(): DomainWorkflows {
   const { session } = useConnection();
   return useMemo(() => {
-    if (!session) throw new Error("The domain workflows need a connection");
+    if (!session) throw new Error(t("domains.errors.connectionRequired"));
     return createDomainWorkflows(session.client);
   }, [session]);
 }

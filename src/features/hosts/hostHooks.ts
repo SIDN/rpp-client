@@ -1,5 +1,6 @@
 import { skipToken, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
+import { t } from "@/i18n";
 import { useConnection } from "@/app/connection-context";
 import { createHostWorkflows, tryParseHostName, type HostWorkflows } from "@/application/hosts/hostWorkflows";
 import type { Host } from "@/rpp/core/types/objects";
@@ -12,7 +13,7 @@ const hostKey = (sessionId: number | undefined, name: string) => seenKey("host",
 export function useHostWorkflows(): HostWorkflows {
   const { session } = useConnection();
   return useMemo(() => {
-    if (!session) throw new Error("The host workflows need a connection");
+    if (!session) throw new Error(t("hosts.errors.connectionRequired"));
     return createHostWorkflows(session.client);
   }, [session]);
 }

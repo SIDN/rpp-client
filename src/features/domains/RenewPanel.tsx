@@ -1,3 +1,4 @@
+import { t } from "@/i18n";
 import { FormProvider, useForm } from "react-hook-form";
 import type { PeriodInput } from "@/application/domains/domainWorkflows";
 import { DefinitionList, DefinitionRow, Nothing } from "@/components/common/definition";
@@ -44,25 +45,25 @@ export function RenewPanel({ name, onNameChange }: PanelProps) {
       <FormProvider {...form}>
         <form onSubmit={submit} noValidate className="flex max-w-xl flex-col gap-6">
           <NameField name={name} onNameChange={onNameChange} />
-          <PeriodFields label="Renew for" />
+          <PeriodFields label={t("domains.renew.period")} />
           {expiry ? (
             <Choice
               type="checkbox"
-              label="Send the current expiry date"
-              hint={<>The registry refuses the renewal if the domain no longer expires on <code>{expiry}</code>, so it is not renewed twice.</>}
+              label={t("domains.renew.sendExpiry")}
+              hint={<>{t("domains.renew.expiryHint")}<code>{expiry}</code>{t("domains.renew.expiryHintEnd")}</>}
               {...form.register("sendExpiry")}
             />
           ) : (
-            <Callout tone="info" title="The current expiry date is not known">
-              Look the domain up first, and the renewal can carry its expiry date. The registry then refuses a renewal that was already done.
+            <Callout tone="info" title={t("domains.renew.expiryUnknown")}>
+              {t("domains.renew.lookupFirst")}
             </Callout>
           )}
           <div>
-            <SubmitButton pending={renew.pending}>Renew domain</SubmitButton>
+            <SubmitButton pending={renew.pending}>{t("domains.renew.submit")}</SubmitButton>
           </div>
         </form>
       </FormProvider>
-      <OperationOutcome operation={renew} success={`Renewed ${renew.variables?.name ?? "the domain"}`}>
+      <OperationOutcome operation={renew} success={t("domains.renew.success", { name: renew.variables?.name ?? t("domains.name.generic") })}>
         {(process) => <RenewResult process={process} />}
       </OperationOutcome>
     </div>
@@ -72,10 +73,10 @@ export function RenewPanel({ name, onNameChange }: PanelProps) {
 function RenewResult({ process }: { process: RenewProcess }) {
   return (
     <DefinitionList>
-      <DefinitionRow term="New expiry date">{process.expiryDate ? <code>{process.expiryDate}</code> : <Nothing>Not given</Nothing>}</DefinitionRow>
+      <DefinitionRow term={t("domains.renew.newExpiry")}>{process.expiryDate ? <code>{process.expiryDate}</code> : <Nothing>{t("domains.renew.notGiven")}</Nothing>}</DefinitionRow>
       {process.renewalPeriod && (
-        <DefinitionRow term="Renewal period">
-          {process.renewalPeriod.value} {process.renewalPeriod.unit === "y" ? "year(s)" : process.renewalPeriod.unit === "m" ? "month(s)" : process.renewalPeriod.unit}
+        <DefinitionRow term={t("domains.renew.periodResult")}>
+          {process.renewalPeriod.value} {process.renewalPeriod.unit === "y" ? t("domains.renew.years") : process.renewalPeriod.unit === "m" ? t("domains.renew.months") : process.renewalPeriod.unit}
         </DefinitionRow>
       )}
     </DefinitionList>

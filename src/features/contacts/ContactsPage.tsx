@@ -1,12 +1,13 @@
 import { useState, type ReactNode } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { objectSupport } from "@/application/capability";
 import { useConnection } from "@/app/connection-context";
 import { useDiscoveryState } from "@/app/discovery-context";
-import { EmptyState, PageHeader } from "@/components/common/layout";
+import { PageHeader } from "@/components/common/layout";
+import { NotConnected } from "@/components/common/NotConnected";
 import { WorkflowTabs } from "@/components/common/WorkflowTabs";
-import { buttonVariants } from "@/components/ui/button-variants";
 import { Callout } from "@/components/ui/callout";
+import { t } from "@/i18n";
 import { ChangePanel } from "./ChangePanel";
 import { CheckPanel } from "./CheckPanel";
 import { CreatePanel } from "./CreatePanel";
@@ -14,50 +15,41 @@ import { DeletePanel } from "./DeletePanel";
 import { InfoPanel } from "./InfoPanel";
 import { TransferPanel } from "./TransferPanel";
 
-const WORKFLOWS = [
-  { id: "info", label: "Info" },
-  { id: "check", label: "Check" },
-  { id: "create", label: "Create" },
-  { id: "change", label: "Change" },
-  { id: "transfer", label: "Transfer" },
-  { id: "delete", label: "Delete" },
-] as const;
-
-type WorkflowId = (typeof WORKFLOWS)[number]["id"];
-
-const DESCRIPTIONS: Record<WorkflowId, string> = {
-  info: "Get contact details.",
-  check: "Find out whether a contact identifier is free.",
-  create: "Create a contact that domain names can refer to.",
-  change: "Change the name, address, phone, email, locks or transfer password of a contact.",
-  transfer: "Move a contact between registrars: ask for it, and answer a request for yours.",
-  delete: "Remove a contact from the registry.",
-};
+const WORKFLOW_IDS = ["info", "check", "create", "change", "transfer", "delete"] as const;
+type WorkflowId = (typeof WORKFLOW_IDS)[number];
 
 export function ContactsPage() {
   const discovery = useDiscoveryState();
   const { session } = useConnection();
   const support = objectSupport(discovery, "contact");
   const [params] = useSearchParams();
-  const [workflow, setWorkflow] = useState<WorkflowId>(() => WORKFLOWS.find((entry) => entry.id === params.get("tab"))?.id ?? "info");
+  const [workflow, setWorkflow] = useState<WorkflowId>(() => WORKFLOW_IDS.find((id) => id === params.get("tab")) ?? "info");
   const [id, setId] = useState(() => params.get("name") ?? "");
+  const [lookUpAtOnce] = useState(() => params.get("run") === "1");
 
-  const header = <PageHeader title="Contacts" description="Manage contacts." />;
+  const workflows = [
+    { id: "info", label: t("contacts.tabs.info") },
+    { id: "check", label: t("contacts.tabs.check") },
+    { id: "create", label: t("contacts.tabs.create") },
+    { id: "change", label: t("contacts.tabs.change") },
+    { id: "transfer", label: t("contacts.tabs.transfer") },
+    { id: "delete", label: t("contacts.tabs.delete") },
+  ] as const;
+  const descriptions: Record<WorkflowId, string> = {
+    info: t("contacts.tabs.infoDescription"),
+    check: t("contacts.tabs.checkDescription"),
+    create: t("contacts.tabs.createDescription"),
+    change: t("contacts.tabs.changeDescription"),
+    transfer: t("contacts.tabs.transferDescription"),
+    delete: t("contacts.tabs.deleteDescription"),
+  };
+  const header = <PageHeader title={t("contacts.page.title")} description={t("contacts.page.description")} />;
 
   if (discovery.status === "not-started") {
     return (
       <>
         {header}
-        <EmptyState
-          title="Connect to a server first"
-          action={
-            <Link to="/connection" className={buttonVariants({ variant: "secondary" })}>
-              Set up a connection
-            </Link>
-          }
-        >
-          What a server offers is only known after its capabilities have been read. This screen stays empty until then.
-        </EmptyState>
+        <NotConnected />
       </>
     );
   }
@@ -65,7 +57,7 @@ export function ContactsPage() {
     return (
       <>
         {header}
-        <Callout tone="info" title="Reading the capabilities of the server" />
+        <Callout tone="info" title={t("contacts.page.readingCapabilities")} />
       </>
     );
   }
@@ -73,12 +65,12 @@ export function ContactsPage() {
     return (
       <>
         {header}
-        <Callout tone="warning" title={discovery.status === "failed" ? "The capabilities of the server could not be read" : support !== "offered" ? "This server does not offer contacts" : "There is no connection"}>
+        <Callout tone="warning" title={discovery.status === "failed" ? t("contacts.page.capabilitiesFailed") : support !== "offered" ? t("contacts.page.notOffered") : t("contacts.page.noConnection")}>
           {discovery.status === "failed"
             ? discovery.error.message
             : support !== "offered"
-              ? "Its discovery document does not list contact. Nothing on this screen can work against it."
-              : "Set up a connection first."}
+              ? t("contacts.page.notOfferedDescription")
+              : t("contacts.page.connectionRequired")}
         </Callout>
       </>
     );
@@ -86,7 +78,7 @@ export function ContactsPage() {
 
   const panelProps = { id, onIdChange: setId };
   const panels: Record<WorkflowId, ReactNode> = {
-    info: <InfoPanel {...panelProps} />,
+    info: <InfoPanel {...panelProps} startNow={lookUpAtOnce} />,
     check: <CheckPanel {...panelProps} onCreate={() => setWorkflow("create")} />,
     create: <CreatePanel {...panelProps} />,
     change: <ChangePanel {...panelProps} />,
@@ -97,7 +89,7 @@ export function ContactsPage() {
   return (
     <>
       {header}
-      <WorkflowTabs label="What to do with a contact" workflows={WORKFLOWS} descriptions={DESCRIPTIONS} panels={panels} selected={workflow} onSelect={setWorkflow} />
+      <WorkflowTabs label={t("contacts.tabs.label")} workflows={workflows} descriptions={descriptions} panels={panels} selected={workflow} onSelect={setWorkflow} />
     </>
   );
 }

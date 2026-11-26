@@ -1,4 +1,5 @@
 import type { Availability, Contact, ContactCreate, TransferProcess } from "@/rpp/core/types/objects";
+import { t } from "@/i18n";
 import type { PatchOperation } from "@/rpp/operations/patch";
 import { invalidRequest } from "@/rpp/operations/paths";
 import type { RppClient } from "@/rpp/operations/RppClient";
@@ -8,7 +9,7 @@ import { cardOf, type ContactData, type PostalMode } from "./contactCard";
 /** Whitespace around the identifier is dropped; nothing else is changed. */
 export function parseContactId(input: string): string {
   const id = input.trim();
-  if (id === "") throw invalidRequest("Enter a contact identifier");
+  if (id === "") throw invalidRequest(t("contacts.errors.enterIdentifier"));
   return id;
 }
 
@@ -41,7 +42,7 @@ export function createContactWorkflows(client: RppClient) {
   const { contacts } = client;
   const transferOf = () => {
     const operations = contacts.processes.transfer;
-    if (!operations) throw invalidRequest("Contacts have no transfer process");
+    if (!operations) throw invalidRequest(t("contacts.errors.noTransferProcess"));
     return operations;
   };
   const typed = async <T>(result: Promise<OperationSuccess<unknown>>) => (await result) as OperationSuccess<T>;

@@ -1,3 +1,4 @@
+import { t } from "@/i18n";
 import { tryParseDomainName } from "@/application/domains/domainWorkflows";
 import { ConfirmAction } from "../shared/ConfirmAction";
 import { useDomainStore } from "./domainCache";
@@ -23,18 +24,18 @@ export function DeletePanel({ name, onNameChange }: PanelProps) {
           <ConfirmAction
             destructive
             disabled={!tryParseDomainName(name)}
-            trigger="Delete this domain"
-            title={`Delete ${target}?`}
-            confirmLabel={`Delete ${target}`}
+            trigger={t("domains.delete.trigger")}
+            title={t("domains.delete.title", { name: target })}
+            confirmLabel={t("domains.delete.confirm", { name: target })}
             expected={target}
             pending={remove.pending}
             onConfirm={() => remove.start(target)}
           >
-            The registry is asked to delete <code>{target}</code>. Only the sponsoring registrar may do this.
+            {t("domains.delete.explanation")}<code>{target}</code>{t("domains.delete.explanationEnd")}
           </ConfirmAction>
         </div>
       </div>
-      <OperationOutcome operation={remove} success={`Deleted ${remove.variables ?? "the domain"}`} />
+      <OperationOutcome operation={remove} success={t("domains.delete.success", { name: remove.variables ?? t("domains.name.generic") })} />
     </div>
   );
 }

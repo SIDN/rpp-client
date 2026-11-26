@@ -1,4 +1,5 @@
 import { isAscii, toALabel } from "@/rpp/core/idn";
+import { t } from "@/i18n";
 import type { Availability, Host, HostCreate } from "@/rpp/core/types/objects";
 import type { PatchOperation } from "@/rpp/operations/patch";
 import { invalidRequest } from "@/rpp/operations/paths";
@@ -17,9 +18,9 @@ export interface HostRef {
 /** Whitespace around the name is dropped; nothing else is changed. A name without an A-label form is refused. */
 export function parseHostName(input: string): HostRef {
   const typed = input.trim();
-  if (typed === "") throw invalidRequest("Enter a host name");
+  if (typed === "") throw invalidRequest(t("hosts.errors.enterName"));
   const name = toALabel(typed);
-  if (name === undefined || name === "") throw invalidRequest(`${typed} cannot be converted to an A-label, so it cannot be a host name`);
+  if (name === undefined || name === "") throw invalidRequest(t("hosts.errors.invalidName", { name: typed }));
   return { name, unicode: isAscii(typed) ? undefined : typed };
 }
 
@@ -43,7 +44,7 @@ export function createBody(input: CreateHostInput): HostCreate {
   const ref = parseHostName(input.name);
   const addresses = cleanAddresses(input.addresses ?? []);
   for (const address of addresses) {
-    if (ipVersionOf(address) === undefined) throw invalidRequest(`${address} is not an IPv4 or IPv6 address`);
+    if (ipVersionOf(address) === undefined) throw invalidRequest(t("hosts.errors.invalidAddress", { address }));
   }
   return {
     "@type": "host",

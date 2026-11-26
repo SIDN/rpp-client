@@ -1,5 +1,6 @@
 import { useRef, type KeyboardEvent, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { t } from "@/i18n";
 
 /** Tabs that each hold a workflow. Every panel stays mounted, so a form and its result survive a visit to another tab. */
 export function WorkflowTabs<Id extends string>({
@@ -55,7 +56,7 @@ export function WorkflowTabs<Id extends string>({
                 active ? "border-accent text-foreground" : "border-transparent text-muted-foreground hover:text-foreground",
               )}
             >
-              {item.label}
+              {t(item.label)}
             </button>
           );
         })}
@@ -69,7 +70,7 @@ export function WorkflowTabs<Id extends string>({
           hidden={item.id !== selected}
           className="flex flex-col gap-6 pt-6"
         >
-          <p className="max-w-[62ch] text-muted-foreground">{descriptions[item.id]}</p>
+          <p className="max-w-[62ch] text-muted-foreground">{t(descriptions[item.id])}</p>
           {panels[item.id]}
         </div>
       ))}

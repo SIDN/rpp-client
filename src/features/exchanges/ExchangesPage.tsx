@@ -2,14 +2,14 @@ import { useState, useSyncExternalStore, type ReactNode } from "react";
 import { Trash2 } from "lucide-react";
 import { useConnection } from "@/app/connection-context";
 import { EmptyState, PageHeader, Section } from "@/components/common/layout";
+import { NotConnected } from "@/components/common/NotConnected";
 import { ResultCodeChip } from "@/components/protocol/protocol-badges";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Callout } from "@/components/ui/callout";
 import { Field, Input } from "@/components/ui/field";
-import { buttonVariants } from "@/components/ui/button-variants";
+import { t } from "@/i18n";
 import { cn } from "@/lib/utils";
-import { Link } from "react-router-dom";
 import { REDACTED } from "@/rpp/client/redaction";
 import type { ExchangeLog, ExchangeRecord } from "@/rpp/client/diagnostics";
 import { filterExchanges, formatBody, summarize } from "./exchangeView";
@@ -37,17 +37,8 @@ export function ExchangesPage() {
   if (!session) {
     return (
       <>
-        <PageHeader title="Exchanges" description="Every request and response of this session, with secrets removed." />
-        <EmptyState
-          title="Connect to a server first"
-          action={
-            <Link to="/connection" className={buttonVariants({ variant: "secondary" })}>
-              Set up a connection
-            </Link>
-          }
-        >
-          Exchanges are recorded per connection, so there is nothing to show before one exists.
-        </EmptyState>
+        <PageHeader title={t("exchanges.page.title")} description={t("exchanges.page.descriptionDisconnected")} />
+        <NotConnected />
       </>
     );
   }
@@ -58,32 +49,34 @@ export function ExchangesPage() {
   return (
     <>
       <PageHeader
-        title="Exchanges"
-        description="Every request and response of this session, newest first. Credentials and secret values are replaced before they are recorded."
+        title={t("exchanges.page.title")}
+        description={t("exchanges.page.description")}
         actions={
           <Button variant="secondary" size="sm" disabled={records.length === 0} onClick={() => session.exchanges.clear()}>
             <Trash2 aria-hidden />
-            Clear
+            {t("exchanges.clear")}
           </Button>
         }
       />
 
       {records.length === 0 ? (
-        <EmptyState title="Nothing has been sent yet">
-          The discovery request that read the capabilities is recorded as soon as it has been made. Use the registry screens to see more.
+        <EmptyState title={t("exchanges.empty.title")}>
+          {t("exchanges.empty.description")}
         </EmptyState>
       ) : (
         <div className="grid gap-8 lg:grid-cols-[minmax(18rem,26rem)_minmax(0,1fr)]">
           <div className="flex min-w-0 flex-col gap-3">
-            <Field label="Filter" hint="Method, path, status, result code or transaction id.">
+            <Field label={t("exchanges.filter.label")} hint={t("exchanges.filter.hint")}>
               {(control) => (
                 <Input type="search" value={query} onChange={(event) => setQuery(event.target.value)} {...control} />
               )}
             </Field>
             <p className="text-sm text-muted-foreground" role="status">
-              {visible.length === records.length ? `${records.length} exchange(s)` : `${visible.length} of ${records.length} exchange(s)`}
+              {visible.length === records.length
+                ? t("exchanges.count", { count: records.length })
+                : t("exchanges.countFiltered", { count: records.length, visible: visible.length, total: records.length })}
             </p>
-            <ul aria-label="Exchanges" className="divide-y divide-border border-y border-border">
+            <ul aria-label={t("exchanges.page.title")} className="divide-y divide-border border-y border-border">
               {visible.map((record) => (
                 <li key={record.id}>
                   <ExchangeRow record={record} current={record.id === selected?.id} onSelect={() => setSelectedId(record.id)} />
@@ -96,7 +89,7 @@ export function ExchangesPage() {
             {selected ? (
               <ExchangeDetail record={selected} />
             ) : (
-              <EmptyState title="No exchange matches the filter" />
+              <EmptyState title={t("exchanges.empty.noMatch")} />
             )}
           </div>
         </div>
@@ -128,7 +121,7 @@ function ExchangeRow({ record, current, onSelect }: { record: ExchangeRecord; cu
   );
 }
 
-function ExchangeDetail({ record }: { record: ExchangeRecord }) {
+export function ExchangeDetail({ record }: { record: ExchangeRecord }) {
   const summary = summarize(record);
   const { request, outcome } = record;
   const response = outcome.kind === "response" ? outcome : undefined;
@@ -148,44 +141,44 @@ function ExchangeDetail({ record }: { record: ExchangeRecord }) {
           {summary.resultCode !== undefined && <ResultCodeChip code={summary.resultCode} />}
         </div>
         <dl className="mt-2 grid grid-cols-[max-content_minmax(0,1fr)] gap-x-6 gap-y-1 text-sm">
-          <Term name="Started">{new Date(record.startedAt).toString()}</Term>
-          <Term name="Duration">{duration(record.durationMs)}</Term>
-          <Term name="Address">
+          <Term name={t("exchanges.detail.started")}>{new Date(record.startedAt).toString()}</Term>
+          <Term name={t("exchanges.detail.duration")}>{duration(record.durationMs)}</Term>
+          <Term name={t("exchanges.detail.address")}>
             <code className="break-all">{request.url}</code>
           </Term>
           <Term name="RPP-Cltrid">
-            <code>{request.headers["rpp-cltrid"] ?? "none"}</code>
+            <code>{request.headers["rpp-cltrid"] ?? t("exchanges.detail.none")}</code>
           </Term>
           {response && (
             <Term name="RPP-Svtrid">
-              <code>{serverTransactionId ?? "none"}</code>
+              <code>{serverTransactionId ?? t("exchanges.detail.none")}</code>
             </Term>
           )}
-          <Term name="Exchange">
+          <Term name={t("exchanges.detail.exchange")}>
             <code>{record.id}</code>
           </Term>
         </dl>
       </div>
 
-      <Section id="request" title="Request">
-        <HeadersTable label="Request headers" headers={request.headers} />
-        <Body label="Request body" text={request.body} emptyText="The request has no body." />
+      <Section id="request" title={t("exchanges.detail.request")}>
+        <HeadersTable label={t("exchanges.detail.requestHeaders")} headers={request.headers} />
+        <Body label={t("exchanges.detail.requestBody")} text={request.body} emptyText={t("exchanges.detail.requestBodyEmpty")} />
       </Section>
 
-      <Section id="response" title="Response">
+      <Section id="response" title={t("exchanges.detail.response")}>
         {outcome.kind === "error" ? (
-          <Callout tone="danger" title={`No response: ${outcome.errorKind}`}>
+          <Callout tone="danger" title={t("exchanges.detail.noResponse", { errorKind: outcome.errorKind })}>
             {outcome.message}
           </Callout>
         ) : (
           <>
             {outcome.redirected && (
-              <Callout tone="warning" title="The request was redirected">
-                The answer came from <code className="break-all">{outcome.url}</code>.
+              <Callout tone="warning" title={t("exchanges.detail.redirected")}>
+                {t("exchanges.detail.redirectedPrefix")}<code className="break-all">{outcome.url}</code>{t("exchanges.detail.redirectedSuffix")}
               </Callout>
             )}
-            <HeadersTable label="Response headers" headers={outcome.headers} />
-            <Body label="Response body" text={outcome.body} truncated={outcome.bodyTruncated} emptyText="The response has no body." />
+            <HeadersTable label={t("exchanges.detail.responseHeaders")} headers={outcome.headers} />
+            <Body label={t("exchanges.detail.responseBody")} text={outcome.body} truncated={outcome.bodyTruncated} emptyText={t("exchanges.detail.responseBodyEmpty")} />
           </>
         )}
       </Section>
@@ -204,14 +197,14 @@ function Term({ name, children }: { name: string; children: ReactNode }) {
 
 function HeadersTable({ label, headers }: { label: string; headers: Record<string, string> }) {
   const entries = Object.entries(headers);
-  if (entries.length === 0) return <p className="text-sm text-muted-foreground">No headers.</p>;
+  if (entries.length === 0) return <p className="text-sm text-muted-foreground">{t("exchanges.detail.noHeaders")}</p>;
   return (
     <table className="w-full table-fixed border-y border-border text-sm">
       <caption className="sr-only">{label}</caption>
       <thead className="sr-only">
         <tr>
-          <th scope="col">Name</th>
-          <th scope="col">Value</th>
+          <th scope="col">{t("exchanges.detail.name")}</th>
+          <th scope="col">{t("exchanges.detail.value")}</th>
         </tr>
       </thead>
       <tbody className="divide-y divide-border">
@@ -236,13 +229,13 @@ function Body({ label, text, truncated = false, emptyText }: { label: string; te
   return (
     <div className="flex flex-col gap-2">
       {truncated && (
-        <Callout tone="warning" title="The body is cut off">
-          Only the first part of the body was kept for this view.
+        <Callout tone="warning" title={t("exchanges.detail.bodyTruncated")}>
+          {t("exchanges.detail.bodyTruncatedDescription")}
         </Callout>
       )}
       <pre
         tabIndex={0}
-        aria-label={body.formatted ? `${label}, formatted` : label}
+        aria-label={body.formatted ? t("exchanges.detail.formattedBody", { label }) : label}
         className="max-h-[28rem] overflow-auto rounded-md border border-border bg-muted/50 p-3 font-mono text-xs"
       >
         {body.text}

@@ -1,8 +1,8 @@
 import { FormProvider, useForm, useFormContext, useWatch } from "react-hook-form";
+import { t } from "@/i18n";
 import type { RestoreReportInput } from "@/application/domains/domainWorkflows";
 import { DefinitionList, DefinitionRow, Nothing } from "@/components/common/definition";
 import { Badge } from "@/components/ui/badge";
-import { Callout } from "@/components/ui/callout";
 import { Choice } from "@/components/ui/choice";
 import { Field, Input } from "@/components/ui/field";
 import type { RestoreProcess } from "@/rpp/core/types/objects";
@@ -11,6 +11,7 @@ import { reportOf, validateReport, type RestoreReportValues } from "./formValues
 import { OperationOutcome } from "../shared/OperationOutcome";
 import { NameField, type PanelProps } from "./parts";
 import { useDomainWorkflows } from "./useDomainWorkflows";
+import { Timestamp } from "../shared/objectParts";
 import { SubmitButton } from "../shared/SubmitButton";
 import { useOperation } from "../shared/useOperation";
 
@@ -51,16 +52,43 @@ function ReportFields() {
   );
   return (
     <fieldset className="flex flex-col gap-4 border-l-2 border-border pl-5">
-      <legend className="mb-1 font-medium">Restore report</legend>
-      {text("preData", "Registration data before the delete", "The data of the domain as it was before it was deleted.", "textarea")}
-      {text("postData", "Registration data after the restore", "The data the domain has now.", "textarea")}
-      {text("deleteTime", "Deleted at", "In your time zone.", "datetime-local")}
-      {text("restoreTime", "Restore asked at", "In your time zone.", "datetime-local")}
-      {text("restoreReason", "Reason for the restore", undefined, "textarea")}
-      {text("statement1", "First statement", "RFC 3915 asks the registrar for two statements. They are yours to make.", "textarea")}
-      {text("statement2", "Second statement", undefined, "textarea")}
-      {text("other", "Anything else (optional)", undefined, "textarea")}
+      <legend className="mb-1 font-medium">{t("domains.restore.reportLegend")}</legend>
+      {text("preData", t("domains.restore.preData"), t("domains.restore.preDataHint"), "textarea")}
+      {text("postData", t("domains.restore.postData"), t("domains.restore.postDataHint"), "textarea")}
+      {text("deleteTime", t("domains.restore.deletedAt"), t("domains.restore.localTime"), "datetime-local")}
+      {text("restoreTime", t("domains.restore.askedAt"), t("domains.restore.localTime"), "datetime-local")}
+      {text("restoreReason", t("domains.restore.reason"), undefined, "textarea")}
+      {text("statement1", t("domains.restore.firstStatement"), t("domains.restore.statementsHint"), "textarea")}
+      {text("statement2", t("domains.restore.secondStatement"), undefined, "textarea")}
+      {text("other", t("domains.restore.otherOptional"), undefined, "textarea")}
     </fieldset>
+  );
+}
+
+/** The report the registry took, as text: it is sent, so it is no longer there to edit. */
+function SentReport({ report }: { report: RestoreReportInput }) {
+  const text = (value: string | undefined) => (value ? <span className="whitespace-pre-wrap">{value}</span> : <Nothing>{t("domains.restore.notGiven")}</Nothing>);
+  return (
+    <section aria-label={t("domains.restore.reportSentAria")} className="flex flex-col gap-2">
+      <h3 className="font-medium">{t("domains.restore.reportSent")}</h3>
+      <DefinitionList>
+        <DefinitionRow term={t("domains.restore.preData")}>{text(report.preData)}</DefinitionRow>
+        <DefinitionRow term={t("domains.restore.postData")}>{text(report.postData)}</DefinitionRow>
+        <DefinitionRow term={t("domains.restore.deletedAt")}>
+          <Timestamp value={report.deleteTime} />
+        </DefinitionRow>
+        <DefinitionRow term={t("domains.restore.askedAt")}>
+          <Timestamp value={report.restoreTime} />
+        </DefinitionRow>
+        <DefinitionRow term={t("domains.restore.reason")}>{text(report.restoreReason)}</DefinitionRow>
+        {report.statements.map((statement, index) => (
+          <DefinitionRow key={index} term={index === 0 ? t("domains.restore.firstStatement") : index === 1 ? t("domains.restore.secondStatement") : t("domains.restore.statementNumber", { number: index + 1 })}>
+            {text(statement)}
+          </DefinitionRow>
+        ))}
+        {report.other && <DefinitionRow term={t("domains.restore.anythingElse")}>{text(report.other)}</DefinitionRow>}
+      </DefinitionList>
+    </section>
   );
 }
 
@@ -68,17 +96,17 @@ const STATUS_TONE = { restored: "success", pendingRestore: "warning", rgpPending
 
 function RestoreResult({ process }: { process: RestoreProcess }) {
   const tone = (STATUS_TONE as Record<string, "success" | "warning" | "danger">)[process.restoreStatus] ?? "neutral";
-  const when = (value: string | undefined) => (value ? <code>{value}</code> : <Nothing>Not given</Nothing>);
+  const when = (value: string | undefined) => (value ? <code>{value}</code> : <Nothing>{t("domains.restore.notGiven")}</Nothing>);
   return (
     <DefinitionList>
-      <DefinitionRow term="Restore status">
+      <DefinitionRow term={t("domains.restore.status")}>
         <Badge tone={tone} dot>
           <code>{process.restoreStatus}</code>
         </Badge>
       </DefinitionRow>
-      <DefinitionRow term="Requested">{when(process.requestDate)}</DefinitionRow>
-      <DefinitionRow term="Report received">{when(process.reportDate)}</DefinitionRow>
-      <DefinitionRow term="Report due by">{when(process.reportDueDate)}</DefinitionRow>
+      <DefinitionRow term={t("domains.restore.requested")}>{when(process.requestDate)}</DefinitionRow>
+      <DefinitionRow term={t("domains.restore.reportReceived")}>{when(process.reportDate)}</DefinitionRow>
+      <DefinitionRow term={t("domains.restore.reportDue")}>{when(process.reportDueDate)}</DefinitionRow>
     </DefinitionList>
   );
 }
@@ -117,32 +145,37 @@ export function RestorePanel({ name, onNameChange }: PanelProps) {
     restore.start(values.action === "request" ? { kind: "request", name, report } : { kind: "report", name, report });
   });
 
+  const sent = restore.variables?.kind === "status" ? undefined : restore.variables?.report;
+  // A restore already taken for this domain is not asked for again.
+  const requested = restore.result !== undefined && restore.variables?.kind === "request" && restore.variables.name === name;
+  const showSent = sent !== undefined && restore.result !== undefined && (action === "report" || (action === "request" && withReport));
+
   return (
     <div className="flex flex-col gap-6">
       <FormProvider {...form}>
         <form onSubmit={submit} noValidate className="flex max-w-xl flex-col gap-6">
           <NameField name={name} onNameChange={onNameChange} />
-          <Callout tone="info" title="A domain can be restored while it is in its redemption period">
-            Restoring takes two steps at most registries: ask for the restore, then send a report that says why. Check the status to see which step is next.
-          </Callout>
           <fieldset className="flex flex-col gap-3">
-            <legend className="mb-1 font-medium">What to do</legend>
-            <Choice type="radio" value="request" label="Ask for the domain to be restored" {...form.register("action")} />
-            <Choice type="radio" value="report" label="Send the restore report" hint="For a restore that is waiting for its report." {...form.register("action")} />
-            <Choice type="radio" value="status" label="Check the restore status" {...form.register("action")} />
+            <legend className="mb-1 font-medium">{t("domains.restore.whatToDo")}</legend>
+            <Choice type="radio" value="request" label={t("domains.restore.ask")} {...form.register("action")} />
+            <Choice type="radio" value="report" label={t("domains.restore.sendReport")} hint={t("domains.restore.waitingHint")} {...form.register("action")} />
+            <Choice type="radio" value="status" label={t("domains.restore.checkStatus")} {...form.register("action")} />
           </fieldset>
           {action === "request" && (
-            <Choice type="checkbox" label="Send the report with the request" hint="Only if the registry takes the report in the same request." {...form.register("withReport")} />
+            <Choice type="checkbox" label={t("domains.restore.withReport")} hint={t("domains.restore.withReportHint")} {...form.register("withReport")} />
           )}
-          {(action === "report" || (action === "request" && withReport)) && <ReportFields />}
-          <div>
-            <SubmitButton pending={restore.pending}>
-              {action === "request" ? "Ask for a restore" : action === "report" ? "Send the report" : "Check the status"}
-            </SubmitButton>
-          </div>
+          {showSent && <SentReport report={sent} />}
+          {!showSent && (action === "report" || (action === "request" && withReport)) && <ReportFields />}
+          {!showSent && (
+            <div>
+              <SubmitButton pending={restore.pending} disabled={action === "request" && requested}>
+                {action === "request" ? t("domains.restore.submitRequest") : action === "report" ? t("domains.restore.submitReport") : t("domains.restore.submitStatus")}
+              </SubmitButton>
+            </div>
+          )}
         </form>
       </FormProvider>
-      <OperationOutcome operation={restore} success={restore.variables?.kind === "status" ? "The registry reported the restore status" : "The registry took the restore"}>
+      <OperationOutcome operation={restore} success={restore.variables?.kind === "status" ? t("domains.restore.statusSuccess") : t("domains.restore.requestSuccess")}>
         {(process) => <RestoreResult process={process} />}
       </OperationOutcome>
     </div>

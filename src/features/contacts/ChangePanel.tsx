@@ -1,4 +1,5 @@
 import { FormProvider, useForm, useWatch } from "react-hook-form";
+import { t } from "@/i18n";
 import { buildContactPatch, CONTACT_CLIENT_STATUSES, dataOf, describeContactOperation, editOf, type ContactEdit, type PostalMode } from "@/application/contacts/contactCard";
 import { Callout } from "@/components/ui/callout";
 import { Choice } from "@/components/ui/choice";
@@ -61,36 +62,36 @@ function ChangeForm({ contact, change, mode, authInfo, note }: { contact: Contac
         className="flex max-w-xl flex-col gap-8"
       >
         <h3>
-          Change <code>{contact.id}</code>
+          {t("contacts.change.heading")} <code>{contact.id}</code>
         </h3>
         <SchemaNote note={note} />
         <ContactFields addresses={ADDRESSES[mode]} />
 
         <fieldset className="flex flex-col gap-3">
-          <legend className="mb-1 text-sm font-medium">Locks set by you</legend>
+          <legend className="mb-1 text-sm font-medium">{t("contacts.change.locksTitle")}</legend>
           {CONTACT_CLIENT_STATUSES.map((label) => (
             <Choice key={label} type="checkbox" value={label} label={<code>{label}</code>} {...form.register("clientStatuses")} />
           ))}
-          <p className="text-sm text-muted-foreground">Statuses the registry sets itself cannot be changed here.</p>
+          <p className="text-sm text-muted-foreground">{t("contacts.change.locksDescription")}</p>
         </fieldset>
 
         {authInfo && (
           <fieldset className="flex flex-col gap-3">
-            <legend className="mb-1 text-sm font-medium">Transfer password</legend>
-            <Choice type="radio" value="keep" label="Leave as it is" {...form.register("authAction")} />
-            <Choice type="radio" value="set" label="Set a new one" {...form.register("authAction")} />
+            <legend className="mb-1 text-sm font-medium">{t("contacts.change.transferPassword")}</legend>
+            <Choice type="radio" value="keep" label={t("contacts.change.authInfoKeep")} {...form.register("authAction")} />
+            <Choice type="radio" value="set" label={t("contacts.change.authInfoSet")} {...form.register("authAction")} />
             {values.authAction === "set" && (
-              <Field label="New transfer password" hint="A contact keeps a transfer password once it has one: it can be replaced, not removed.">
+              <Field label={t("contacts.change.newAuthInfo")} hint={t("contacts.change.newAuthInfoHint")}>
                 {(control) => <Input {...control} type="password" autoComplete="off" className="max-w-64" {...form.register("authValue")} />}
               </Field>
             )}
           </fieldset>
         )}
 
-        <section aria-label="Changes to send" className="flex flex-col gap-2 rounded-md border border-border p-4">
-          <h4 className="font-semibold">Changes to send</h4>
+        <section aria-label={t("contacts.change.changesLabel")} className="flex flex-col gap-2 rounded-md border border-border p-4">
+          <h4 className="font-semibold">{t("contacts.change.changesTitle")}</h4>
           {operations.length === 0 ? (
-            <p className="text-muted-foreground">Nothing has been changed yet.</p>
+            <p className="text-muted-foreground">{t("contacts.change.nothingChanged")}</p>
           ) : (
             <ul className="list-disc pl-5">
               {operations.map((operation, index) => (
@@ -99,13 +100,13 @@ function ChangeForm({ contact, change, mode, authInfo, note }: { contact: Contac
             </ul>
           )}
           <p className="text-sm text-muted-foreground">
-            Only these changes are sent, as one partial update that the registry carries out completely or not at all. The registry decides which of them it allows, and the kind and the localized name and organisation are not changed here.
+            {t("contacts.change.changesDescription")}
           </p>
         </section>
 
         <div>
           <SubmitButton pending={change.pending} disabled={operations.length === 0}>
-            Save changes
+            {t("contacts.change.submit")}
           </SubmitButton>
         </div>
       </form>
@@ -145,23 +146,23 @@ export function ChangePanel({ id, onIdChange }: PanelProps) {
         className="flex max-w-xl flex-col gap-5"
       >
         <IdField id={id} onIdChange={onIdChange} />
-        <p className="text-sm text-muted-foreground">What changes is worked out from what the registry holds now, so the contact is loaded first.</p>
+        <p className="text-sm text-muted-foreground">{t("contacts.change.loadDescription")}</p>
         <div>
-          <SubmitButton pending={load.pending}>{contact ? "Load again" : "Load the contact"}</SubmitButton>
+          <SubmitButton pending={load.pending}>{contact ? t("contacts.change.loadAgain") : t("contacts.change.loadContact")}</SubmitButton>
         </div>
       </form>
-      <OperationOutcome operation={load} success="Loaded the current data" />
+      <OperationOutcome operation={load} success={t("contacts.change.loadedSuccess")} />
 
       {!contact && !load.pending && !load.failure && !load.cancelled && !load.result && (
-        <Callout tone="info" title="Load the contact to change it">
-          The form appears here with the name, address and ways to reach the contact as they are now.
+        <Callout tone="info" title={t("contacts.change.loadPromptTitle")}>
+          {t("contacts.change.loadPromptDescription")}
         </Callout>
       )}
       {contact && shape.status === "loading" && <SchemaLoading />}
       {contact && shape.status === "ready" && (
         <ChangeForm key={`${mode}${shape.authInfo}${JSON.stringify(editOf(contact, mode))}`} contact={contact} change={change} mode={mode} authInfo={shape.authInfo} note={shape.note} />
       )}
-      <OperationOutcome operation={change} success={`Changed ${change.variables?.id ?? "the contact"}`}>
+      <OperationOutcome operation={change} success={t("contacts.change.success", { contact: change.variables?.id ?? "the contact" })}>
         {(changed) => <ContactDetails contact={changed} />}
       </OperationOutcome>
     </div>

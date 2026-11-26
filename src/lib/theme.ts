@@ -1,3 +1,5 @@
+import { DEFAULT_PALETTE_ID, isPaletteId } from "./palettes";
+
 export type ThemePreference = "system" | "light" | "dark";
 
 const STORAGE_KEY = "rpp-client.theme";
@@ -21,9 +23,39 @@ function readStored(): ThemePreference {
 export const isDark = (value: ThemePreference, systemPrefersDark: boolean): boolean =>
   value === "dark" || (value === "system" && systemPrefersDark);
 
+const PALETTE_KEY = "rpp-client.palette";
+let palette: string | undefined;
+
+function readStoredPalette(): string {
+  try {
+    const stored = localStorage.getItem(PALETTE_KEY);
+    return isPaletteId(stored) ? stored : DEFAULT_PALETTE_ID;
+  } catch {
+    return DEFAULT_PALETTE_ID;
+  }
+}
+
 function apply(): void {
   const dark = isDark(getThemePreference(), darkQuery()?.matches ?? false);
   document.documentElement.classList.toggle("dark", dark);
+  document.documentElement.dataset.palette = getPalette();
+}
+
+export function getPalette(): string {
+  palette ??= readStoredPalette();
+  return palette;
+}
+
+export function setPalette(id: string): void {
+  if (!isPaletteId(id)) return;
+  palette = id;
+  try {
+    localStorage.setItem(PALETTE_KEY, id);
+  } catch {
+    // The choice still holds for this page view.
+  }
+  apply();
+  listeners.forEach((listener) => listener());
 }
 
 export function getThemePreference(): ThemePreference {

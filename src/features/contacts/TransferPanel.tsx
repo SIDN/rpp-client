@@ -1,4 +1,5 @@
 import { FormProvider, useForm, useWatch } from "react-hook-form";
+import { t } from "@/i18n";
 import { Choice } from "@/components/ui/choice";
 import { Field, Input } from "@/components/ui/field";
 import type { OperationSuccess } from "@/rpp/operations/types";
@@ -19,13 +20,15 @@ interface TransferValues {
 
 type TransferCommand = { kind: "request"; id: string; authInfo: string } | { kind: Exclude<TransferAction, "request">; id: string };
 
-const SUCCESS: Record<TransferAction, string> = {
-  request: "The registry took the transfer request",
-  status: "The registry reported the transfer status",
-  cancel: "The transfer request was withdrawn",
-  approve: "The transfer was approved",
-  reject: "The transfer was rejected",
-};
+function transferSuccess(action: TransferAction): string {
+  switch (action) {
+    case "request": return t("contacts.transfer.success.request");
+    case "status": return t("contacts.transfer.success.status");
+    case "cancel": return t("contacts.transfer.success.cancel");
+    case "approve": return t("contacts.transfer.success.approve");
+    case "reject": return t("contacts.transfer.success.reject");
+  }
+}
 
 export function TransferPanel({ id, onIdChange }: PanelProps) {
   const workflows = useContactWorkflows();
@@ -56,7 +59,7 @@ export function TransferPanel({ id, onIdChange }: PanelProps) {
 
   const submit = form.handleSubmit((values) => {
     if (values.action === "request") {
-      if (values.authInfo === "") return form.setError("authInfo", { message: "Enter the transfer password of the contact" });
+      if (values.authInfo === "") return form.setError("authInfo", { message: t("contacts.transfer.authInfoRequired") });
       return transfer.start({ kind: "request", id, authInfo: values.authInfo });
     }
     if (values.action === "status") transfer.start({ kind: "status", id });
@@ -68,17 +71,17 @@ export function TransferPanel({ id, onIdChange }: PanelProps) {
         <form onSubmit={submit} noValidate className="flex max-w-xl flex-col gap-6">
           <IdField id={id} onIdChange={onIdChange} />
           <fieldset className="flex flex-col gap-3">
-            <legend className="mb-1 font-medium">What to do</legend>
-            <Choice type="radio" value="request" label="Ask for the contact to be transferred to you" hint="As the gaining registrar, with the transfer password." {...form.register("action")} />
-            <Choice type="radio" value="status" label="Check the transfer status" {...form.register("action")} />
-            <Choice type="radio" value="cancel" label="Withdraw your transfer request" hint="As the registrar that asked for it." {...form.register("action")} />
-            <Choice type="radio" value="approve" label="Approve a transfer away from you" hint="As the sponsoring registrar." {...form.register("action")} />
-            <Choice type="radio" value="reject" label="Reject a transfer away from you" hint="As the sponsoring registrar." {...form.register("action")} />
+            <legend className="mb-1 font-medium">{t("contacts.transfer.actionLegend")}</legend>
+            <Choice type="radio" value="request" label={t("contacts.transfer.requestLabel")} hint={t("contacts.transfer.requestHint")} {...form.register("action")} />
+            <Choice type="radio" value="status" label={t("contacts.transfer.statusLabel")} {...form.register("action")} />
+            <Choice type="radio" value="cancel" label={t("contacts.transfer.cancelLabel")} hint={t("contacts.transfer.cancelHint")} {...form.register("action")} />
+            <Choice type="radio" value="approve" label={t("contacts.transfer.approveLabel")} hint={t("contacts.transfer.sponsoringHint")} {...form.register("action")} />
+            <Choice type="radio" value="reject" label={t("contacts.transfer.rejectLabel")} hint={t("contacts.transfer.sponsoringHint")} {...form.register("action")} />
           </fieldset>
 
           {action === "request" && (
             <div className="border-l-2 border-border pl-5">
-              <Field label="Transfer password" hint="Sent in the RPP-Authorization header, never in the body of the request." error={form.formState.errors.authInfo?.message}>
+              <Field label={t("contacts.transfer.authInfo")} hint={t("contacts.transfer.authInfoHint")} error={form.formState.errors.authInfo?.message}>
                 {(control) => <Input {...control} type="password" autoComplete="off" className="max-w-64" {...form.register("authInfo")} />}
               </Field>
             </div>
@@ -86,7 +89,7 @@ export function TransferPanel({ id, onIdChange }: PanelProps) {
 
           {(action === "request" || action === "status") && (
             <div>
-              <SubmitButton pending={transfer.pending}>{action === "request" ? "Ask for the transfer" : "Check the status"}</SubmitButton>
+              <SubmitButton pending={transfer.pending}>{action === "request" ? t("contacts.transfer.requestSubmit") : t("contacts.transfer.statusSubmit")}</SubmitButton>
             </div>
           )}
         </form>
@@ -95,21 +98,21 @@ export function TransferPanel({ id, onIdChange }: PanelProps) {
       {(action === "cancel" || action === "approve" || action === "reject") && (
         <ConfirmAction
           destructive={action !== "cancel"}
-          trigger={action === "cancel" ? "Withdraw the request" : action === "approve" ? "Approve the transfer" : "Reject the transfer"}
-          title={`${action === "cancel" ? "Withdraw the transfer request for" : action === "approve" ? "Approve the transfer of" : "Reject the transfer of"} ${target}?`}
-          confirmLabel={action === "cancel" ? `Withdraw for ${target}` : action === "approve" ? `Approve for ${target}` : `Reject for ${target}`}
+          trigger={action === "cancel" ? t("contacts.transfer.cancelTrigger") : action === "approve" ? t("contacts.transfer.approveTrigger") : t("contacts.transfer.rejectTrigger")}
+          title={action === "cancel" ? t("contacts.transfer.cancelTitle", { target }) : action === "approve" ? t("contacts.transfer.approveTitle", { target }) : t("contacts.transfer.rejectTitle", { target })}
+          confirmLabel={action === "cancel" ? t("contacts.transfer.cancelConfirm", { target }) : action === "approve" ? t("contacts.transfer.approveConfirm", { target }) : t("contacts.transfer.rejectConfirm", { target })}
           pending={transfer.pending}
           onConfirm={() => transfer.start({ kind: action, id })}
         >
           {action === "approve"
-            ? "The contact moves to the registrar that asked for it. This cannot be undone from here."
+            ? t("contacts.transfer.approveDescription")
             : action === "reject"
-              ? "The registrar that asked for the transfer is refused, and the contact stays with you."
-              : "The transfer request is withdrawn and the contact stays where it is."}
+              ? t("contacts.transfer.rejectDescription")
+              : t("contacts.transfer.cancelDescription")}
         </ConfirmAction>
       )}
 
-      <OperationOutcome operation={transfer} success={SUCCESS[transfer.variables?.kind ?? "status"]}>
+      <OperationOutcome operation={transfer} success={transferSuccess(transfer.variables?.kind ?? "status")}>
         {(data) => <TransferResult data={data} />}
       </OperationOutcome>
     </div>

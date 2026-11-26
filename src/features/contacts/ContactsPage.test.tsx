@@ -66,7 +66,7 @@ const answer = (body: unknown, init: { status?: number; code?: string } = {}) =>
 const snapshotOf = (discovery: DiscoveryState) => (discovery.status === "ready" || discovery.status === "partial" ? discovery.snapshot : undefined);
 
 /** The Preset Schema of the first preset is served as the registry would; `profile` is what constrains `contact.create` in it. */
-function renderPage(responder: Responder, discovery: DiscoveryState = discoveryWith(["contact"]), profile: ContactProfileFixture = "none") {
+function renderPage(responder: Responder, discovery: DiscoveryState = discoveryWith(["contact"]), profile: ContactProfileFixture = "none", entry = "/") {
   const calls: { method: string; path: string; headers: Headers; body: unknown }[] = [];
   const schemaCalls: string[] = [];
   const preset = snapshotOf(discovery)?.presets[0];
@@ -92,7 +92,7 @@ function renderPage(responder: Responder, discovery: DiscoveryState = discoveryW
   });
   render(
     <Providers>
-      <MemoryRouter>
+      <MemoryRouter initialEntries={[entry]}>
         <ConnectionContext.Provider value={{ session, resolvedPreset: resolvePreset(DEFAULT_PRESET_SETTINGS, snapshotOf(discovery)) } as ConnectionApi}>
           <DiscoveryContext.Provider value={discovery}>
             <ContactsPage />
@@ -113,6 +113,22 @@ const openForm = async (name: string) => {
 };
 const typeId = (value: string) => fireEvent.change(panel().getByLabelText("Contact identifier"), { target: { value } });
 const fill = (label: string, value: string) => fireEvent.change(panel().getByLabelText(label), { target: { value } });
+
+describe("a link to a contact", () => {
+  it("opens the info of the contact and asks the registry for it at once", async () => {
+    const { calls } = renderPage(() => answer(CONTACT), discoveryWith(["contact"]), "none", "/contacts?tab=info&name=C-1&run=1");
+    await waitFor(() => expect(calls).toHaveLength(1));
+    expect(calls[0]).toMatchObject({ method: "GET", path: "/contacts/C-1" });
+    expect(panel().getByLabelText("Contact identifier")).toHaveValue("C-1");
+    expect(await panel().findByText("Found C-1")).toBeInTheDocument();
+  });
+
+  it("only fills in the identifier without the run flag", () => {
+    const { calls } = renderPage(() => answer(CONTACT), discoveryWith(["contact"]), "none", "/contacts?tab=info&name=C-1");
+    expect(panel().getByLabelText("Contact identifier")).toHaveValue("C-1");
+    expect(calls).toHaveLength(0);
+  });
+});
 
 describe("contacts screen", () => {
   it("waits for a connection, and does not offer what a server without contacts cannot do", () => {
@@ -333,7 +349,24 @@ describe("under a preset that keeps the postal info in the localization only", (
     expect(panel().queryByText("International address (int)")).toBeNull();
     expect(panel().queryByLabelText("City")).toBeNull();
     expect(panel().getByLabelText("Localized city")).toBeVisible();
-    expect(panel().queryByLabelText("Transfer password")).toBeNull();
+    expect(panel().queryByLabelText("Authorisation Information")).toBeNull();
+  });
+
+  it("shows every localized address of the response with the keys it is held under", async () => {
+    const second = { addr2: { components: [{ kind: "locality", value: "Zwolle" }], countryCode: "NL" } };
+    const contact = structuredClone(LOCALIZED_CONTACT);
+    Object.assign(contact.contactInfo.localizations.und.addresses, second);
+    renderPage(() => answer(contact, { status: 201 }), SIDN(), "localized-only");
+    await openForm("Create");
+    typeId("FO-9");
+    fill("Name", "Jan Jansen");
+    fireEvent.click(panel().getByRole("button", { name: "Create contact" }));
+
+    expect(await panel().findAllByText("und")).toHaveLength(2);
+    expect(panel().queryByText(/localizations\//)).toBeNull();
+    expect(panel().getByText("Arnhem")).toBeVisible();
+    expect(panel().getByText("Zwolle")).toBeVisible();
+    expect(panel().queryByText("Other forms")).toBeNull();
   });
 
   it("sends the name and the address in the localization and nothing of them in the card", async () => {
@@ -384,7 +417,18 @@ describe("under a preset that keeps the postal info in the card only", () => {
     expect(panel().getByLabelText("City")).toBeVisible();
     expect(panel().queryByLabelText("Localized city")).toBeNull();
     expect(panel().queryByText("Localized address (loc)")).toBeNull();
-    expect(panel().getByLabelText("Transfer password")).toBeVisible();
+    expect(panel().getByLabelText("Authorisation Information")).toBeVisible();
+  });
+
+  it("shows the authorisation information only when asked", async () => {
+    renderPage(() => answer(CONTACT, { status: 201 }), discoveryWith(["contact"], "p"), "card-only");
+    await openForm("Create");
+    const field = panel().getByLabelText("Authorisation Information");
+    expect(field).toHaveAttribute("type", "password");
+    fireEvent.click(panel().getByRole("button", { name: "Show" }));
+    expect(field).toHaveAttribute("type", "text");
+    fireEvent.click(panel().getByRole("button", { name: "Hide" }));
+    expect(field).toHaveAttribute("type", "password");
   });
 
   it("offers no choice of address type when a contact is changed", async () => {

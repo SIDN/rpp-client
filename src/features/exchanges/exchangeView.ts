@@ -1,5 +1,6 @@
 import type { ExchangeRecord } from "@/rpp/client/diagnostics";
 import type { Tone } from "@/components/ui/badge-variants";
+import { t } from "@/i18n";
 
 export interface ExchangeSummary {
   method: string;
@@ -24,7 +25,7 @@ export function summarize(record: ExchangeRecord): ExchangeSummary {
   const { outcome, request } = record;
   const base = { method: request.method, target: targetOf(request.url) };
   if (outcome.kind === "error") {
-    return { ...base, outcome: "No response", tone: "danger", resultCode: undefined };
+    return { ...base, outcome: t("exchanges.summary.noResponse"), tone: "danger", resultCode: undefined };
   }
   const tone = outcome.status >= 400 ? "danger" : outcome.status >= 300 ? "warning" : "success";
   return { ...base, outcome: String(outcome.status), tone, resultCode: outcome.headers["rpp-code"] };

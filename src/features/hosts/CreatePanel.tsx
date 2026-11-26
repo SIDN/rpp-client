@@ -1,4 +1,5 @@
 import { FormProvider, useForm } from "react-hook-form";
+import { t } from "@/i18n";
 import { Callout } from "@/components/ui/callout";
 import { OperationOutcome } from "../shared/OperationOutcome";
 import { SubmitButton } from "../shared/SubmitButton";
@@ -27,16 +28,16 @@ export function CreatePanel({ name, onNameChange }: PanelProps) {
       <FormProvider {...form}>
         <form onSubmit={submit} noValidate className="flex max-w-xl flex-col gap-8">
           <NameField name={name} onNameChange={onNameChange} />
-          <AddressFields hint="Give the addresses of a host below a domain of this registry. A host elsewhere has none." />
-          <Callout tone="info" title="What the registry requires varies">
-            Many registries accept addresses only for a host below a domain they hold, and refuse them for any other. If one is refused, the registry says which.
+          <AddressFields hint={t("hosts.create.addressesHint")} />
+          <Callout tone="info" title={t("hosts.create.requirementsVary")}>
+            {t("hosts.create.requirementsDescription")}
           </Callout>
           <div>
-            <SubmitButton pending={create.pending}>Create host</SubmitButton>
+            <SubmitButton pending={create.pending}>{t("hosts.create.submit")}</SubmitButton>
           </div>
         </form>
       </FormProvider>
-      <OperationOutcome operation={create} success={`Created ${create.variables?.name.trim() || "the host"}`}>
+      <OperationOutcome operation={create} success={t("hosts.create.success", { host: create.variables?.name.trim() || "the host" })}>
         {(host) => <HostDetails host={host} />}
       </OperationOutcome>
     </div>

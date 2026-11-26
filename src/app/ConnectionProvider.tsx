@@ -1,8 +1,9 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { resolvePreset } from "@/application/connection/preset";
 import { createSession, type Session } from "@/application/connection/session";
 import { loadSettings } from "@/config/appSettings";
+import { useSettings } from "./settings-context";
 import { autoConnectProfile } from "@/config/defaultConnection";
 import {
   DEFAULT_PRESET_SETTINGS,
@@ -28,11 +29,18 @@ function asDiscoveryError(error: unknown): DiscoveryError {
 /** Holds the active session and reads its capabilities; the rest of the app only sees the resulting state. */
 export function ConnectionProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
+  const { settings } = useSettings();
+  // The transport asks for the timeout on every request, so a change applies to the open connection too.
+  const timeoutSeconds = useRef(settings.requestTimeoutSeconds);
+  useEffect(() => {
+    timeoutSeconds.current = settings.requestTimeoutSeconds;
+  }, [settings.requestTimeoutSeconds]);
+  const timeoutMs = useCallback(() => timeoutSeconds.current * 1000, []);
   // A default bookmark without a password can be connected to when the client starts, if that is chosen.
   const [startup] = useState(() => {
     const profile = autoConnectProfile(loadSettings());
     try {
-      return profile && { profile, session: createSession(profile, undefined) };
+      return profile && { profile, session: createSession(profile, undefined, { timeoutMs }) };
     } catch {
       return undefined;
     }
@@ -70,7 +78,7 @@ export function ConnectionProvider({ children }: { children: ReactNode }) {
       presetSettings,
       resolvedPreset,
       connect(profile: ConnectionProfile, credentials: Credentials | undefined) {
-        const next = createSession(profile, credentials);
+        const next = createSession(profile, credentials, { timeoutMs });
         session?.authentication.clearSession();
         saveProfile(profile);
         setLastProfile(profile);
@@ -92,7 +100,7 @@ export function ConnectionProvider({ children }: { children: ReactNode }) {
         setSession(undefined);
       },
     }),
-    [session, lastProfile, presetSettings, resolvedPreset, queryClient],
+    [session, lastProfile, presetSettings, resolvedPreset, queryClient, timeoutMs],
   );
 
   return (

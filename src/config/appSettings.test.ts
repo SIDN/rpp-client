@@ -29,6 +29,12 @@ describe("app settings", () => {
     expect(loaded).toEqual({ ...DEFAULT_SETTINGS, synthesizeData: true });
   });
 
+  it("waits 5 seconds for a request unless told otherwise, and takes whole seconds from 1 to 300", () => {
+    expect(DEFAULT_SETTINGS.requestTimeoutSeconds).toBe(5);
+    expect(loadSettings(storageWith(JSON.stringify({ requestTimeoutSeconds: 20 }))).requestTimeoutSeconds).toBe(20);
+    for (const bad of [0, 301, 2.5, "9"]) expect(loadSettings(storageWith(JSON.stringify({ requestTimeoutSeconds: bad }))).requestTimeoutSeconds).toBe(5);
+  });
+
   it("saves them, and survives storage that cannot", () => {
     let stored = "";
     saveSettings({ ...DEFAULT_SETTINGS, synthesizeData: true }, { setItem: (_key, value) => { stored = value; } });

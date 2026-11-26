@@ -1,3 +1,4 @@
+import { t } from "@/i18n";
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import type { ProcessView } from "@/application/messages/process";
@@ -10,8 +11,8 @@ import { processLink } from "./processLink";
 export function MessageProcess({ process, objectType, objectId }: { process: ProcessView; objectType: string; objectId: string }) {
   const link = processLink(objectType, objectId, process.kind);
   const rows: { term: string; value: ReactNode }[] = [
-    { term: "Process ID", value: process.id ? <code>{process.id}</code> : <Nothing>Not given</Nothing> },
-    { term: "Type", value: process.type ? <code>{process.type}</code> : <Nothing>Not given</Nothing> },
+    { term: t("messages.process.id"), value: process.id ? <code>{process.id}</code> : <Nothing>{t("messages.value.notGiven")}</Nothing> },
+    { term: t("messages.process.type"), value: process.type ? <code>{process.type}</code> : <Nothing>{t("messages.value.notGiven")}</Nothing> },
     ...process.fields.map((entry) => ({
       term: entry.term,
       value: entry.kind === "time" ? <Timestamp value={entry.value} /> : <code>{entry.value}</code>,
@@ -19,17 +20,17 @@ export function MessageProcess({ process, objectType, objectId }: { process: Pro
   ];
 
   return (
-    <section aria-label="Process" className="flex flex-col gap-2">
+    <section aria-label={t("messages.details.process")} className="flex flex-col gap-2">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-        <h4 className="text-base font-medium">Process</h4>
+        <h4 className="text-base font-medium">{t("messages.details.process")}</h4>
         {link && (
           <Link to={link.to} className={buttonVariants({ variant: "secondary", size: "sm" })}>
-            Open in {link.label}
+            {t("messages.process.openIn", { screen: link.label })}
           </Link>
         )}
       </div>
       <table className="w-full border-collapse text-sm">
-        <caption className="sr-only">Members of the process</caption>
+        <caption className="sr-only">{t("messages.process.caption")}</caption>
         <tbody>
           {rows.map((row) => (
             <tr key={row.term} className="border-t border-border">

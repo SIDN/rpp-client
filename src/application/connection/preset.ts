@@ -2,6 +2,7 @@ import type { PresetSettings } from "@/config/connectionProfile";
 import { buildContentType, buildPresetHeaderValue, PRESET_HEADER, type PresetSignalling } from "@/rpp/client/negotiation";
 import type { CapabilitySnapshot, PresetCapability } from "@/rpp/discovery/capability-types";
 import { defaultPreset, findPreset } from "@/rpp/discovery/capabilities";
+import { t } from "@/i18n";
 
 export interface ResolvedPreset {
   /** What requests carry; undefined when nothing can or should be sent. */
@@ -26,8 +27,8 @@ export function resolvePreset(settings: PresetSettings, snapshot: CapabilitySnap
       ...NOTHING,
       problem:
         settings.selection === "default"
-          ? "The server does not mark exactly one preset as its default, so none is sent. Choose a preset."
-          : `The server does not offer ${settings.selection.id} version ${settings.selection.version}, so no preset is sent.`,
+          ? t("connection.preset.noUniqueDefault")
+          : t("connection.preset.notOfferedProblem", { id: settings.selection.id, version: settings.selection.version }),
     };
   }
 
@@ -35,7 +36,7 @@ export function resolvePreset(settings: PresetSettings, snapshot: CapabilitySnap
   try {
     buildPresetHeaderValue(preset);
   } catch (error) {
-    return { ...NOTHING, chosen, problem: `${(error as Error).message}. No preset is sent.` };
+    return { ...NOTHING, chosen, problem: t("connection.preset.invalidMessage", { message: (error as Error).message }) };
   }
   const sent =
     preset.method === "header"

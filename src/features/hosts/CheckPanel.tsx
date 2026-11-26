@@ -1,5 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { t } from "@/i18n";
 import { OperationOutcome } from "../shared/OperationOutcome";
 import { SubmitButton } from "../shared/SubmitButton";
 import { useOperation } from "../shared/useOperation";
@@ -24,22 +25,22 @@ export function CheckPanel({ name, onNameChange, onCreate }: PanelProps & { onCr
       >
         <NameField name={name} onNameChange={onNameChange} />
         <div>
-          <SubmitButton pending={check.pending}>Check availability</SubmitButton>
+          <SubmitButton pending={check.pending}>{t("hosts.check.submit")}</SubmitButton>
         </div>
       </form>
-      <OperationOutcome operation={check} success="The registry answered">
+      <OperationOutcome operation={check} success={t("hosts.check.success")}>
         {({ available, reason }) => (
           <div className="flex flex-col items-start gap-3">
             <p className="flex flex-wrap items-center gap-3 text-lg">
               <code>{check.variables?.trim()}</code>
               <Badge tone={available ? "success" : "danger"} dot>
-                {available ? "Available" : "Not available"}
+                {available ? t("hosts.check.available") : t("hosts.check.notAvailable")}
               </Badge>
             </p>
             {reason && <p className="max-w-[62ch]">{reason}</p>}
             {available && (
               <Button variant="secondary" onClick={onCreate}>
-                Create this host
+                {t("hosts.check.createThisHost")}
               </Button>
             )}
           </div>

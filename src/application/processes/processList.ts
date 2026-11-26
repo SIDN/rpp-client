@@ -1,3 +1,4 @@
+import { t } from "@/i18n";
 import { ENUMERATIONS } from "@/rpp/core/status/statuses";
 import { isJsonObject } from "@/rpp/core/types/json";
 import type { ProcessKind } from "@/rpp/operations/definitions";
@@ -5,18 +6,18 @@ import type { RppClient } from "@/rpp/operations/RppClient";
 
 export type ObjectType = "domainName" | "contact" | "host";
 
-export const OBJECT_TYPES: readonly { id: ObjectType; label: string }[] = [
-  { id: "domainName", label: "Domain names" },
-  { id: "contact", label: "Contacts" },
-  { id: "host", label: "Hosts" },
+export const OBJECT_TYPES: readonly { id: ObjectType; labelKey: string }[] = [
+  { id: "domainName", labelKey: "processes.object.domainNames" },
+  { id: "contact", labelKey: "processes.object.contacts" },
+  { id: "host", labelKey: "processes.object.hosts" },
 ];
 
 /** `member` is the member of an object's `processes` that lists the processes of the kind. */
-export const PROCESS_KINDS: readonly { id: ProcessKind; label: string; member: string }[] = [
-  { id: "transfer", label: "Transfer", member: "transferProcess" },
-  { id: "renew", label: "Renew", member: "renewProcess" },
-  { id: "restore", label: "Restore", member: "restoreProcess" },
-  { id: "create", label: "Create", member: "createProcess" },
+export const PROCESS_KINDS: readonly { id: ProcessKind; labelKey: string; member: string }[] = [
+  { id: "transfer", labelKey: "processes.kind.transfer", member: "transferProcess" },
+  { id: "renew", labelKey: "processes.kind.renew", member: "renewProcess" },
+  { id: "restore", labelKey: "processes.kind.restore", member: "restoreProcess" },
+  { id: "create", labelKey: "processes.kind.create", member: "createProcess" },
 ];
 
 export const PAGE_SIZES = [10, 25, 50, 100] as const;
@@ -65,7 +66,7 @@ export const canReadProcess = (client: RppClient, ref: ProcessRef): boolean => c
 
 export async function readProcess(client: RppClient, ref: ProcessRef, signal?: AbortSignal): Promise<unknown> {
   const operations = client[RESOURCE[ref.objectType]].processes[ref.kind];
-  if (!operations?.supports("read")) throw new Error(`The ${ref.kind} process of ${ref.objectType} has no read operation`);
+  if (!operations?.supports("read")) throw new Error(t("processes.error.noReadOperation", { kind: ref.kind, objectType: ref.objectType }));
   return (await operations.read(ref.objectId, { processId: ref.processId }, { signal })).data;
 }
 

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { ConnectionContext, type ConnectionApi } from "@/app/connection-context";
 import { createSession, type Session } from "@/application/connection/session";
 import { DEFAULT_PRESET_SETTINGS } from "@/config/connectionProfile";
@@ -30,7 +30,15 @@ function renderPage(session: Session | undefined) {
   );
 }
 
+function stubClipboard(writeText: (text: string) => Promise<void>) {
+  Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+}
+
 describe("exchanges screen", () => {
+  afterEach(() => {
+    Reflect.deleteProperty(navigator, "clipboard");
+  });
+
   it("asks for a connection when there is none", () => {
     renderPage(undefined);
     expect(screen.getByText("Connect to a server first")).toBeInTheDocument();
@@ -105,5 +113,62 @@ describe("exchanges screen", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Clear" }));
     expect(screen.getByText("Nothing has been sent yet")).toBeInTheDocument();
+  });
+
+  it("copies the raw request and response with secrets still redacted", async () => {
+    const writeText = vi.fn(async () => undefined);
+    stubClipboard(writeText);
+    const session = newSession(() => rpp({ name: "example.test", password: "hunter2" }));
+    await session.transport.send({ method: "POST", target: "domainNames", body: { name: "x", authInfo: "s3cret" } });
+    renderPage(session);
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Copy request" }));
+    });
+    const request = String(writeText.mock.calls.at(-1)?.at(0));
+    expect(request).toMatch(/^POST https:\/\/rpp\.example\.test\/rpp\/domainNames\n/);
+    expect(request).toContain("authorization: [REDACTED]");
+    expect(request).toContain('"authInfo":"[REDACTED]"');
+    expect(screen.getByText(/Copied to the clipboard/)).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Copy response" }));
+    });
+    const response = String(writeText.mock.calls.at(-1)?.at(0));
+    expect(response).toMatch(/^HTTP 200/);
+    expect(response).toContain("rpp-svtrid: S-9");
+    expect(response).toContain('"password":"[REDACTED]"');
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Copy both" }));
+    });
+    expect(String(writeText.mock.calls.at(-1)?.at(0))).toBe(`${request}\n\n${response}`);
+
+    const everything = writeText.mock.calls.map((call) => String(call.at(0))).join("\n");
+    expect(everything).not.toContain("hunter2");
+    expect(everything).not.toContain("s3cret");
+  });
+
+  it("says so when the browser does not allow copying", async () => {
+    stubClipboard(async () => {
+      throw new DOMException("Denied", "NotAllowedError");
+    });
+    const session = newSession(() => rpp({}));
+    await session.transport.send({ method: "GET", target: "x" });
+    renderPage(session);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Copy request" }));
+    });
+    expect(screen.getByText(/did not allow copying/)).toBeInTheDocument();
+  });
+
+  it("says so when there is no clipboard at all", async () => {
+    const session = newSession(() => rpp({}));
+    await session.transport.send({ method: "GET", target: "x" });
+    renderPage(session);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Copy both" }));
+    });
+    expect(screen.getByText(/did not allow copying/)).toBeInTheDocument();
   });
 });

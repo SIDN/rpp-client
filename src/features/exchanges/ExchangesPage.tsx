@@ -1,18 +1,21 @@
-import { useState, useSyncExternalStore, type ReactNode } from "react";
-import { Trash2 } from "lucide-react";
+import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { Check, Copy, Terminal, Trash2 } from "lucide-react";
+import { Link } from "react-router-dom";
 import { useConnection } from "@/app/connection-context";
 import { EmptyState, PageHeader, Section } from "@/components/common/layout";
 import { NotConnected } from "@/components/common/NotConnected";
 import { ResultCodeChip } from "@/components/protocol/protocol-badges";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { Callout } from "@/components/ui/callout";
 import { Field, Input } from "@/components/ui/field";
 import { t } from "@/i18n";
 import { cn } from "@/lib/utils";
 import { REDACTED } from "@/rpp/client/redaction";
 import type { ExchangeLog, ExchangeRecord } from "@/rpp/client/diagnostics";
-import { filterExchanges, formatBody, summarize } from "./exchangeView";
+import { formFromRequest, FROM_EXCHANGE_PARAM } from "@/application/developer/rawRequest";
+import { filterExchanges, formatBody, rawExchange, rawRequest, rawResponse, summarize } from "./exchangeView";
 
 const NONE: readonly ExchangeRecord[] = [];
 const noSubscription = () => () => {};
@@ -158,6 +161,7 @@ export function ExchangeDetail({ record }: { record: ExchangeRecord }) {
             <code>{record.id}</code>
           </Term>
         </dl>
+        <CopyActions key={record.id} record={record} />
       </div>
 
       <Section id="request" title={t("exchanges.detail.request")}>
@@ -182,6 +186,68 @@ export function ExchangeDetail({ record }: { record: ExchangeRecord }) {
           </>
         )}
       </Section>
+    </div>
+  );
+}
+
+type CopyTarget = "request" | "response" | "both";
+type CopyState = { kind: "idle" } | { kind: "copied"; target: CopyTarget } | { kind: "failed" };
+
+const COPIED_FOR_MS = 2000;
+
+/** Copies the recorded (already redacted) exchange as raw text; nothing is re-read from the live request. */
+function CopyActions({ record }: { record: ExchangeRecord }) {
+  const { session } = useConnection();
+  const canOpen = session !== undefined && formFromRequest(record.request, session.profile.baseUrl) !== undefined;
+  const [state, setState] = useState<CopyState>({ kind: "idle" });
+  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  useEffect(() => () => clearTimeout(timer.current), []);
+
+  const copy = async (target: CopyTarget) => {
+    const text = target === "request" ? rawRequest(record) : target === "response" ? rawResponse(record) : rawExchange(record);
+    clearTimeout(timer.current);
+    try {
+      // Unavailable outside a secure context, and the browser may refuse permission.
+      if (!navigator.clipboard) throw new Error("Clipboard API unavailable");
+      await navigator.clipboard.writeText(text);
+      setState({ kind: "copied", target });
+      timer.current = setTimeout(() => setState({ kind: "idle" }), COPIED_FOR_MS);
+    } catch {
+      setState({ kind: "failed" });
+    }
+  };
+
+  const button = (target: CopyTarget, label: string) => {
+    const copied = state.kind === "copied" && state.target === target;
+    return (
+      <Button variant="secondary" size="sm" onClick={() => void copy(target)}>
+        {copied ? <Check aria-hidden /> : <Copy aria-hidden />}
+        {label}
+      </Button>
+    );
+  };
+
+  return (
+    <div className="mt-2 flex flex-col gap-2">
+      <div className="flex flex-wrap gap-2">
+        <div role="group" aria-label={t("exchanges.copy.group")} className="flex flex-wrap gap-2">
+          {button("request", t("exchanges.copy.request"))}
+          {button("response", t("exchanges.copy.response"))}
+          {button("both", t("exchanges.copy.both"))}
+        </div>
+        {canOpen && (
+          <Link
+            to={`/developer/requests?${FROM_EXCHANGE_PARAM}=${encodeURIComponent(record.id)}`}
+            className={buttonVariants({ variant: "secondary", size: "sm" })}
+          >
+            <Terminal aria-hidden />
+            {t("exchanges.openRawRequest")}
+          </Link>
+        )}
+      </div>
+      <p aria-live="polite" className={cn("text-sm", state.kind === "failed" ? "text-destructive" : "text-muted-foreground")}>
+        {state.kind === "copied" ? t("exchanges.copy.copied") : state.kind === "failed" ? t("exchanges.copy.failed") : t("exchanges.copy.hint")}
+      </p>
     </div>
   );
 }

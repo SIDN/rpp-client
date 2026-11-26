@@ -1,4 +1,5 @@
 import { useRef, useState, type FormEvent } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Send, Square } from "lucide-react";
 import { useConnection } from "@/app/connection-context";
 import { PageHeader, Section } from "@/components/common/layout";
@@ -9,12 +10,13 @@ import { Choice } from "@/components/ui/choice";
 import { Field, Input, Select } from "@/components/ui/field";
 import { t } from "@/i18n";
 import { REQUEST_SAMPLES, type RequestSample } from "@/application/developer/requestSamples";
-import { buildRawRequest, RAW_METHODS, type RawRequestField, type RawRequestForm } from "@/application/developer/rawRequest";
+import { buildRawRequest, formFromRequest, FROM_EXCHANGE_PARAM, holdsRedactedValue, RAW_METHODS, type RawRequestField, type RawRequestForm } from "@/application/developer/rawRequest";
+import type { Session } from "@/application/connection/session";
 import { TransportError } from "@/rpp/errors/TransportError";
 import type { ExchangeRecord } from "@/rpp/client/diagnostics";
 import { ExchangeDetail } from "../exchanges/ExchangesPage";
 
-const INITIAL: RawRequestForm = { method: "GET", target: "", query: "", headers: "", body: "", clientTransactionId: "", authenticate: true };
+const INITIAL: RawRequestForm = { method: "GET", target: "", query: "", headers: "", body: "", clientTransactionId: "", authenticate: true, setStandardHeaders: false, standardHeaders: "" };
 
 const TEXTAREA = "w-full rounded-md border border-input bg-surface px-3 py-2 font-mono text-sm text-surface-foreground";
 
@@ -27,13 +29,18 @@ const SAMPLE_GROUPS: [string, RequestSample[]][] = REQUEST_SAMPLES.reduce<[strin
 
 type Outcome = { kind: "exchange"; record: ExchangeRecord } | { kind: "failed"; message: string } | { kind: "cancelled" };
 
+type Prefill = { kind: "none" } | { kind: "exchange"; id: string; form: RawRequestForm } | { kind: "missing"; id: string };
+
+function prefillFrom(session: Session, id: string | null): Prefill {
+  if (id === null) return { kind: "none" };
+  const record = session.exchanges.entries().find((entry) => entry.id === id);
+  const form = record && formFromRequest(record.request, session.profile.baseUrl);
+  return form ? { kind: "exchange", id, form } : { kind: "missing", id };
+}
+
 export function RawRequestPage() {
   const { session } = useConnection();
-  const [form, setForm] = useState<RawRequestForm>(INITIAL);
-  const [problems, setProblems] = useState<Partial<Record<RawRequestField, string>>>({});
-  const [pending, setPending] = useState(false);
-  const [outcome, setOutcome] = useState<Outcome>();
-  const abort = useRef<AbortController>(undefined);
+  const [searchParams] = useSearchParams();
 
   if (!session) {
     return (
@@ -43,6 +50,18 @@ export function RawRequestPage() {
       </>
     );
   }
+
+  const id = searchParams.get(FROM_EXCHANGE_PARAM);
+  // A new exchange to start from starts a new form; typing in the form does not change the address.
+  return <RawRequestEditor key={id ?? ""} session={session} prefill={prefillFrom(session, id)} />;
+}
+
+function RawRequestEditor({ session, prefill }: { session: Session; prefill: Prefill }) {
+  const [form, setForm] = useState<RawRequestForm>(prefill.kind === "exchange" ? prefill.form : INITIAL);
+  const [problems, setProblems] = useState<Partial<Record<RawRequestField, string>>>({});
+  const [pending, setPending] = useState(false);
+  const [outcome, setOutcome] = useState<Outcome>();
+  const abort = useRef<AbortController>(undefined);
 
   const set = <K extends RawRequestField>(field: K, value: RawRequestForm[K]) => setForm((current) => ({ ...current, [field]: value }));
 
@@ -94,6 +113,17 @@ export function RawRequestPage() {
       <Callout tone="warning" title={t("developer.warning.title")}>
         {t("developer.warning.description")}
       </Callout>
+      {prefill.kind === "exchange" && (
+        <Callout tone="info" title={t("developer.prefill.title", { id: prefill.id })}>
+          {t("developer.prefill.description")}
+          {holdsRedactedValue(prefill.form) && <> {t("developer.prefill.redacted")}</>}
+        </Callout>
+      )}
+      {prefill.kind === "missing" && (
+        <Callout tone="warning" title={t("developer.prefill.missingTitle", { id: prefill.id })}>
+          {t("developer.prefill.missingDescription")}
+        </Callout>
+      )}
 
       <Section id="request" title={t("developer.request.title")}>
         <form onSubmit={send} noValidate className="flex max-w-3xl flex-col gap-5">
@@ -140,6 +170,18 @@ export function RawRequestPage() {
           <Field label={t("developer.fields.headers")} hint={t("developer.fields.headersHint")} error={problems.headers}>
             {(control) => <textarea {...control} rows={3} value={form.headers} className={TEXTAREA} spellCheck={false} onChange={(event) => set("headers", event.target.value)} />}
           </Field>
+          <Choice
+            type="checkbox"
+            label={t("developer.fields.setStandardHeaders")}
+            hint={t("developer.fields.setStandardHeadersHint")}
+            checked={form.setStandardHeaders}
+            onChange={(event) => set("setStandardHeaders", event.target.checked)}
+          />
+          {form.setStandardHeaders && (
+            <Field label={t("developer.fields.standardHeaders")} hint={t("developer.fields.standardHeadersHint")} error={problems.standardHeaders}>
+              {(control) => <textarea {...control} rows={3} value={form.standardHeaders} className={TEXTAREA} spellCheck={false} onChange={(event) => set("standardHeaders", event.target.value)} />}
+            </Field>
+          )}
           <Field label={t("developer.fields.body")} hint={t("developer.fields.bodyHint")} error={problems.body}>
             {(control) => <textarea {...control} rows={8} value={form.body} className={TEXTAREA} spellCheck={false} onChange={(event) => set("body", event.target.value)} />}
           </Field>

@@ -65,6 +65,54 @@ describe("request construction", () => {
   });
 });
 
+describe("header overrides", () => {
+  it("replace the transport's own headers, owned ones included, and are recorded redacted", async () => {
+    const log = createExchangeLog();
+    const authorizationHeaders = vi.fn(async () => ({ Authorization: "Basic provider" }));
+    const { transport, call } = setup(() => json({}), { authorizationHeaders, onExchange: log.record });
+    const response = await transport.send({
+      method: "POST",
+      target: "domains",
+      body: { name: "example.test" },
+      clientTransactionId: "FIELD-1",
+      headerOverrides: { Accept: "application/json", "Content-Type": "application/json", "RPP-Cltrid": "OVR-1", Authorization: "Bearer typed", "X-Trace": "t" },
+    });
+    const { headers } = call();
+    expect(headers.get("accept")).toBe("application/json");
+    expect(headers.get("content-type")).toBe("application/json");
+    expect(headers.get("rpp-cltrid")).toBe("OVR-1");
+    expect(headers.get("authorization")).toBe("Bearer typed");
+    expect(headers.get("x-trace")).toBe("t");
+    expect(response.sentClientTransactionId).toBe("OVR-1");
+
+    const recorded = log.entries()[0]?.request.headers;
+    expect(recorded?.authorization).toBe("[REDACTED]");
+    expect(recorded?.accept).toBe("application/json");
+    expect(recorded?.["rpp-cltrid"]).toBe("OVR-1");
+    expect(JSON.stringify(log.entries())).not.toContain("Bearer typed");
+  });
+
+  it("set credentials even when the provider's are left out", async () => {
+    const authorizationHeaders = vi.fn(async () => ({ Authorization: "Basic provider" }));
+    const { transport, call } = setup(() => json({}), { authorizationHeaders });
+    await transport.send({ method: "GET", target: "a", authenticate: false, headerOverrides: { Authorization: "Bearer typed" } });
+    expect(authorizationHeaders).not.toHaveBeenCalled();
+    expect(call().headers.get("authorization")).toBe("Bearer typed");
+  });
+
+  it("refuse credential headers for another origin and invalid header values", async () => {
+    const { transport, fetchMock } = setup(() => json({}), { allowedOrigins: ["https://other.example.test"] });
+    const crossOrigin = await failure(transport.send({ method: "GET", target: "https://other.example.test/x", headerOverrides: { authorization: "Bearer typed" } }));
+    expect(crossOrigin.kind).toBe("invalid-request");
+    expect(crossOrigin.message).not.toContain("Bearer typed");
+    expect((await failure(transport.send({ method: "GET", target: "a", headerOverrides: { "X-Bad": "a\nb" } }))).kind).toBe("invalid-request");
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    await transport.send({ method: "GET", target: "https://other.example.test/x", headerOverrides: { Accept: "application/json" } });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe("preset signalling", () => {
   const preset = (method: "header" | "media-type") => ({ method, id: "urn:ietf:params:rpp:preset:epp-compatible", version: "1.0" }) as const;
 

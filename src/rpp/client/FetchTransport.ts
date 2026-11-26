@@ -30,6 +30,8 @@ export const OWNED_HEADERS: ReadonlySet<string> = new Set([
   "proxy-authorization",
   "cookie",
 ]);
+/** Lower-case names of owned headers that carry credentials; overrides with these go to the base origin only. */
+const CREDENTIAL_HEADERS: ReadonlySet<string> = new Set(["authorization", "proxy-authorization", "cookie"]);
 const REDIRECT_STATUSES: ReadonlySet<number> = new Set([301, 302, 303, 307, 308]);
 const NO_CONTENT_STATUSES: ReadonlySet<number> = new Set([204, 205, 304]);
 const PRINTABLE_ASCII = /^[\x20-\x7e]+$/;
@@ -180,6 +182,22 @@ export function createFetchTransport(config: TransportConfig): RppTransport {
       } catch (cause) {
         throw new TransportError("authentication", "Could not obtain authorization headers", { cause });
       }
+      snapshot.headers = redactHeaders(headers, sensitiveHeaders);
+    }
+
+    const overrides = Object.entries(request.headerOverrides ?? {});
+    if (overrides.length > 0) {
+      for (const [name] of overrides) {
+        if (CREDENTIAL_HEADERS.has(name.toLowerCase()) && url.origin !== policy.base.origin) {
+          throw new TransportError("invalid-request", `Header ${name} is sent to the server origin only`);
+        }
+      }
+      try {
+        for (const [name, value] of overrides) headers.set(name, value);
+      } catch (cause) {
+        throw new TransportError("invalid-request", "Invalid request header", { cause });
+      }
+      clientTransactionId = headers.get("RPP-Cltrid") ?? clientTransactionId;
       snapshot.headers = redactHeaders(headers, sensitiveHeaders);
     }
 

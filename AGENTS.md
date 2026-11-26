@@ -159,3 +159,4 @@ Use mocked `fetch` or a transport test double for deterministic unit tests. Neve
 - [docs/agents/architecture.md](docs/agents/architecture.md): product modes and dependency direction.
 - [docs/agents/security.md](docs/agents/security.md): summary of the security rules above.
 - [docs/agents/specifications.md](docs/agents/specifications.md): links to the latest RPP drafts and schemas on GitHub.
+- [docs/agents/i18n.md](docs/agents/i18n.md): how UI text is translated (one file per locale, key rules, glossary).

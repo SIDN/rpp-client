@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { t } from "@/i18n";
 import { Link } from "react-router-dom";
 import { objectSupport } from "@/application/capability";
 import { useConnection } from "@/app/connection-context";
@@ -30,7 +31,7 @@ import { SubmitButton } from "../shared/SubmitButton";
 import { useOperation } from "../shared/useOperation";
 import { MessageDetails } from "./MessageDetails";
 
-const header = <PageHeader title="Messages" description="Read the messages in the queue of the server, and acknowledge them." />;
+const header = () => <PageHeader title={t("messages.page.title")} description={t("messages.page.description")} />;
 
 export function MessagesPage() {
   const discovery = useDiscoveryState();
@@ -42,7 +43,7 @@ export function MessagesPage() {
   if (settings.synthesizeData) {
     return (
       <>
-        {header}
+        {header()}
         <Workspace key="synthetic" synthetic />
       </>
     );
@@ -51,7 +52,7 @@ export function MessagesPage() {
   if (discovery.status === "not-started") {
     return (
       <>
-        {header}
+        {header()}
         <NotConnected />
       </>
     );
@@ -59,28 +60,28 @@ export function MessagesPage() {
   if (discovery.status === "loading") {
     return (
       <>
-        {header}
-        <Callout tone="info" title="Reading the capabilities of the server" />
+        {header()}
+        <Callout tone="info" title={t("messages.connection.readingCapabilities")} />
       </>
     );
   }
   if (support !== "offered" || !session) {
     return (
       <>
-        {header}
-        <Callout tone="warning" title={discovery.status === "failed" ? "The capabilities of the server could not be read" : support !== "offered" ? "This server does not offer messages" : "There is no connection"}>
+        {header()}
+        <Callout tone="warning" title={discovery.status === "failed" ? t("messages.connection.capabilitiesFailed") : support !== "offered" ? t("messages.connection.notOffered") : t("messages.connection.noConnection")}>
           {discovery.status === "failed"
             ? discovery.error.message
             : support !== "offered"
-              ? "Its discovery document does not list message. Nothing on this screen can work against it."
-              : "Set up a connection first."}
+              ? t("messages.connection.discoveryNotListed")
+              : t("messages.connection.setUpFirst")}
         </Callout>
       </>
     );
   }
   return (
     <>
-      {header}
+      {header()}
       <Workspace key="live" synthetic={false} />
     </>
   );
@@ -110,14 +111,14 @@ function Workspace({ synthetic }: { synthetic: boolean }) {
 
   const retrieve = useOperation(
     (variables: { type: string }, signal) => {
-      if (!workflows) throw new Error("Retrieving messages needs a connection");
+      if (!workflows) throw new Error(t("messages.error.retrieveNeedsConnection"));
       return workflows.retrieve(variables.type === ALL_TYPES ? [] : [variables.type], { signal });
     },
     (result, variables) => take(asMessages(result.data), variables.type),
   );
   const acknowledge = useOperation(
     (id: string, signal) => {
-      if (!workflows) throw new Error("Acknowledging a message needs a connection");
+      if (!workflows) throw new Error(t("messages.error.acknowledgeNeedsConnection"));
       return workflows.acknowledge(id, { signal });
     },
     (_result, id) => {
@@ -145,9 +146,8 @@ function Workspace({ synthetic }: { synthetic: boolean }) {
   return (
     <div className="flex flex-col gap-6">
       {synthetic && (
-        <Callout tone="warning" title="Synthesized data">
-          These messages are made up by this client, two of each type. Nothing is requested from the server, and acknowledging only removes one from this list. Turn it
-          off under <Link to="/developer/settings" className="underline">Settings</Link>.
+        <Callout tone="warning" title={t("messages.synthetic.title")}>
+          {t("messages.synthetic.descriptionBeforeSettings")} <Link to="/developer/settings" className="underline">{t("messages.synthetic.settings")}</Link>{t("messages.synthetic.descriptionAfterSettings")}
         </Callout>
       )}
 
@@ -158,19 +158,19 @@ function Workspace({ synthetic }: { synthetic: boolean }) {
         }}
         className="flex flex-wrap items-end gap-x-4 gap-y-3"
       >
-        <Field label="Message type" className="w-64">
+        <Field label={t("messages.filter.type")} className="w-64">
           {(control) => (
             <Select {...control} value={type} onChange={(event) => setType(event.target.value)}>
-              <option value={ALL_TYPES}>All types</option>
+              <option value={ALL_TYPES}>{t("messages.filter.allTypes")}</option>
               {options.map((entry) => (
                 <option key={entry.id} value={entry.id}>
-                  {entry.label}
+                  {typeLabel(entry.id)}
                 </option>
               ))}
             </Select>
           )}
         </Field>
-        <Field label="Show at most" className="w-40">
+        <Field label={t("messages.filter.showAtMost")} className="w-40">
           {(control) => (
             <Select {...control} value={limit} onChange={(event) => setLimit(Number(event.target.value))}>
               {MESSAGE_LIMITS.map((size) => (
@@ -181,49 +181,49 @@ function Workspace({ synthetic }: { synthetic: boolean }) {
             </Select>
           )}
         </Field>
-        <SubmitButton pending={retrieve.pending}>Show messages</SubmitButton>
+        <SubmitButton pending={retrieve.pending}>{t("messages.action.show")}</SubmitButton>
       </form>
       {!synthetic && (
         <p className="max-w-[62ch] text-sm text-muted-foreground">
-          Retrieving messages marks them as delivered. A message stays in the queue until you acknowledge it, and is delivered again if you do not.
+          {t("messages.queue.behavior")}
         </p>
       )}
 
-      <OperationOutcome operation={retrieve} success={`Retrieved ${retrieve.result?.data.length ?? 0} message(s)`} />
-      <OperationOutcome operation={acknowledge} success={`Acknowledged ${acknowledge.variables ?? "the message"}`} />
+      <OperationOutcome operation={retrieve} success={t("messages.outcome.retrieved", { count: retrieve.result?.data.length ?? 0 })} />
+      <OperationOutcome operation={acknowledge} success={t("messages.outcome.acknowledged", { id: acknowledge.variables ?? t("messages.noun.message") })} />
       {removed && (
-        <Callout tone="success" title={`Removed ${removed} from the list`}>
-          It was a synthesized example: nothing was sent to the server.
+        <Callout tone="success" title={t("messages.synthetic.removed", { id: removed })}>
+          {t("messages.synthetic.removedDescription")}
         </Callout>
       )}
       {strays > 0 && (
-        <Callout tone="warning" title="The server returned other types as well">
-          {strays} of the messages are not of the type {typeLabel(applied)}. They are shown too.
+        <Callout tone="warning" title={t("messages.warning.otherTypes")}>
+          {t("messages.warning.otherTypesDescription", { count: strays, type: typeLabel(applied) })}
         </Callout>
       )}
 
       {!retrieved ? (
-        <Callout tone="info" title="No messages retrieved yet">
-          Choose a type, or all of them, and press Show messages.
+        <Callout tone="info" title={t("messages.empty.notRetrieved.title")}>
+          {t("messages.empty.notRetrieved.description")}
         </Callout>
       ) : messages.length === 0 ? (
-        <EmptyState title="No messages">The queue holds no messages{applied !== ALL_TYPES && <> of the type {typeLabel(applied)}</>}.</EmptyState>
+        <EmptyState title={t("messages.empty.none.title")}>{applied === ALL_TYPES ? t("messages.empty.none.all") : t("messages.empty.none.filtered", { type: typeLabel(applied) })}</EmptyState>
       ) : (
         <div className="flex flex-col gap-3">
           <p role="status" className="text-sm text-muted-foreground">
-            Showing {shown.length} of {messages.length} message(s){messages.length > shown.length ? ". Raise the limit to see more." : "."}
+            {messages.length > shown.length ? t("messages.list.showingMore", { shown: shown.length, total: messages.length }) : t("messages.list.showing", { shown: shown.length, total: messages.length })}
           </p>
           <div className="overflow-x-auto rounded-md border border-border">
             <table className="w-full text-sm">
-              <caption className="sr-only">Messages</caption>
+              <caption className="sr-only">{t("messages.table.caption")}</caption>
               <thead className="bg-muted/50 text-left">
                 <tr>
-                  <th scope="col" className="px-3 py-2 font-medium">Message</th>
-                  <th scope="col" className="px-3 py-2 font-medium">Type</th>
-                  <th scope="col" className="px-3 py-2 font-medium">About</th>
-                  <th scope="col" className="px-3 py-2 font-medium">Created</th>
-                  <th scope="col" className="px-3 py-2 font-medium">Status</th>
-                  <th scope="col" className="px-3 py-2 font-medium">Summary</th>
+                  <th scope="col" className="px-3 py-2 font-medium">{t("messages.table.message")}</th>
+                  <th scope="col" className="px-3 py-2 font-medium">{t("messages.table.type")}</th>
+                  <th scope="col" className="px-3 py-2 font-medium">{t("messages.table.about")}</th>
+                  <th scope="col" className="px-3 py-2 font-medium">{t("messages.table.created")}</th>
+                  <th scope="col" className="px-3 py-2 font-medium">{t("messages.table.status")}</th>
+                  <th scope="col" className="px-3 py-2 font-medium">{t("messages.table.summary")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -239,7 +239,7 @@ function Workspace({ synthetic }: { synthetic: boolean }) {
                       <td className="px-3 py-2">
                         <button
                           type="button"
-                          aria-label={`Details of ${view.id}`}
+                          aria-label={t("messages.action.detailsOf", { id: view.id })}
                           aria-pressed={view.id === selected}
                           onClick={(event) => {
                             event.stopPropagation();
@@ -251,7 +251,7 @@ function Workspace({ synthetic }: { synthetic: boolean }) {
                         </button>
                         {isSynthetic(message) && (
                           <Badge tone="warning" className="ml-2">
-                            Synthesized
+                            {t("messages.synthetic.badge")}
                           </Badge>
                         )}
                       </td>

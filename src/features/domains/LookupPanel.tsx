@@ -1,3 +1,4 @@
+import { t } from "@/i18n";
 import { useForm } from "react-hook-form";
 import { Choice } from "@/components/ui/choice";
 import { useDomainStore } from "./domainCache";
@@ -25,15 +26,15 @@ export function LookupPanel({ name, onNameChange }: PanelProps) {
         <NameField name={name} onNameChange={onNameChange} />
         <Choice
           type="checkbox"
-          label="Include the transfer password"
-          hint="Only the sponsoring registrar is given it, and only if the registry can show it."
+          label={t("domains.lookup.authInfoLabel")}
+          hint={t("domains.lookup.authInfoHint")}
           {...register("authInfo")}
         />
         <div>
-          <SubmitButton pending={lookup.pending}>Look up</SubmitButton>
+          <SubmitButton pending={lookup.pending}>{t("domains.lookup.submit")}</SubmitButton>
         </div>
       </form>
-      <OperationOutcome operation={lookup} success={`Found ${lookup.variables?.name ?? "the domain"}`}>
+      <OperationOutcome operation={lookup} success={t("domains.lookup.success", { name: lookup.variables?.name ?? t("domains.name.generic") })}>
         {(domain) => <DomainDetails domain={domain} />}
       </OperationOutcome>
     </div>

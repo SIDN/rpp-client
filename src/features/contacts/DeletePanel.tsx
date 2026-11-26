@@ -1,4 +1,5 @@
 import { Callout } from "@/components/ui/callout";
+import { t } from "@/i18n";
 import { ConfirmAction } from "../shared/ConfirmAction";
 import { OperationOutcome } from "../shared/OperationOutcome";
 import { useOperation } from "../shared/useOperation";
@@ -18,25 +19,25 @@ export function DeletePanel({ id, onIdChange }: PanelProps) {
     <div className="flex flex-col gap-6">
       <div className="flex max-w-xl flex-col gap-5">
         <IdField id={id} onIdChange={onIdChange} />
-        <Callout tone="warning" title="Deleting a contact cannot be undone">
-          A contact that is still linked to a domain name object cannot be deleted.
+        <Callout tone="warning" title={t("contacts.delete.warningTitle")}>
+          {t("contacts.delete.warningDescription")}
         </Callout>
         <div>
           <ConfirmAction
             destructive
             disabled={target === ""}
-            trigger="Delete this contact"
-            title={`Delete ${target}?`}
-            confirmLabel={`Delete ${target}`}
+            trigger={t("contacts.delete.trigger")}
+            title={t("contacts.delete.confirmTitle", { target })}
+            confirmLabel={t("contacts.delete.confirmLabel", { target })}
             expected={target}
             pending={remove.pending}
             onConfirm={() => remove.start(target)}
           >
-            The registry is asked to delete <code>{target}</code>. Only the sponsoring registrar may do this.
+            <>{t("contacts.delete.confirmPrefix")} <code>{target}</code>{t("contacts.delete.confirmSuffix")}</>
           </ConfirmAction>
         </div>
       </div>
-      <OperationOutcome operation={remove} success={`Deleted ${remove.variables ?? "the contact"}`} />
+      <OperationOutcome operation={remove} success={t("contacts.delete.success", { contact: remove.variables ?? "the contact" })} />
     </div>
   );
 }

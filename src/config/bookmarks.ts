@@ -1,4 +1,5 @@
 import { parseProfile, type ConnectionProfile } from "./connectionProfile";
+import { t } from "@/i18n";
 
 /** A server the person connects to often: everything of the connection except the password, which is never kept. */
 export interface Bookmark {
@@ -19,8 +20,8 @@ export const sameName = (a: string, b: string): boolean => a.trim().toLowerCase(
 /** What is wrong with a name, or undefined when it is fine. */
 export function bookmarkNameProblem(name: string): string | undefined {
   const trimmed = name.trim();
-  if (trimmed === "") return "Enter a connection name to save a bookmark";
-  if (trimmed.length > BOOKMARK_NAME_MAX) return `Use at most ${BOOKMARK_NAME_MAX} characters`;
+  if (trimmed === "") return t("config.bookmark.nameRequired");
+  if (trimmed.length > BOOKMARK_NAME_MAX) return t("config.bookmark.nameTooLong", { max: BOOKMARK_NAME_MAX });
   return undefined;
 }
 

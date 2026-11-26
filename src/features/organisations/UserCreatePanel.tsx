@@ -1,3 +1,4 @@
+import { t } from "@/i18n";
 import { FormProvider, useForm } from "react-hook-form";
 import { EMPTY_USER, type CreateUserInput } from "@/application/organisations/userData";
 import { Callout } from "@/components/ui/callout";
@@ -36,21 +37,21 @@ export function UserCreatePanel({ organisationId, onOrganisationChange, userId, 
           <OrganisationField
             organisationId={organisationId}
             onOrganisationChange={onOrganisationChange}
-            hint="A user is always created in an organisation, which must exist already."
+            hint={t("organisations.userCreate.organisationHint")}
           />
-          <UserField userId={userId} onUserChange={onUserChange} hint="Chosen by you. It only has to be unique within this organisation, and cannot be changed afterwards." />
-          <UserFields statusHint="Leave it to the registry, or create the user suspended or deactivated." />
-          <Callout tone="info" title="What the registry requires varies">
-            Generally the organisation itself, or the registry, may create its users. If something is missing or not allowed, the registry says which.
+          <UserField userId={userId} onUserChange={onUserChange} hint={t("organisations.userCreate.userIdHint")} />
+          <UserFields statusHint={t("organisations.userCreate.statusHint")} />
+          <Callout tone="info" title={t("organisations.create.requirementsTitle")}>
+            {t("organisations.userCreate.requirementsDescription")}
           </Callout>
           <div>
-            <SubmitButton pending={create.pending}>Create user</SubmitButton>
+            <SubmitButton pending={create.pending}>{t("organisations.action.createUser")}</SubmitButton>
           </div>
         </form>
       </FormProvider>
       <OperationOutcome
         operation={create}
-        success={`Created ${create.variables?.input.id.trim() || "the user"} in ${create.variables?.organisationId.trim() || "the organisation"}`}
+        success={t("organisations.outcome.userCreated", { user: create.variables?.input.id.trim() || t("organisations.noun.user"), organisation: create.variables?.organisationId.trim() || t("organisations.noun.organisation") })}
       >
         {(user) => <UserDetails user={user} />}
       </OperationOutcome>

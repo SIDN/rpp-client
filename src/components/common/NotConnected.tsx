@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { t } from "@/i18n";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { EmptyState } from "./layout";
 
@@ -6,14 +7,14 @@ import { EmptyState } from "./layout";
 export function NotConnected() {
   return (
     <EmptyState
-      title="Connect to a server first"
+      title={t("common.notConnected.title")}
       action={
         <Link to="/connection" className={buttonVariants({ variant: "secondary" })}>
-          Set up a connection
+          {t("ui.connection.setUp")}
         </Link>
       }
     >
-      This screen needs a connection. It stays empty until you are connected and the capabilities of the server have been read.
+      {t("common.notConnected.description")}
     </EmptyState>
   );
 }

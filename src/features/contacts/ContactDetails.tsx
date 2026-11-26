@@ -1,4 +1,5 @@
 import { dataOf, hasAddress, localizedAddressesOf, postalModeOfContact, type AddressData } from "@/application/contacts/contactCard";
+import { t } from "@/i18n";
 import { DefinitionList, DefinitionRow, Nothing } from "@/components/common/definition";
 import { StatusLabel } from "@/components/protocol/protocol-badges";
 import type { Contact } from "@/rpp/core/types/objects";
@@ -7,7 +8,7 @@ import { Provisioning, Secret, Timestamp } from "../shared/objectParts";
 const MODELLED = new Set(["@type", "id", "provMetadata", "status", "contactInfo", "disclose", "authInfo", "processes"]);
 
 function Address({ address }: { address: AddressData }) {
-  if (!hasAddress(address)) return <Nothing>Not given</Nothing>;
+  if (!hasAddress(address)) return <Nothing>{t("contacts.details.notGiven")}</Nothing>;
   return (
     <address className="not-italic">
       {address.street.filter(Boolean).map((line) => (
@@ -20,13 +21,12 @@ function Address({ address }: { address: AddressData }) {
   );
 }
 
-const value = (text: string) => (text === "" ? <Nothing>Not given</Nothing> : text);
+const value = (text: string) => (text === "" ? <Nothing>{t("contacts.details.notGiven")}</Nothing> : text);
 
 /** Everything the server showed of a contact; the Card members this view does not read, and other members, follow as received. */
 export function ContactDetails({ contact }: { contact: Contact }) {
   const mode = postalModeOfContact(contact);
   const data = dataOf(contact, mode);
-  const card = contact.contactInfo;
   const processes = contact.processes ? Object.entries(contact.processes).filter(([key]) => key !== "@type") : [];
   const others = Object.entries(contact).filter(([key]) => !MODELLED.has(key));
   const authInfo = contact.authInfo;
@@ -39,8 +39,8 @@ export function ContactDetails({ contact }: { contact: Contact }) {
           <code>{contact.id}</code>
           {data.name && <span className="font-normal">{data.name}</span>}
         </h3>
-        <ul aria-label="Status" className="flex flex-wrap gap-2">
-          {contact.status.length === 0 && <li className="text-muted-foreground">No status listed</li>}
+        <ul aria-label={t("contacts.details.status")} className="flex flex-wrap gap-2">
+          {contact.status.length === 0 && <li className="text-muted-foreground">{t("contacts.details.noStatus")}</li>}
           {contact.status.map((status, index) => (
             <li key={`${status.label}-${index}`} className="flex flex-col gap-0.5">
               <StatusLabel type="contactStatus" label={status.label} />
@@ -48,7 +48,7 @@ export function ContactDetails({ contact }: { contact: Contact }) {
                 <span className="text-xs text-muted-foreground">
                   {status.reason}
                   {status.reason && status.due ? ", " : ""}
-                  {status.due && <>due <Timestamp value={status.due} /></>}
+                  {status.due && <>{t("contacts.details.due")} <Timestamp value={status.due} /></>}
                 </span>
               )}
             </li>
@@ -57,17 +57,17 @@ export function ContactDetails({ contact }: { contact: Contact }) {
       </div>
 
       <DefinitionList>
-        <DefinitionRow term="Kind">{data.kind === "" ? <Nothing>Not given</Nothing> : data.kind === "org" ? "Organisation" : "Individual"}</DefinitionRow>
-        <DefinitionRow term="Name">{value(data.name)}</DefinitionRow>
-        <DefinitionRow term="Organisation">{value(data.organisation)}</DefinitionRow>
+        <DefinitionRow term={t("contacts.details.kind")}>{data.kind === "" ? <Nothing>{t("contacts.details.notGiven")}</Nothing> : data.kind === "org" ? t("contacts.details.organisation") : t("contacts.details.individual")}</DefinitionRow>
+        <DefinitionRow term={t("contacts.details.name")}>{value(data.name)}</DefinitionRow>
+        <DefinitionRow term={t("contacts.details.organisationTerm")}>{value(data.organisation)}</DefinitionRow>
         {mode === "both" && (
-          <DefinitionRow term="Address (int)">
+          <DefinitionRow term={t("contacts.details.addressInt")}>
             <Address address={data.address} />
           </DefinitionRow>
         )}
-        <DefinitionRow term={mode === "both" ? "Address (loc)" : "Address"}>
+        <DefinitionRow term={mode === "both" ? t("contacts.details.addressLoc") : t("contacts.details.address")}>
           {localized.length === 0 ? (
-            <Nothing>Not given</Nothing>
+            <Nothing>{t("contacts.details.notGiven")}</Nothing>
           ) : (
             <ul className="flex flex-col gap-3">
               {localized.map(({ localization, key, address }) => (
@@ -79,30 +79,30 @@ export function ContactDetails({ contact }: { contact: Contact }) {
             </ul>
           )}
         </DefinitionRow>
-        <DefinitionRow term="Phone">{data.voice ? <code>{data.voice}</code> : <Nothing>Not given</Nothing>}</DefinitionRow>
-        <DefinitionRow term="Fax">{data.fax ? <code>{data.fax}</code> : <Nothing>Not given</Nothing>}</DefinitionRow>
-        <DefinitionRow term="Email">{value(data.email)}</DefinitionRow>
+        <DefinitionRow term={t("contacts.details.phone")}>{data.voice ? <code>{data.voice}</code> : <Nothing>{t("contacts.details.notGiven")}</Nothing>}</DefinitionRow>
+        <DefinitionRow term={t("contacts.details.fax")}>{data.fax ? <code>{data.fax}</code> : <Nothing>{t("contacts.details.notGiven")}</Nothing>}</DefinitionRow>
+        <DefinitionRow term={t("contacts.details.email")}>{value(data.email)}</DefinitionRow>
         {contact.disclose !== undefined && (
-          <DefinitionRow term="Disclosure">
+          <DefinitionRow term={t("contacts.details.disclosure")}>
             <code className="break-all text-xs">{JSON.stringify(contact.disclose)}</code>
           </DefinitionRow>
         )}
-        <DefinitionRow term="Transfer password">
+        <DefinitionRow term={t("contacts.details.transferPassword")}>
           {authInfo ? (
             <span className="flex flex-col gap-1">
-              <span className="text-sm text-muted-foreground">Method <code>{authInfo.method}</code></span>
+              <span className="text-sm text-muted-foreground">{t("contacts.details.method")} <code>{authInfo.method}</code></span>
               <Secret value={authInfo.authdata} />
             </span>
           ) : (
-            <Nothing>Not shown. Get the info with the transfer password included, as the sponsoring registrar, to see it.</Nothing>
+            <Nothing>{t("contacts.details.authInfoNotShown")}</Nothing>
           )}
         </DefinitionRow>
-        <DefinitionRow term="Provisioning">
+        <DefinitionRow term={t("contacts.details.provisioning")}>
           <Provisioning metadata={contact.provMetadata} />
         </DefinitionRow>
-        <DefinitionRow term="Processes">
+        <DefinitionRow term={t("contacts.details.processes")}>
           {processes.length === 0 ? (
-            <Nothing />
+            <Nothing>{t("contacts.details.none")}</Nothing>
           ) : (
             <ul className="flex flex-col gap-1">
               {processes.map(([kind, list]) => (
@@ -115,7 +115,7 @@ export function ContactDetails({ contact }: { contact: Contact }) {
           )}
         </DefinitionRow>
         {others.length > 0 && (
-          <DefinitionRow term="Other members">
+          <DefinitionRow term={t("contacts.details.otherMembers")}>
             <dl className="flex flex-col gap-2">
               {others.map(([key, member]) => (
                 <div key={key}>
@@ -129,8 +129,8 @@ export function ContactDetails({ contact }: { contact: Contact }) {
       </DefinitionList>
 
       <details className="rounded-md border border-border">
-        <summary className="cursor-pointer px-3 py-2 font-medium">Show the JSON</summary>
-        <pre tabIndex={0} aria-label="Contact as received" className="max-h-[28rem] overflow-auto border-t border-border p-3 font-mono text-xs">
+        <summary className="cursor-pointer px-3 py-2 font-medium">{t("contacts.details.showJson")}</summary>
+        <pre tabIndex={0} aria-label={t("contacts.details.rawContact")} className="max-h-[28rem] overflow-auto border-t border-border p-3 font-mono text-xs">
           {JSON.stringify(authInfo ? { ...contact, authInfo: { ...authInfo, authdata: "[hidden: use Show above]" } } : contact, null, 2)}
         </pre>
       </details>

@@ -1,3 +1,4 @@
+import { t } from "@/i18n";
 import { SubmitButton } from "../shared/SubmitButton";
 import { OperationOutcome } from "../shared/OperationOutcome";
 import { useOperation } from "../shared/useOperation";
@@ -26,10 +27,10 @@ export function InfoPanel({ organisationId, onOrganisationChange }: PanelProps) 
       >
         <OrganisationField organisationId={organisationId} onOrganisationChange={onOrganisationChange} />
         <div>
-          <SubmitButton pending={info.pending}>Get info</SubmitButton>
+          <SubmitButton pending={info.pending}>{t("organisations.action.getInfo")}</SubmitButton>
         </div>
       </form>
-      <OperationOutcome operation={info} success={`Found ${info.variables?.trim() || "the organisation"}`}>
+      <OperationOutcome operation={info} success={t("organisations.outcome.found", { name: info.variables?.trim() || t("organisations.noun.organisation") })}>
         {(organisation) => <OrganisationDetails organisation={organisation} />}
       </OperationOutcome>
     </div>

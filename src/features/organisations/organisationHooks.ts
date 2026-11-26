@@ -1,4 +1,5 @@
 import { skipToken, useQuery, useQueryClient } from "@tanstack/react-query";
+import { t } from "@/i18n";
 import { useMemo, useSyncExternalStore } from "react";
 import { useConnection } from "@/app/connection-context";
 import { createOrganisationWorkflows, type OrganisationWorkflows } from "@/application/organisations/organisationWorkflows";
@@ -14,7 +15,7 @@ const userKey = (sessionId: number | undefined, organisationId: string, id: stri
 export function useOrganisationWorkflows(): OrganisationWorkflows {
   const { session } = useConnection();
   return useMemo(() => {
-    if (!session) throw new Error("The organisation workflows need a connection");
+    if (!session) throw new Error(t("organisations.error.workflowsNeedConnection"));
     return createOrganisationWorkflows(session.client);
   }, [session]);
 }

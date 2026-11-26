@@ -1,3 +1,4 @@
+import { t } from "@/i18n";
 import { useOperation } from "../shared/useOperation";
 import { OperationOutcome } from "../shared/OperationOutcome";
 import { SubmitButton } from "../shared/SubmitButton";
@@ -24,13 +25,13 @@ export function UserInfoPanel({ organisationId, onOrganisationChange, userId, on
         }}
         className="flex max-w-xl flex-col gap-5"
       >
-        <OrganisationField organisationId={organisationId} onOrganisationChange={onOrganisationChange} hint="The organisation the user belongs to." />
-        <UserField userId={userId} onUserChange={onUserChange} hint="Only unique within the organisation." />
+        <OrganisationField organisationId={organisationId} onOrganisationChange={onOrganisationChange} hint={t("organisations.userInfo.organisationHint")} />
+        <UserField userId={userId} onUserChange={onUserChange} hint={t("organisations.userInfo.userHint")} />
         <div>
-          <SubmitButton pending={info.pending}>Get info</SubmitButton>
+          <SubmitButton pending={info.pending}>{t("organisations.action.getInfo")}</SubmitButton>
         </div>
       </form>
-      <OperationOutcome operation={info} success={`Found ${info.variables?.userId.trim() || "the user"} in ${info.variables?.organisationId.trim() || "the organisation"}`}>
+      <OperationOutcome operation={info} success={t("organisations.outcome.userFound", { user: info.variables?.userId.trim() || t("organisations.noun.user"), organisation: info.variables?.organisationId.trim() || t("organisations.noun.organisation") })}>
         {(user) => <UserDetails user={user} />}
       </OperationOutcome>
     </div>

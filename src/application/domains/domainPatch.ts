@@ -1,3 +1,4 @@
+import { t } from "@/i18n";
 import { STATUS_VOCABULARIES } from "@/rpp/core/status/statuses";
 import type { DnsData, DnsRecord, DomainName } from "@/rpp/core/types/objects";
 import type { PatchOperation } from "@/rpp/operations/patch";
@@ -179,7 +180,17 @@ const asRecord = (value: unknown): Record<string, unknown> => (typeof value === 
 
 /** One operation as a line a registrar can read before sending it. The password itself is never part of it. */
 export function describePatchOperation(operation: PatchOperation): string {
-  const subject = { "/registrant": "registrant", "/contacts": "contact", "/nameservers": "name server", "/status": "status", "/authInfo": "transfer password", "/dns/records": "DNSSEC record", "/dns/controls": "DNS controls", "/dns": "DNS data" }[operation.path] ?? operation.path;
+  const subjects: Record<string, string> = {
+    "/registrant": t("domains.patch.subject.registrant"),
+    "/contacts": t("domains.patch.subject.contact"),
+    "/nameservers": t("domains.patch.subject.nameServer"),
+    "/status": t("domains.patch.subject.status"),
+    "/authInfo": t("domains.patch.subject.transferPassword"),
+    "/dns/records": t("domains.patch.subject.dnssecRecord"),
+    "/dns/controls": t("domains.patch.subject.dnsControls"),
+    "/dns": t("domains.patch.subject.dnsData"),
+  };
+  const subject = subjects[operation.path] ?? operation.path;
   const detail = (source: unknown): string => {
     const record = asRecord(source);
     switch (operation.path) {
@@ -199,10 +210,14 @@ export function describePatchOperation(operation: PatchOperation): string {
   };
   switch (operation.op) {
     case "add":
-      return operation.path === "/authInfo" ? "Set the transfer password" : `Add ${subject} ${detail(operation.value)}`.trim();
+      return operation.path === "/authInfo" ? t("domains.patch.setTransferPassword") : t("domains.patch.add", { subject, detail: detail(operation.value) }).trim();
     case "replace":
-      return `Replace the ${subject} with ${detail(operation.value)}`.trim();
+      return t("domains.patch.replace", { subject, detail: detail(operation.value) }).trim();
     case "remove":
-      return operation.path === "/authInfo" ? "Remove the transfer password" : operation.path === "/registrant" ? "Remove the registrant" : `Remove ${subject} ${detail(operation.match)}`.trim();
+      return operation.path === "/authInfo"
+        ? t("domains.patch.removeTransferPassword")
+        : operation.path === "/registrant"
+          ? t("domains.patch.removeRegistrant")
+          : t("domains.patch.remove", { subject, detail: detail(operation.match) }).trim();
   }
 }

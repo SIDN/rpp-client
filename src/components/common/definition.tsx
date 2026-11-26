@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { t } from "@/i18n";
 
 /** Terms and their values, divided by rules; the term column collapses above the value on a narrow screen. */
 export function DefinitionList({ children }: { children: ReactNode }) {
@@ -14,4 +15,4 @@ export function DefinitionRow({ term, children }: { term: string; children: Reac
   );
 }
 
-export const Nothing = ({ children = "None" }: { children?: ReactNode }) => <span className="text-muted-foreground">{children}</span>;
+export const Nothing = ({ children }: { children?: ReactNode }) => <span className="text-muted-foreground">{children ?? t("common.none")}</span>;

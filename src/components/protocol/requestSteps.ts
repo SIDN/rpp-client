@@ -1,4 +1,5 @@
 import type { RequestActivity } from "@/rpp/client/progress";
+import { t } from "@/i18n";
 
 export type StepState = "pending" | "active" | "done" | "failed";
 
@@ -11,9 +12,9 @@ export interface Step {
 }
 
 const LABELS = [
-  { label: "Preparing", doing: "Preparing the request" },
-  { label: "Registry", doing: "Waiting for the registry" },
-  { label: "Answer", doing: "Reading the answer" },
+  { label: "protocol.progress.preparing", doing: "protocol.progress.preparingRequest" },
+  { label: "protocol.progress.registry", doing: "protocol.progress.waitingForRegistry" },
+  { label: "protocol.progress.answer", doing: "protocol.progress.readingAnswer" },
 ] as const;
 
 /**
@@ -27,10 +28,10 @@ export function stepsOf(activity: RequestActivity | undefined, now: number): Ste
   return LABELS.map(({ label, doing }, index): Step => {
     const start = marks[index] ?? (index === 0 ? now : undefined);
     const end = marks[index + 1];
-    if (start === undefined) return { label, doing, state: "pending", ms: undefined };
-    if (end !== undefined) return { label, doing, state: "done", ms: Math.max(0, end - start) };
+    if (start === undefined) return { label: t(label), doing: t(doing), state: "pending", ms: undefined };
+    if (end !== undefined) return { label: t(label), doing: t(doing), state: "done", ms: Math.max(0, end - start) };
     const until = finished ? (activity?.finishedAt ?? now) : now;
-    return { label, doing, state: finished ? (failed ? "failed" : "done") : "active", ms: Math.max(0, until - start) };
+    return { label: t(label), doing: t(doing), state: finished ? (failed ? "failed" : "done") : "active", ms: Math.max(0, until - start) };
   });
 }
 

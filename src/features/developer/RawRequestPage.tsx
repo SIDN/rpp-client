@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Callout } from "@/components/ui/callout";
 import { Choice } from "@/components/ui/choice";
 import { Field, Input, Select } from "@/components/ui/field";
+import { t } from "@/i18n";
 import { REQUEST_SAMPLES, type RequestSample } from "@/application/developer/requestSamples";
 import { buildRawRequest, RAW_METHODS, type RawRequestField, type RawRequestForm } from "@/application/developer/rawRequest";
 import { TransportError } from "@/rpp/errors/TransportError";
@@ -17,7 +18,12 @@ const INITIAL: RawRequestForm = { method: "GET", target: "", query: "", headers:
 
 const TEXTAREA = "w-full rounded-md border border-input bg-surface px-3 py-2 font-mono text-sm text-surface-foreground";
 
-const SAMPLE_GROUPS: [string, RequestSample[]][] = [...Map.groupBy(REQUEST_SAMPLES, (sample) => sample.group)];
+const SAMPLE_GROUPS: [string, RequestSample[]][] = REQUEST_SAMPLES.reduce<[string, RequestSample[]][]>((groups, sample) => {
+  const group = groups.find(([name]) => name === sample.group);
+  if (group) group[1].push(sample);
+  else groups.push([sample.group, [sample]]);
+  return groups;
+}, []);
 
 type Outcome = { kind: "exchange"; record: ExchangeRecord } | { kind: "failed"; message: string } | { kind: "cancelled" };
 
@@ -32,7 +38,7 @@ export function RawRequestPage() {
   if (!session) {
     return (
       <>
-        <PageHeader title="Raw request" description="Send any request to the server as typed." />
+        <PageHeader title={t("developer.page.title")} description={t("developer.page.descriptionDisconnected")} />
         <NotConnected />
       </>
     );
@@ -69,7 +75,7 @@ export function RawRequestPage() {
     try {
       const response = await session.transport.send({ ...built.request, signal: controller.signal });
       const record = session.exchanges.entries().find((entry) => entry.id === response.exchangeId);
-      setOutcome(record ? { kind: "exchange", record } : { kind: "failed", message: "The exchange is no longer in the log." });
+      setOutcome(record ? { kind: "exchange", record } : { kind: "failed", message: t("developer.failure.exchangeMissing") });
     } catch (error) {
       if (controller.signal.aborted) setOutcome({ kind: "cancelled" });
       else if (error instanceof TransportError && error.exchange) setOutcome({ kind: "exchange", record: error.exchange });
@@ -82,24 +88,24 @@ export function RawRequestPage() {
   return (
     <>
       <PageHeader
-        title="Raw request"
-        description="Send any request to the server as typed. Nothing is added or corrected, so what you enter is what is sent. The answer is the redacted exchange, as in Exchanges."
+        title={t("developer.page.title")}
+        description={t("developer.page.description")}
       />
-      <Callout tone="warning" title="This sends real requests">
-        A POST, PUT, PATCH or DELETE changes what the registry holds. Requests carry the credentials of the connection unless you switch that off.
+      <Callout tone="warning" title={t("developer.warning.title")}>
+        {t("developer.warning.description")}
       </Callout>
 
-      <Section id="request" title="Request">
+      <Section id="request" title={t("developer.request.title")}>
         <form onSubmit={send} noValidate className="flex max-w-3xl flex-col gap-5">
-          <Field label="Sample request" hint="Fills in the method, path, query, headers and body with an example to edit. Replaces what is entered there.">
+          <Field label={t("developer.samples.label")} hint={t("developer.samples.hint")}>
             {(control) => (
               <Select {...control} value="" onChange={(event) => applySample(event.target.value)}>
-                <option value="">Choose a request…</option>
+                <option value="">{t("developer.samples.choose")}</option>
                 {SAMPLE_GROUPS.map(([group, samples]) => (
-                  <optgroup key={group} label={group}>
+                  <optgroup key={group} label={t(group)}>
                     {samples.map((sample) => (
                       <option key={sample.id} value={sample.id}>
-                        {sample.label} ({sample.method})
+                        {t(sample.label)} ({sample.method})
                       </option>
                     ))}
                   </optgroup>
@@ -108,7 +114,7 @@ export function RawRequestPage() {
             )}
           </Field>
           <div className="flex flex-wrap items-start gap-3">
-            <Field label="Method">
+            <Field label={t("developer.fields.method")}>
               {(control) => (
                 <Select {...control} value={form.method} onChange={(event) => set("method", event.target.value as RawRequestForm["method"])}>
                   {RAW_METHODS.map((method) => (
@@ -118,44 +124,44 @@ export function RawRequestPage() {
               )}
             </Field>
             <Field
-              label="Path or address"
-              hint="Relative to the server address, or a full address on an allowed origin."
+              label={t("developer.fields.target")}
+              hint={t("developer.fields.targetHint")}
               error={problems.target}
               className="min-w-64 flex-1"
             >
               {(control) => (
-                <Input {...control} value={form.target} placeholder="domainNames/example.nl" className="font-mono" spellCheck={false} autoCapitalize="none" onChange={(event) => set("target", event.target.value)} />
+                <Input {...control} value={form.target} placeholder={t("developer.fields.targetPlaceholder")} className="font-mono" spellCheck={false} autoCapitalize="none" onChange={(event) => set("target", event.target.value)} />
               )}
             </Field>
           </div>
-          <Field label="Query parameters" hint="One name=value per line. Repeat a name to send it more than once." error={problems.query}>
+          <Field label={t("developer.fields.query")} hint={t("developer.fields.queryHint")} error={problems.query}>
             {(control) => <textarea {...control} rows={3} value={form.query} className={TEXTAREA} spellCheck={false} onChange={(event) => set("query", event.target.value)} />}
           </Field>
-          <Field label="Extra headers" hint="One Name: value per line. Accept, Content-Type, RPP-Preset, RPP-Cltrid and credentials are set by the client." error={problems.headers}>
+          <Field label={t("developer.fields.headers")} hint={t("developer.fields.headersHint")} error={problems.headers}>
             {(control) => <textarea {...control} rows={3} value={form.headers} className={TEXTAREA} spellCheck={false} onChange={(event) => set("headers", event.target.value)} />}
           </Field>
-          <Field label="Body" hint="JSON. Leave empty for no body." error={problems.body}>
+          <Field label={t("developer.fields.body")} hint={t("developer.fields.bodyHint")} error={problems.body}>
             {(control) => <textarea {...control} rows={8} value={form.body} className={TEXTAREA} spellCheck={false} onChange={(event) => set("body", event.target.value)} />}
           </Field>
-          <Field label="RPP-Cltrid" hint="Leave empty to let the client make one." error={problems.clientTransactionId} className="max-w-64">
+          <Field label="RPP-Cltrid" hint={t("developer.fields.transactionIdHint")} error={problems.clientTransactionId} className="max-w-64">
             {(control) => <Input {...control} value={form.clientTransactionId} className="font-mono" autoComplete="off" onChange={(event) => set("clientTransactionId", event.target.value)} />}
           </Field>
           <Choice
             type="checkbox"
-            label="Send the credentials"
-            hint="Switch off to try the request without signing in."
+            label={t("developer.fields.sendCredentials")}
+            hint={t("developer.fields.sendCredentialsHint")}
             checked={form.authenticate}
             onChange={(event) => set("authenticate", event.target.checked)}
           />
           <div className="flex gap-2">
             <Button type="submit" disabled={pending}>
               <Send aria-hidden />
-              {pending ? "Sending…" : "Send request"}
+              {pending ? t("developer.sending") : t("developer.sendRequest")}
             </Button>
             {pending && (
               <Button variant="secondary" onClick={() => abort.current?.abort()}>
                 <Square aria-hidden />
-                Stop waiting
+                {t("developer.stopWaiting")}
               </Button>
             )}
           </div>
@@ -163,16 +169,16 @@ export function RawRequestPage() {
       </Section>
 
       {outcome?.kind === "exchange" && (
-        <div role="region" aria-label="Exchange" className="mt-8">
+        <div role="region" aria-label={t("exchanges.detail.exchange")} className="mt-8">
           <ExchangeDetail record={outcome.record} />
         </div>
       )}
       {outcome?.kind === "failed" && (
-        <Callout tone="danger" title="The request was not sent">
+        <Callout tone="danger" title={t("developer.failure.title")}>
           {outcome.message}
         </Callout>
       )}
-      {outcome?.kind === "cancelled" && <Callout tone="info" title="Stopped waiting">The registry may still have acted on the request.</Callout>}
+      {outcome?.kind === "cancelled" && <Callout tone="info" title={t("developer.cancelled.title")}>{t("developer.cancelled.description")}</Callout>}
     </>
   );
 }

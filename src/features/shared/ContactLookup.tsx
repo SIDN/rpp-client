@@ -1,4 +1,5 @@
 import { Search } from "lucide-react";
+import { t } from "@/i18n";
 import { useEffect, useId, useState } from "react";
 import { createPortal } from "react-dom";
 import { useDiscoveryState } from "@/app/discovery-context";
@@ -40,11 +41,11 @@ function LookupDialog({ title, onSelect, onClose }: { title: string; onSelect(id
         <h2 id={titleId} className="text-lg font-semibold">
           {title}
         </h2>
-        <Callout tone="info" title="Search by identifier only">
-          For now a contact can only be found by its identifier. Later, this page should also offer more advanced search options.
+        <Callout tone="info" title={t("shared.contactLookup.identifierOnly")}>
+          {t("shared.contactLookup.identifierOnlyHelp")}
         </Callout>
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor={inputId}>Contact identifier</Label>
+          <Label htmlFor={inputId}>{t("shared.contactLookup.identifier")}</Label>
           <div className="flex flex-wrap items-center gap-2">
             <Input
               id={inputId}
@@ -63,11 +64,11 @@ function LookupDialog({ title, onSelect, onClose }: { title: string; onSelect(id
               }}
             />
             <Button variant="primary" disabled={search.pending} aria-busy={search.pending} onClick={() => search.start(id)}>
-              {search.pending ? "Waiting for the registry" : "Search"}
+              {search.pending ? t("shared.waitingForRegistry") : t("shared.contactLookup.search")}
             </Button>
           </div>
         </div>
-        <OperationOutcome operation={search} success={`Found ${search.variables ?? "the contact"}`}>
+        <OperationOutcome operation={search} success={t("shared.contactLookup.found", { contact: search.variables ?? t("common.theContact") })}>
           {(contact) => <ContactDetails contact={contact} />}
         </OperationOutcome>
         <div className="flex flex-wrap gap-2">
@@ -79,11 +80,11 @@ function LookupDialog({ title, onSelect, onClose }: { title: string; onSelect(id
                 onClose();
               }}
             >
-              Use {found.id}
+              {t("shared.contactLookup.use", { id: found.id })}
             </Button>
           )}
           <Button variant="secondary" onClick={onClose}>
-            Close
+            {t("common.close")}
           </Button>
         </div>
       </div>
@@ -99,9 +100,9 @@ export function ContactLookup({ label, onSelect }: { label: string; onSelect(id:
   const offered = objectSupport(discovery, "contact") === "offered";
   return (
     <>
-      <Button variant="secondary" size="sm" disabled={!offered} title={offered ? undefined : "The server does not offer contacts"} aria-label={label} onClick={() => setOpen(true)}>
+      <Button variant="secondary" size="sm" disabled={!offered} title={offered ? undefined : t("shared.contactLookup.notOffered")} aria-label={label} onClick={() => setOpen(true)}>
         <Search aria-hidden />
-        Look up
+        {t("shared.contactLookup.lookUp")}
       </Button>
       {open && <LookupDialog title={label} onSelect={onSelect} onClose={() => setOpen(false)} />}
     </>

@@ -1,3 +1,4 @@
+import { t } from "@/i18n";
 import { useFormContext } from "react-hook-form";
 import { PHONE_PATTERN } from "@/application/contacts/contactCard";
 import { Field, Input } from "@/components/ui/field";
@@ -15,7 +16,7 @@ export interface PanelProps {
 
 export function OrganisationField({ organisationId, onOrganisationChange, hint }: Pick<PanelProps, "organisationId" | "onOrganisationChange"> & { hint?: string }) {
   return (
-    <Field label="Organisation identifier" hint={hint}>
+    <Field label={t("organisations.field.organisationId")} hint={hint}>
       {(control) => (
         <Input
           {...control}
@@ -33,7 +34,7 @@ export function OrganisationField({ organisationId, onOrganisationChange, hint }
 
 export function UserField({ userId, onUserChange, hint }: Pick<PanelProps, "userId" | "onUserChange"> & { hint?: string }) {
   return (
-    <Field label="User identifier" hint={hint}>
+    <Field label={t("organisations.field.userId")} hint={hint}>
       {(control) => (
         <Input
           {...control}
@@ -55,7 +56,7 @@ export interface CardValues {
   voice: string;
 }
 
-const phoneRule = (value: string) => value.trim() === "" || PHONE_PATTERN.test(value.trim()) || "Use +CC.number, like +31.201234567";
+const phoneRule = (value: string) => value.trim() === "" || PHONE_PATTERN.test(value.trim()) || t("organisations.validation.phone");
 
 /** The name, email address and phone number of a Card; the form it sits in has these three members. */
 export function CardFields({ legend, nameLabel }: { legend: string; nameLabel: string }) {
@@ -70,18 +71,18 @@ export function CardFields({ legend, nameLabel }: { legend: string; nameLabel: s
         {(control) => <Input {...control} autoComplete="off" {...register("name")} />}
       </Field>
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Email" error={errors.email?.message}>
+        <Field label={t("organisations.field.email")} error={errors.email?.message}>
           {(control) => (
             <Input
               {...control}
               type="email"
               autoComplete="off"
               spellCheck={false}
-              {...register("email", { validate: (email) => email.trim() === "" || /^[^\s@]+@[^\s@]+$/.test(email.trim()) || "Enter an email address" })}
+              {...register("email", { validate: (email) => email.trim() === "" || /^[^\s@]+@[^\s@]+$/.test(email.trim()) || t("organisations.validation.email") })}
             />
           )}
         </Field>
-        <Field label="Phone" hint="As +CC.number, with xEXT for an extension." error={errors.voice?.message}>
+        <Field label={t("organisations.field.phone")} hint={t("organisations.field.phoneHint")} error={errors.voice?.message}>
           {(control) => <Input {...control} type="tel" autoComplete="off" spellCheck={false} className="font-mono" {...register("voice", { validate: phoneRule })} />}
         </Field>
       </div>
@@ -91,8 +92,8 @@ export function CardFields({ legend, nameLabel }: { legend: string; nameLabel: s
 
 export function StatusList({ type, statuses }: { type: StatusType; statuses: readonly { label: string; reason?: string; due?: string }[] }) {
   return (
-    <ul aria-label="Status" className="flex flex-wrap gap-2">
-      {statuses.length === 0 && <li className="text-muted-foreground">No status listed</li>}
+    <ul aria-label={t("organisations.details.status")} className="flex flex-wrap gap-2">
+      {statuses.length === 0 && <li className="text-muted-foreground">{t("organisations.details.noStatusListed")}</li>}
       {statuses.map((status, index) => (
         <li key={`${status.label}-${index}`} className="flex flex-col gap-0.5">
           <StatusLabel type={type} label={status.label} />
@@ -100,7 +101,7 @@ export function StatusList({ type, statuses }: { type: StatusType; statuses: rea
             <span className="text-xs text-muted-foreground">
               {status.reason}
               {status.reason && status.due ? ", " : ""}
-              {status.due && <>due <Timestamp value={status.due} /></>}
+              {status.due && <>{t("organisations.details.due")} <Timestamp value={status.due} /></>}
             </span>
           )}
         </li>

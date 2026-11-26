@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Callout } from "@/components/ui/callout";
 import type { ResponseMeta } from "@/rpp/operations/types";
 import type { Operation } from "./useOperation";
+import { t } from "@/i18n";
 
 function Meta({ meta }: { meta: ResponseMeta }) {
   const invalid = meta.validation.response?.status === "invalid" ? meta.validation.response : undefined;
@@ -21,18 +22,18 @@ function Meta({ meta }: { meta: ResponseMeta }) {
           </span>
         )}
         <span>
-          Exchange <code>{meta.exchangeId}</code>
+          {t("protocol.exchange.label")} <code>{meta.exchangeId}</code>
         </span>
-        {meta.queueSize !== undefined && <span>{meta.queueSize} message(s) waiting</span>}
+        {meta.queueSize !== undefined && <span>{t("shared.outcome.queue", { count: meta.queueSize })}</span>}
       </p>
       {pending && (
-        <Callout tone="warning" title="The registry has not finished">
-          It accepted the request and will complete it later. Look the domain up again to see where it stands.
+        <Callout tone="warning" title={t("shared.outcome.notFinished")}>
+          {t("shared.outcome.notFinishedHelp")}
         </Callout>
       )}
       {meta.processes.length > 0 && (
         <p className="text-sm">
-          Processes started:{" "}
+          {t("shared.outcome.processesStarted")}{" "}
           {meta.processes.map((process) => (
             <code key={process.url} className="mr-2">
               {process.process}
@@ -42,7 +43,7 @@ function Meta({ meta }: { meta: ResponseMeta }) {
         </p>
       )}
       {meta.warnings.length > 0 && (
-        <Callout tone="warning" title="The answer deviates from the specification">
+        <Callout tone="warning" title={t("shared.outcome.deviates")}>
           <ul className="list-disc pl-5">
             {meta.warnings.map((warning) => (
               <li key={warning}>{warning}</li>
@@ -51,7 +52,7 @@ function Meta({ meta }: { meta: ResponseMeta }) {
         </Callout>
       )}
       {invalid && (
-        <Callout tone="warning" title="The answer does not match the schema">
+        <Callout tone="warning" title={t("shared.outcome.schemaMismatch")}>
           <ul className="list-disc pl-5">
             {invalid.issues.slice(0, 6).map((issue, index) => (
               <li key={index}>
@@ -86,8 +87,8 @@ export function OperationOutcome<Variables, Data>({
     <div className="flex flex-col gap-4">
       <RequestProgress activity={activity} pending={pending} onCancel={operation.cancel} />
       {cancelled && (
-        <Callout tone="info" title="You stopped waiting">
-          The registry may still have carried out the request. Look the domain up before you try again.
+        <Callout tone="info" title={t("shared.outcome.stoppedWaiting")}>
+          {t("shared.outcome.stoppedWaitingHelp")}
         </Callout>
       )}
       {failure && <FailureView failure={failure} />}

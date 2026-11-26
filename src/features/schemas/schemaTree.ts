@@ -1,4 +1,5 @@
 import { isJsonObject } from "@/rpp/core/types/json";
+import { t } from "@/i18n";
 
 /** One schema, or one part of a schema, as a node of the tree that a person walks through. */
 export interface SchemaNode {
@@ -87,13 +88,13 @@ function factsOf(schema: Record<string, unknown>, declared: ReadonlySet<string>)
   // A member that a constraint requires but that this schema does not declare is declared elsewhere (a composed branch).
   const required = Array.isArray(schema.required) ? schema.required.filter((name): name is string => typeof name === "string") : [];
   const elsewhere = required.filter((name) => !declared.has(name));
-  if (elsewhere.length > 0) facts.push(`requires ${elsewhere.join(", ")}`);
+  if (elsewhere.length > 0) facts.push(t("schemas.tree.requires", { names: elsewhere.join(", ") }));
   return facts;
 }
 
 function describe(schema: unknown, id: string, label: string, kind: SchemaNode["kind"], required: boolean): SchemaNode {
   const base = { id, kind, label, required, facts: [] as string[], children: [] as SchemaNode[] };
-  if (typeof schema === "boolean") return { ...base, summary: schema ? "any value" : "not allowed" };
+  if (typeof schema === "boolean") return { ...base, summary: schema ? t("schemas.tree.anyValue") : t("schemas.tree.notAllowed") };
   if (!isJsonObject(schema)) return { ...base, summary: show(schema) };
 
   const properties = isJsonObject(schema.properties) ? schema.properties : {};
@@ -118,7 +119,7 @@ function describe(schema: unknown, id: string, label: string, kind: SchemaNode["
       id: `${id}/${key}`,
       kind: "keyword",
       label: key,
-      summary: `${list.length} ${list.length === 1 ? "schema" : "schemas"}`,
+      summary: t("schemas.tree.schemaCount", { count: list.length }),
       required: false,
       facts: [],
       children: list.map((entry, index) => describe(entry, `${id}/${key}/${index}`, `[${index}]`, "branch", false)),
@@ -126,7 +127,7 @@ function describe(schema: unknown, id: string, label: string, kind: SchemaNode["
   }
   if (isJsonObject(schema.dependentSchemas)) {
     for (const [name, value] of Object.entries(schema.dependentSchemas)) {
-      children.push(describe(value, `${id}/dependentSchemas/${escapePointer(name)}`, `if ${name}`, "keyword", false));
+      children.push(describe(value, `${id}/dependentSchemas/${escapePointer(name)}`, t("schemas.tree.ifName", { name }), "keyword", false));
     }
   }
   for (const key of ["$defs", "definitions"] as const) {
@@ -136,7 +137,7 @@ function describe(schema: unknown, id: string, label: string, kind: SchemaNode["
       id: `${id}/${key}`,
       kind: "keyword",
       label: key,
-      summary: `${Object.keys(defs).length} definitions`,
+      summary: t("schemas.tree.definitionCount", { count: Object.keys(defs).length }),
       required: false,
       facts: [],
       children: Object.entries(defs).map(([name, value]) => describe(value, `${id}/${key}/${escapePointer(name)}`, name, "definition", false)),
@@ -144,7 +145,7 @@ function describe(schema: unknown, id: string, label: string, kind: SchemaNode["
   }
 
   const ref = refOf(schema);
-  const summary = [typeOf(schema), ref ? `→ ${ref.text}` : ""].filter(Boolean).join(" · ") || (children.length === 0 ? "any value" : "");
+  const summary = [typeOf(schema), ref ? `→ ${ref.text}` : ""].filter(Boolean).join(" · ") || (children.length === 0 ? t("schemas.tree.anyValue") : "");
   const description = typeof schema.description === "string" ? schema.description : typeof schema.title === "string" ? schema.title : undefined;
   return {
     ...base,

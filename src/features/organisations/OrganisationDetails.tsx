@@ -1,3 +1,4 @@
+import { t } from "@/i18n";
 import { contactLinksOf, roleStatusesOf, rolesOf } from "@/application/organisations/organisationData";
 import { cardDataOf } from "@/application/organisations/card";
 import { DefinitionList, DefinitionRow, Nothing } from "@/components/common/definition";
@@ -9,7 +10,7 @@ import { StatusList } from "./parts";
 
 const MODELLED = new Set(["@type", "id", "provMetadata", "status", "roles", "parent", "contactInfo", "contacts", "users", "processes"]);
 
-const value = (text: string) => (text === "" ? <Nothing>Not given</Nothing> : text);
+const value = (text: string) => (text === "" ? <Nothing>{t("organisations.value.notGiven")}</Nothing> : text);
 
 /** Everything the server showed of an organisation; members this client does not model follow, as received. */
 export function OrganisationDetails({ organisation }: { organisation: Organisation }) {
@@ -35,7 +36,7 @@ export function OrganisationDetails({ organisation }: { organisation: Organisati
       </div>
 
       <DefinitionList>
-        <DefinitionRow term="Roles">
+        <DefinitionRow term={t("organisations.details.roles")}>
           {roles.length === 0 ? (
             <Nothing />
           ) : (
@@ -43,7 +44,7 @@ export function OrganisationDetails({ organisation }: { organisation: Organisati
               {roles.map((role) => (
                 <li key={role.name} className="flex flex-wrap items-center gap-x-3 gap-y-1">
                   <code>{role.name}</code>
-                  {role.roleId && <span className="text-sm text-muted-foreground">identifier <code>{role.roleId}</code></span>}
+                  {role.roleId && <span className="text-sm text-muted-foreground">{t("organisations.details.identifier")} <code>{role.roleId}</code></span>}
                   {roleStatusesOf(organisation, role.name).map((label, index) => (
                     <StatusLabel key={`${label}-${index}`} type="organisationRoleStatus" label={label} />
                   ))}
@@ -52,11 +53,11 @@ export function OrganisationDetails({ organisation }: { organisation: Organisati
             </ul>
           )}
         </DefinitionRow>
-        <DefinitionRow term="Parent">{parent ? <code>{parent}</code> : <Nothing />}</DefinitionRow>
-        <DefinitionRow term="Name">{value(card.name)}</DefinitionRow>
-        <DefinitionRow term="Email">{value(card.email)}</DefinitionRow>
-        <DefinitionRow term="Phone">{card.voice ? <code>{card.voice}</code> : <Nothing>Not given</Nothing>}</DefinitionRow>
-        <DefinitionRow term="Contacts">
+        <DefinitionRow term={t("organisations.details.parent")}>{parent ? <code>{parent}</code> : <Nothing />}</DefinitionRow>
+        <DefinitionRow term={t("organisations.details.name")}>{value(card.name)}</DefinitionRow>
+        <DefinitionRow term={t("organisations.details.email")}>{value(card.email)}</DefinitionRow>
+        <DefinitionRow term={t("organisations.details.phone")}>{card.voice ? <code>{card.voice}</code> : <Nothing>{t("organisations.value.notGiven")}</Nothing>}</DefinitionRow>
+        <DefinitionRow term={t("organisations.details.contacts")}>
           {contacts.length === 0 ? (
             <Nothing />
           ) : (
@@ -69,7 +70,7 @@ export function OrganisationDetails({ organisation }: { organisation: Organisati
             </ul>
           )}
         </DefinitionRow>
-        <DefinitionRow term="Users">
+        <DefinitionRow term={t("organisations.details.users")}>
           {users.length === 0 ? (
             <Nothing />
           ) : (
@@ -82,10 +83,10 @@ export function OrganisationDetails({ organisation }: { organisation: Organisati
             </ul>
           )}
         </DefinitionRow>
-        <DefinitionRow term="Provisioning">
+        <DefinitionRow term={t("organisations.details.provisioning")}>
           <Provisioning metadata={organisation.provMetadata} />
         </DefinitionRow>
-        <DefinitionRow term="Processes">
+        <DefinitionRow term={t("organisations.details.processes")}>
           {processes.length === 0 ? (
             <Nothing />
           ) : (
@@ -100,13 +101,13 @@ export function OrganisationDetails({ organisation }: { organisation: Organisati
           )}
         </DefinitionRow>
         {others.length > 0 && (
-          <DefinitionRow term="Other members">
+          <DefinitionRow term={t("organisations.details.otherMembers")}>
             <OtherMembers members={others} />
           </DefinitionRow>
         )}
       </DefinitionList>
 
-      <JsonView label="Organisation as received" value={organisation} />
+      <JsonView label={t("organisations.details.rawOrganisation")} value={organisation} />
     </div>
   );
 }

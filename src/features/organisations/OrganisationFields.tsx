@@ -1,4 +1,5 @@
 import { Plus, X } from "lucide-react";
+import { t } from "@/i18n";
 import { useId } from "react";
 import { useFieldArray, useFormContext } from "react-hook-form";
 import {
@@ -25,8 +26,8 @@ function Roles() {
   const list = useId();
   return (
     <fieldset className="flex flex-col gap-3">
-      <legend className="mb-1 text-sm font-medium">Roles</legend>
-      <p className="text-sm text-muted-foreground">What the organisation is in the registry, such as a registrar or a reseller. At least one is needed.</p>
+      <legend className="mb-1 text-sm font-medium">{t("organisations.fields.roles")}</legend>
+      <p className="text-sm text-muted-foreground">{t("organisations.fields.rolesHint")}</p>
       <datalist id={list}>
         {ROLE_TYPES.map((type) => (
           <option key={type} value={type} />
@@ -37,7 +38,7 @@ function Roles() {
         return (
           <div key={field.id} className="flex flex-col gap-2 rounded-md border border-border p-3">
             <div className="grid gap-3 sm:grid-cols-2">
-              <Field label={`Role ${index + 1}`} error={problem}>
+              <Field label={t("organisations.fields.role", { number: index + 1 })} error={problem}>
                 {(control) => (
                   <Input
                     {...control}
@@ -49,19 +50,19 @@ function Roles() {
                     {...register(`roles.${index}.name`, {
                       validate: (value, values) =>
                         value.trim() === ""
-                          ? "Give the role a type"
-                          : values.roles.filter((role) => role.name.trim() === value.trim()).length === 1 || `The role ${value.trim()} is given twice`,
+                          ? t("organisations.validation.roleType")
+                          : values.roles.filter((role) => role.name.trim() === value.trim()).length === 1 || t("organisations.validation.roleDuplicate", { name: value.trim() }),
                     })}
                   />
                 )}
               </Field>
-              <Field label={`Role ${index + 1} identifier`} hint="Optional, such as an IANA ID for a registrar.">
+              <Field label={t("organisations.fields.roleIdentifier", { number: index + 1 })} hint={t("organisations.fields.roleIdentifierHint")}>
                 {(control) => <Input {...control} autoComplete="off" spellCheck={false} {...register(`roles.${index}.roleId`)} />}
               </Field>
             </div>
             <div className="flex items-center justify-between gap-3">
-              <Choice type="checkbox" label={`Prohibit linking to role ${index + 1}`} hint={<code>{ROLE_CLIENT_STATUS}</code>} {...register(`roles.${index}.linkProhibited`)} />
-              <Button variant="ghost" size="icon" aria-label={`Remove role ${index + 1}`} disabled={fields.length === 1} onClick={() => remove(index)}>
+              <Choice type="checkbox" label={t("organisations.fields.prohibitRoleLink", { number: index + 1 })} hint={<code>{ROLE_CLIENT_STATUS}</code>} {...register(`roles.${index}.linkProhibited`)} />
+              <Button variant="ghost" size="icon" aria-label={t("organisations.fields.removeRole", { number: index + 1 })} disabled={fields.length === 1} onClick={() => remove(index)}>
                 <X aria-hidden />
               </Button>
             </div>
@@ -71,7 +72,7 @@ function Roles() {
       <div>
         <Button variant="secondary" size="sm" onClick={() => append({ ...EMPTY_ROLE })}>
           <Plus aria-hidden />
-          Add a role
+          {t("organisations.fields.addRole")}
         </Button>
       </div>
     </fieldset>
@@ -89,8 +90,8 @@ function Contacts() {
   const list = useId();
   return (
     <fieldset className="flex flex-col gap-3">
-      <legend className="mb-1 text-sm font-medium">Contacts</legend>
-      <p className="text-sm text-muted-foreground">Contacts that already exist in the registry, by type.</p>
+      <legend className="mb-1 text-sm font-medium">{t("organisations.fields.contacts")}</legend>
+      <p className="text-sm text-muted-foreground">{t("organisations.fields.contactsHint")}</p>
       <datalist id={list}>
         {CONTACT_TYPES.map((type) => (
           <option key={type} value={type} />
@@ -98,7 +99,7 @@ function Contacts() {
       </datalist>
       {fields.map((field, index) => (
         <div key={field.id} className="flex items-start gap-2">
-          <Field label={`Contact ${index + 1} type`} error={errors.contacts?.[index]?.label?.message} className="w-40">
+          <Field label={t("organisations.fields.contactType", { number: index + 1 })} error={errors.contacts?.[index]?.label?.message} className="w-40">
             {(control) => (
               <Input
                 {...control}
@@ -108,12 +109,12 @@ function Contacts() {
                 spellCheck={false}
                 placeholder="admin"
                 {...register(`contacts.${index}.label`, {
-                  validate: (value, values) => values.contacts[index]?.id.trim() === "" || value.trim() !== "" || "Give the contact a type",
+                  validate: (value, values) => values.contacts[index]?.id.trim() === "" || value.trim() !== "" || t("organisations.validation.contactType"),
                 })}
               />
             )}
           </Field>
-          <Field label={`Contact ${index + 1} identifier`} error={errors.contacts?.[index]?.id?.message} className="flex-1">
+          <Field label={t("organisations.fields.contactIdentifier", { number: index + 1 })} error={errors.contacts?.[index]?.id?.message} className="flex-1">
             {(control) => (
               <Input
                 {...control}
@@ -122,15 +123,15 @@ function Contacts() {
                 spellCheck={false}
                 className="font-mono"
                 {...register(`contacts.${index}.id`, {
-                  validate: (value, values) => values.contacts[index]?.label.trim() === "" || value.trim() !== "" || "Give the contact an identifier",
+                  validate: (value, values) => values.contacts[index]?.label.trim() === "" || value.trim() !== "" || t("organisations.validation.contactIdentifier"),
                 })}
               />
             )}
           </Field>
           <div className="mt-7">
-            <ContactLookup label={`Look up contact ${index + 1}`} onSelect={(id) => setValue(`contacts.${index}.id`, id, { shouldDirty: true, shouldValidate: true })} />
+            <ContactLookup label={t("organisations.fields.lookupContact", { number: index + 1 })} onSelect={(id) => setValue(`contacts.${index}.id`, id, { shouldDirty: true, shouldValidate: true })} />
           </div>
-          <Button variant="ghost" size="icon" aria-label={`Remove contact ${index + 1}`} className="mt-7" onClick={() => remove(index)}>
+          <Button variant="ghost" size="icon" aria-label={t("organisations.fields.removeContact", { number: index + 1 })} className="mt-7" onClick={() => remove(index)}>
             <X aria-hidden />
           </Button>
         </div>
@@ -138,7 +139,7 @@ function Contacts() {
       <div>
         <Button variant="secondary" size="sm" onClick={() => append({ label: "", id: "" })}>
           <Plus aria-hidden />
-          Add a contact
+          {t("organisations.fields.addContact")}
         </Button>
       </div>
     </fieldset>
@@ -151,17 +152,17 @@ export function OrganisationFields() {
   return (
     <div className="flex flex-col gap-8">
       <Roles />
-      <Field label="Parent organisation" hint="The identifier of the organisation this one belongs to, such as a reseller's registrar. Optional.">
+      <Field label={t("organisations.fields.parentOrganisation")} hint={t("organisations.fields.parentOrganisationHint")}>
         {(control) => <Input {...control} autoComplete="off" autoCapitalize="none" spellCheck={false} className="max-w-96 font-mono" {...register("parent")} />}
       </Field>
-      <CardFields legend="Contact information" nameLabel="Name" />
+      <CardFields legend={t("organisations.fields.contactInformation")} nameLabel={t("organisations.fields.name")} />
       <Contacts />
       <fieldset className="flex flex-col gap-3">
-        <legend className="mb-1 text-sm font-medium">Locks set by you</legend>
+        <legend className="mb-1 text-sm font-medium">{t("organisations.fields.locksSetByYou")}</legend>
         {ORGANISATION_CLIENT_STATUSES.map((label) => (
           <Choice key={label} type="checkbox" value={label} label={<code>{label}</code>} {...register("clientStatuses")} />
         ))}
-        <p className="text-sm text-muted-foreground">Statuses the registry sets itself cannot be changed here.</p>
+        <p className="text-sm text-muted-foreground">{t("organisations.fields.registryStatusesHint")}</p>
       </fieldset>
     </div>
   );

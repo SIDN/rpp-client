@@ -1,3 +1,4 @@
+import { t } from "@/i18n";
 import type { PeriodInput } from "@/application/domains/domainWorkflows";
 import type { DomainDataValues, PeriodValues } from "./parts";
 
@@ -31,10 +32,10 @@ type ReportField = keyof RestoreReportValues;
 export function validateReport(values: RestoreReportValues): Partial<Record<ReportField, string>> {
   const errors: Partial<Record<ReportField, string>> = {};
   for (const field of ["preData", "postData", "restoreReason", "statement1", "statement2"] as const) {
-    if (!filled(values[field])) errors[field] = "Required";
+    if (!filled(values[field])) errors[field] = t("domains.validation.required");
   }
   for (const field of ["deleteTime", "restoreTime"] as const) {
-    if (toTimestamp(values[field]) === undefined) errors[field] = "Enter a date and time";
+    if (toTimestamp(values[field]) === undefined) errors[field] = t("domains.validation.dateTime");
   }
   return errors;
 }

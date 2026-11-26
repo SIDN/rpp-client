@@ -1,25 +1,26 @@
 import { Monitor, Moon, Sun, type LucideIcon } from "lucide-react";
 import { useSyncExternalStore } from "react";
 import { cn } from "@/lib/utils";
+import { t } from "@/i18n";
 import { getThemePreference, setThemePreference, subscribeToTheme, type ThemePreference } from "@/lib/theme";
 
-const OPTIONS: { value: ThemePreference; label: string; icon: LucideIcon }[] = [
-  { value: "system", label: "Match system", icon: Monitor },
-  { value: "light", label: "Light", icon: Sun },
-  { value: "dark", label: "Dark", icon: Moon },
+const OPTIONS: { value: ThemePreference; labelKey: string; icon: LucideIcon }[] = [
+  { value: "system", labelKey: "ui.theme.system", icon: Monitor },
+  { value: "light", labelKey: "ui.theme.light", icon: Sun },
+  { value: "dark", labelKey: "ui.theme.dark", icon: Moon },
 ];
 
 export function ThemeToggle({ className }: { className?: string }) {
   const current = useSyncExternalStore(subscribeToTheme, getThemePreference, () => "system" as const);
   return (
-    <div role="group" aria-label="Colour theme" className={cn("inline-flex rounded-md border border-input bg-surface p-0.5", className)}>
-      {OPTIONS.map(({ value, label, icon: Icon }) => (
+    <div role="group" aria-label={t("ui.theme.groupLabel")} className={cn("inline-flex rounded-md border border-input bg-surface p-0.5", className)}>
+      {OPTIONS.map(({ value, labelKey, icon: Icon }) => (
         <button
           key={value}
           type="button"
-          aria-label={label}
+          aria-label={t(labelKey)}
           aria-pressed={current === value}
-          title={label}
+          title={t(labelKey)}
           onClick={() => setThemePreference(value)}
           className={cn(
             "grid size-8 place-items-center rounded-sm text-muted-foreground transition-colors hover:text-foreground",

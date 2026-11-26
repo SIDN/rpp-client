@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { t } from "@/i18n";
 import { useOperation } from "../shared/useOperation";
 import { OperationOutcome } from "../shared/OperationOutcome";
 import { SubmitButton } from "../shared/SubmitButton";
@@ -37,10 +38,10 @@ export function InfoPanel({ name, onNameChange, startNow = false }: PanelProps &
       >
         <NameField name={name} onNameChange={onNameChange} />
         <div>
-          <SubmitButton pending={info.pending}>Get info</SubmitButton>
+          <SubmitButton pending={info.pending}>{t("hosts.info.submit")}</SubmitButton>
         </div>
       </form>
-      <OperationOutcome operation={info} success={`Found ${tryParseHostName(info.variables ?? "")?.name ?? "the host"}`}>
+      <OperationOutcome operation={info} success={t("hosts.info.success", { host: tryParseHostName(info.variables ?? "")?.name ?? "the host" })}>
         {(host) => <HostDetails host={host} />}
       </OperationOutcome>
     </div>

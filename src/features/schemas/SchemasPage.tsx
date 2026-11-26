@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { Callout } from "@/components/ui/callout";
 import { Field, Select } from "@/components/ui/field";
+import { t } from "@/i18n";
 import { referenceLabel } from "@/features/capabilities/capabilityView";
 import type { CapabilitySnapshot, PresetCapability } from "@/rpp/discovery/capability-types";
 import { defaultPreset } from "@/rpp/discovery/capabilities";
@@ -20,7 +21,7 @@ import { createSchemaRegistry, SchemaDocumentError } from "@/rpp/schemas/SchemaR
 import { SchemaExplorer } from "./SchemaExplorer";
 import { buildSchemaTree } from "./schemaTree";
 
-const header = <PageHeader title="Schemas" description="The JSON Schema of a preset" />;
+const Header = () => <PageHeader title={t("schemas.page.title")} description={t("schemas.page.description")} />;
 
 function kilobytes(text: string): string {
   return `${(new Blob([text]).size / 1024).toFixed(1)} kB`;
@@ -32,7 +33,7 @@ export function SchemasPage() {
   if (discovery.status === "not-started") {
     return (
       <>
-        {header}
+        <Header />
         <NotConnected />
       </>
     );
@@ -40,27 +41,27 @@ export function SchemasPage() {
   if (discovery.status === "loading") {
     return (
       <>
-        {header}
-        <Callout tone="info" title="Reading the capabilities of the server" />
+        <Header />
+        <Callout tone="info" title={t("schemas.loading.capabilities")} />
       </>
     );
   }
   if (discovery.status === "failed") {
     return (
       <>
-        {header}
-        <Callout tone="danger" title="The capabilities of the server could not be read">
+        <Header />
+        <Callout tone="danger" title={t("schemas.error.capabilities")}>
           {discovery.error.message}
         </Callout>
         <Link to="/connection" className={buttonVariants({ variant: "secondary", className: "self-start" })}>
-          Go to the connection
+          {t("schemas.connectionLink")}
         </Link>
       </>
     );
   }
   return (
     <>
-      {header}
+      <Header />
       <PresetSchemas snapshot={discovery.snapshot} />
     </>
   );
@@ -99,16 +100,16 @@ function PresetSchemas({ snapshot }: { snapshot: CapabilitySnapshot }) {
 
   if (snapshot.presets.length === 0 || !preset) {
     return (
-      <Callout tone="warning" title="The server lists no presets">
-        Its discovery document has no presets, so there is no schema to show.
+      <Callout tone="warning" title={t("schemas.empty.presetsTitle")}>
+        {t("schemas.empty.presetsDescription")}
       </Callout>
     );
   }
 
   return (
     <>
-      <Section id="preset" title="Preset" description="Each preset has its own schema.">
-        <Field label="Preset" className="max-w-md">
+      <Section id="preset" title={t("schemas.preset.title")} description={t("schemas.preset.description")}>
+        <Field label={t("schemas.preset.label")} className="max-w-md">
           {(control) => (
             <Select
               {...control}
@@ -120,7 +121,7 @@ function PresetSchemas({ snapshot }: { snapshot: CapabilitySnapshot }) {
             >
               {snapshot.presets.map((entry) => (
                 <option key={referenceLabel(entry)} value={referenceLabel(entry)}>
-                  {entry.name ?? entry.id} ({referenceLabel(entry)}){entry.isDefault ? ", default" : ""}
+                  {entry.name ?? entry.id} ({referenceLabel(entry)}){entry.isDefault ? `, ${t("schemas.preset.default")}` : ""}
                 </option>
               ))}
             </Select>
@@ -129,20 +130,20 @@ function PresetSchemas({ snapshot }: { snapshot: CapabilitySnapshot }) {
         {preset.description && <p className="max-w-[62ch] text-muted-foreground">{preset.description}</p>}
       </Section>
 
-      <Section id="schema" title="Schema" description="The definitions of the preset, each with what it is made of. A reference leads to the definition it points to.">
-        {query.isPending && query.fetchStatus !== "idle" && <Callout tone="info" title="Reading the schema of the preset" />}
+      <Section id="schema" title={t("schemas.schema.title")} description={t("schemas.schema.description")}>
+        {query.isPending && query.fetchStatus !== "idle" && <Callout tone="info" title={t("schemas.loading.schema")} />}
         {query.isError && <FailureView failure={toFailure(query.error)} />}
         {query.data?.problem && (
-          <Callout tone="warning" title="This is not a document the client would validate with">
-            {query.data.problem} It is shown as received.
+          <Callout tone="warning" title={t("schemas.warning.unusable")}>
+            {query.data.problem} {t("schemas.warning.shownAsReceived")}
           </Callout>
         )}
         {tree && (
           <>
             <DefinitionList>
-              <DefinitionRow term="Schema">{tree.about.schema ? <code className="break-all">{tree.about.schema}</code> : "Not given"}</DefinitionRow>
-              <DefinitionRow term="Identifier">{tree.about.id ? <code className="break-all">{tree.about.id}</code> : "Not given"}</DefinitionRow>
-              <DefinitionRow term="Preset">{tree.about.preset ? <code>{tree.about.preset}</code> : "Not given"}</DefinitionRow>
+              <DefinitionRow term={t("schemas.tree.schema")}>{tree.about.schema ? <code className="break-all">{tree.about.schema}</code> : t("schemas.tree.notGiven")}</DefinitionRow>
+              <DefinitionRow term={t("schemas.tree.identifier")}>{tree.about.id ? <code className="break-all">{tree.about.id}</code> : t("schemas.tree.notGiven")}</DefinitionRow>
+              <DefinitionRow term={t("schemas.tree.preset")}>{tree.about.preset ? <code>{tree.about.preset}</code> : t("schemas.tree.notGiven")}</DefinitionRow>
             </DefinitionList>
             <SchemaExplorer key={referenceLabel(preset)} tree={tree} />
           </>
@@ -150,15 +151,15 @@ function PresetSchemas({ snapshot }: { snapshot: CapabilitySnapshot }) {
       </Section>
 
       {query.data && (
-        <Section id="effective" title="Effective schema" description="The schema as the server publishes it: the definitions of the bundle, with those of the extensions and profiles of the preset composed in place.">
+        <Section id="effective" title={t("schemas.effective.title")} description={t("schemas.effective.description")}>
           <div className="flex flex-wrap items-center gap-3">
             <Button variant="secondary" aria-expanded={showRaw} aria-controls="effective-schema" onClick={() => setShowRaw(!showRaw)}>
-              {showRaw ? "Hide effective schema" : "Show effective schema"}
+              {showRaw ? t("schemas.effective.hide") : t("schemas.effective.show")}
             </Button>
             {raw && <span className="text-sm text-muted-foreground">{kilobytes(raw)}</span>}
           </div>
           {raw && (
-            <pre id="effective-schema" tabIndex={0} aria-label="Effective schema" className="max-h-[70dvh] overflow-auto rounded-md border border-border bg-muted/50 p-4 font-mono text-xs">
+            <pre id="effective-schema" tabIndex={0} aria-label={t("schemas.effective.title")} className="max-h-[70dvh] overflow-auto rounded-md border border-border bg-muted/50 p-4 font-mono text-xs">
               {raw}
             </pre>
           )}

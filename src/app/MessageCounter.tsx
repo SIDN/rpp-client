@@ -3,12 +3,13 @@ import { useSyncExternalStore } from "react";
 import { Link } from "react-router-dom";
 import type { QueueMonitor } from "@/rpp/client/queueMonitor";
 import { cn } from "@/lib/utils";
+import { t } from "@/i18n";
 import { useConnection } from "./connection-context";
 
 function describe(size: number | undefined): string {
-  if (size === undefined) return "Messages, the size of the queue is not known yet";
-  if (size === 0) return "Messages, none waiting";
-  return `Messages, ${size} waiting`;
+  if (size === undefined) return t("ui.messages.unknown");
+  if (size === 0) return t("ui.messages.noneWaiting");
+  return t("ui.messages.waiting", { count: size });
 }
 
 function Counter({ queue }: { queue: QueueMonitor }) {
@@ -27,7 +28,7 @@ function Counter({ queue }: { queue: QueueMonitor }) {
     >
       <Inbox aria-hidden className="size-4 shrink-0" />
       <span aria-hidden className="hidden sm:inline">
-        Messages
+        {t("nav.messages.label")}
       </span>
       <span aria-hidden className="min-w-4 text-center tabular-nums">
         {size ?? "–"}

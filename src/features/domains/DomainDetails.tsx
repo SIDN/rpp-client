@@ -1,3 +1,4 @@
+import { t } from "@/i18n";
 import { Link } from "react-router-dom";
 import { DefinitionList, DefinitionRow, Nothing } from "@/components/common/definition";
 import { StatusLabel } from "@/components/protocol/protocol-badges";
@@ -57,8 +58,8 @@ export function DomainDetails({ domain }: { domain: DomainName }) {
           <code>{domain.name}</code>
           {domain.uName && <span className="font-normal">{domain.uName}</span>}
         </h3>
-        <ul aria-label="Status" className="flex flex-wrap gap-2">
-          {domain.status.length === 0 && <li className="text-muted-foreground">No status listed</li>}
+        <ul aria-label={t("domains.domainDetails.status")} className="flex flex-wrap gap-2">
+          {domain.status.length === 0 && <li className="text-muted-foreground">{t("domains.domainDetails.noStatus")}</li>}
           {domain.status.map((status, index) => (
             <li key={`${status.label}-${index}`} className="flex flex-col gap-0.5">
               <StatusLabel type="domainStatus" label={status.label} />
@@ -66,7 +67,7 @@ export function DomainDetails({ domain }: { domain: DomainName }) {
                 <span className="text-xs text-muted-foreground">
                   {status.reason}
                   {status.reason && status.due ? ", " : ""}
-                  {status.due && <>due <Timestamp value={status.due} /></>}
+                  {status.due && <>{t("domains.domainDetails.due")} <Timestamp value={status.due} /></>}
                 </span>
               )}
             </li>
@@ -75,11 +76,11 @@ export function DomainDetails({ domain }: { domain: DomainName }) {
       </div>
 
       <DefinitionList>
-        <DefinitionRow term="Expires">
+        <DefinitionRow term={t("domains.domainDetails.expires")}>
           <Timestamp value={domain.expiryDate} />
         </DefinitionRow>
-        <DefinitionRow term="Registrant">{domain.registrant ? <ContactLink id={domain.registrant.id} /> : <Nothing />}</DefinitionRow>
-        <DefinitionRow term="Contacts">
+        <DefinitionRow term={t("domains.domainDetails.registrant")}>{domain.registrant ? <ContactLink id={domain.registrant.id} /> : <Nothing />}</DefinitionRow>
+        <DefinitionRow term={t("domains.domainDetails.contacts")}>
           {domain.contacts && domain.contacts.length > 0 ? (
             <ul className="flex flex-col gap-1">
               {domain.contacts.map((contact, index) => (
@@ -93,25 +94,25 @@ export function DomainDetails({ domain }: { domain: DomainName }) {
             <Nothing />
           )}
         </DefinitionRow>
-        <DefinitionRow term="Name servers">
+        <DefinitionRow term={t("domains.nameservers.label")}>
           <List items={domain.nameservers?.map((host) => host.hostName)} />
         </DefinitionRow>
-        <DefinitionRow term="Subordinate hosts">
+        <DefinitionRow term={t("domains.domainDetails.subordinateHosts")}>
           <List items={domain.subordinateHosts?.map((host) => host.hostName)} />
         </DefinitionRow>
-        <DefinitionRow term="DNS data">
+        <DefinitionRow term={t("domains.domainDetails.dnsData")}>
           {records.length === 0 && !domain.dns?.controls ? (
             <Nothing />
           ) : (
             <div className="flex flex-col gap-2">
               {records.length > 0 && (
                 <table className="w-full table-fixed text-sm">
-                  <caption className="sr-only">DNS records</caption>
+                  <caption className="sr-only">{t("domains.domainDetails.dnsRecords")}</caption>
                   <thead className="text-left text-muted-foreground">
                     <tr>
-                      <th scope="col" className="w-1/4 pr-3 font-medium">Name</th>
-                      <th scope="col" className="w-16 pr-3 font-medium">Type</th>
-                      <th scope="col" className="font-medium">Data</th>
+                      <th scope="col" className="w-1/4 pr-3 font-medium">{t("domains.domainDetails.name")}</th>
+                      <th scope="col" className="w-16 pr-3 font-medium">{t("domains.domainDetails.type")}</th>
+                      <th scope="col" className="font-medium">{t("domains.domainDetails.data")}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
@@ -129,20 +130,20 @@ export function DomainDetails({ domain }: { domain: DomainName }) {
             </div>
           )}
         </DefinitionRow>
-        <DefinitionRow term="Transfer password">
+        <DefinitionRow term={t("domains.domainDetails.transferPassword")}>
           {authInfo ? (
             <span className="flex flex-col gap-1">
-              <span className="text-sm text-muted-foreground">Method <code>{authInfo.method}</code></span>
+              <span className="text-sm text-muted-foreground">{t("domains.domainDetails.method")} <code>{authInfo.method}</code></span>
               <Secret value={authInfo.authdata} />
             </span>
           ) : (
-            <Nothing>Not shown. Get the info with the transfer password included, as the sponsoring registrar, to see it.</Nothing>
+            <Nothing>{t("domains.domainDetails.notShown")}</Nothing>
           )}
         </DefinitionRow>
-        <DefinitionRow term="Provisioning">
+        <DefinitionRow term={t("domains.domainDetails.provisioning")}>
           <Provisioning metadata={domain.provMetadata} />
         </DefinitionRow>
-        <DefinitionRow term="Processes">
+        <DefinitionRow term={t("domains.domainDetails.processes")}>
           {processes.length === 0 ? (
             <Nothing />
           ) : (
@@ -157,7 +158,7 @@ export function DomainDetails({ domain }: { domain: DomainName }) {
           )}
         </DefinitionRow>
         {others.length > 0 && (
-          <DefinitionRow term="Other members">
+          <DefinitionRow term={t("domains.domainDetails.otherMembers")}>
             <dl className="flex flex-col gap-2">
               {others.map(([key, value]) => (
                 <div key={key}>
@@ -171,8 +172,8 @@ export function DomainDetails({ domain }: { domain: DomainName }) {
       </DefinitionList>
 
       <details className="rounded-md border border-border">
-        <summary className="cursor-pointer px-3 py-2 font-medium">Show the JSON</summary>
-        <pre tabIndex={0} aria-label="Domain as received" className="max-h-[28rem] overflow-auto border-t border-border p-3 font-mono text-xs">
+        <summary className="cursor-pointer px-3 py-2 font-medium">{t("domains.domainDetails.showJson")}</summary>
+        <pre tabIndex={0} aria-label={t("domains.domainDetails.asReceived")} className="max-h-[28rem] overflow-auto border-t border-border p-3 font-mono text-xs">
           {JSON.stringify(authInfo ? { ...domain, authInfo: { ...authInfo, authdata: "[hidden: use Show above]" } } : domain, null, 2)}
         </pre>
       </details>

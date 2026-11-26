@@ -12,6 +12,7 @@ import { basicAuthentication } from "@/rpp/auth/providers/basic";
 import { noAuthentication } from "@/rpp/auth/providers/none";
 import { createDiscoveryService, type DiscoveryService } from "@/rpp/discovery/DiscoveryService";
 import type { ConnectionProfile, Credentials } from "@/config/connectionProfile";
+import { t } from "@/i18n";
 
 /** Everything one connection to one server consists of. Dropping the session drops the credentials with it. */
 export interface Session {
@@ -43,7 +44,7 @@ export function createSession(
 ): Session {
   let authentication: AuthenticationProvider;
   if (profile.auth.type === "basic") {
-    if (!credentials) throw new TypeError("Basic authentication needs a password");
+    if (!credentials) throw new TypeError(t("connection.session.basicPasswordRequired"));
     authentication = basicAuthentication({ username: profile.auth.username, password: credentials.password });
   } else {
     authentication = noAuthentication();

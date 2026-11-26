@@ -1,3 +1,4 @@
+import { t } from "@/i18n";
 import type { Organisation, User } from "@/rpp/core/types/objects";
 import type { PatchOperation } from "@/rpp/operations/patch";
 import { invalidRequest } from "@/rpp/operations/paths";
@@ -54,7 +55,9 @@ export function createOrganisationWorkflows(client: RppClient) {
       const users = userLinksOf((await organisations.read(organisationId, { signal })).data).map((user) => user.id);
       if (users.length > 0 && !options.deleteUsers) {
         throw invalidRequest(
-          `The organisation still has ${users.length === 1 ? "1 user" : `${users.length} users`}: ${users.join(", ")}. Delete the users first, or choose to delete all users of the organisation.`,
+          users.length === 1
+            ? t("organisations.validation.organisationHasUsers.one", { count: users.length, users: users.join(", ") })
+            : t("organisations.validation.organisationHasUsers.other", { count: users.length, users: users.join(", ") }),
         );
       }
       const deletedUsers: string[] = [];

@@ -1,3 +1,4 @@
+import { t } from "@/i18n";
 import { toALabel, isAscii } from "@/rpp/core/idn";
 import type {
   Availability,
@@ -26,9 +27,9 @@ export interface DomainRef {
 /** Whitespace around the name is dropped; nothing else is changed. A name without an A-label form is refused. */
 export function parseDomainName(input: string): DomainRef {
   const typed = input.trim();
-  if (typed === "") throw invalidRequest("Enter a domain name");
+  if (typed === "") throw invalidRequest(t("domains.errors.emptyDomain"));
   const name = toALabel(typed);
-  if (name === undefined || name === "") throw invalidRequest(`${typed} cannot be converted to an A-label, so it cannot be a domain name`);
+  if (name === undefined || name === "") throw invalidRequest(t("domains.errors.invalidDomain", { name: typed }));
   return { name, unicode: isAscii(typed) ? undefined : typed };
 }
 
@@ -126,13 +127,13 @@ export function registerBody(input: RegisterInput): DomainNameCreate {
   const uName = input.uName?.trim();
   const ref = parseDomainName(input.name.trim() === "" && uName ? uName : input.name);
   if (uName && !isAscii(uName) && ref.unicode === undefined) {
-    if (toALabel(uName) !== ref.name) throw invalidRequest(`${uName} is not the Unicode form of ${ref.name}`);
+    if (toALabel(uName) !== ref.name) throw invalidRequest(t("domains.errors.unicodeNameMismatch", { uName, name: ref.name }));
     ref.unicode = uName;
   }
-  if (ref.unicode !== undefined && !input.lgr) throw invalidRequest("A Unicode name needs the name of its Label Generation Ruleset");
+  if (ref.unicode !== undefined && !input.lgr) throw invalidRequest(t("domains.errors.unicodeNeedsLgr"));
   const contacts = present(input.contacts);
   for (const { label } of contacts ?? []) {
-    if (!(CONTACT_ROLES as readonly string[]).includes(label)) throw invalidRequest(`A contact role is admin, billing or tech, not ${label}`);
+    if (!(CONTACT_ROLES as readonly string[]).includes(label)) throw invalidRequest(t("domains.errors.invalidContactRole", { label }));
   }
   const nameservers = present(input.nameservers);
   const dns = input.dnssec && dnsDataOf(input.dnssec);
@@ -158,7 +159,7 @@ export function createDomainWorkflows(client: RppClient) {
   const { domains } = client;
   const processOf = <Kind extends "renew" | "restore" | "transfer">(kind: Kind) => {
     const operations = domains.processes[kind];
-    if (!operations) throw invalidRequest(`Domain names have no ${kind} process`);
+    if (!operations) throw invalidRequest(t("domains.errors.noProcess", { kind }));
     return operations;
   };
   const typed = async <T>(result: Promise<OperationSuccess<unknown>>) => (await result) as OperationSuccess<T>;

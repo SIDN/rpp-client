@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { ThemeToggle } from "@/components/common/ThemeToggle";
 import { cn } from "@/lib/utils";
+import { t } from "@/i18n";
 import { useSidebarCollapsed } from "@/lib/sidebar";
 import { ConnectionStatus } from "./ConnectionStatus";
 import { ErrorConsole } from "./ErrorConsole";
@@ -16,16 +17,16 @@ const NAVIGATION_ID = "primary-navigation";
 
 /** The title a route declares in its `handle`. */
 export interface RouteHandle {
-  title?: string;
+  titleKey?: string;
 }
 
 function useRouteTitle(): void {
   const title = useMatches()
-    .map((match) => (match.handle as RouteHandle | undefined)?.title)
+    .map((match) => (match.handle as RouteHandle | undefined)?.titleKey)
     .filter(Boolean)
     .at(-1);
   useEffect(() => {
-    document.title = title ? `${title} - ${APP_TITLE}` : APP_TITLE;
+    document.title = title ? `${t(title)} - ${APP_TITLE}` : APP_TITLE;
   }, [title]);
 }
 
@@ -71,7 +72,7 @@ export function AppShell() {
         href="#main"
         className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-foreground"
       >
-        Skip to content
+        {t("app.shell.skipToContent")}
       </a>
 
       {open && <div aria-hidden className="fixed inset-0 z-30 bg-black/60 lg:hidden" onClick={() => setOpen(false)} />}
@@ -93,7 +94,7 @@ export function AppShell() {
             variant="ghost"
             size="icon"
             className="-ml-2 lg:hidden"
-            aria-label="Menu"
+            aria-label={t("app.shell.menu")}
             aria-expanded={open}
             aria-controls={NAVIGATION_ID}
             onClick={() => setOpen(!open)}
@@ -108,8 +109,8 @@ export function AppShell() {
             <ThemeToggle />
             <Link
               to="/client"
-              aria-label="Client settings"
-              title="Client settings"
+              aria-label={t("app.shell.clientSettings")}
+              title={t("app.shell.clientSettings")}
               className={buttonVariants({ variant: "ghost", size: "icon" })}
             >
               <CircleUser aria-hidden />

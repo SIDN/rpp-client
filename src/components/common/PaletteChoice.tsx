@@ -2,15 +2,16 @@ import { useSyncExternalStore } from "react";
 import { PALETTES } from "@/lib/palettes";
 import { getPalette, setPalette, subscribeToTheme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
+import { t } from "@/i18n";
 
 /** The colour schemes as radio buttons, each with the colours it uses in the light and the dark appearance. */
 export function PaletteChoice() {
   const current = useSyncExternalStore(subscribeToTheme, getPalette, () => "default");
   return (
     <fieldset className="flex flex-col gap-2">
-      <legend className="font-medium">Colour scheme</legend>
+      <legend className="font-medium">{t("ui.palette.title")}</legend>
       <p className="text-sm text-muted-foreground">
-        Kept in this browser. Every scheme has a light and a dark appearance; the sun and moon switch in the header chooses between them.
+        {t("ui.palette.description")}
       </p>
       <div className="mt-1 grid gap-2 sm:grid-cols-2">
         {PALETTES.map((palette) => (

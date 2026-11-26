@@ -1,4 +1,5 @@
 import { STATUS_VOCABULARIES } from "@/rpp/core/status/statuses";
+import { t } from "@/i18n";
 import { toALabel } from "@/rpp/core/idn";
 import { isJsonObject } from "@/rpp/core/types/json";
 import type { DnsRecord, Host } from "@/rpp/core/types/objects";
@@ -122,15 +123,15 @@ const record = (value: unknown): Record<string, unknown> => (isJsonObject(value)
 
 /** One operation as a line a registrar can read before sending it. */
 export function describeHostOperation(operation: PatchOperation): string {
-  if (operation.path === "/hostName" && operation.op === "replace") return `Rename the host to ${String(operation.value)}`;
+  if (operation.path === "/hostName" && operation.op === "replace") return t("hosts.change.rename", { name: String(operation.value) });
   if (operation.path === "/status") {
     const label = operation.op === "remove" ? record("match" in operation ? operation.match : undefined).label : record("value" in operation ? operation.value : undefined).label;
-    return operation.op === "remove" ? `Remove status ${String(label)}` : `Add status ${String(label)}`;
+    return operation.op === "remove" ? t("hosts.change.removeStatus", { label: String(label) }) : t("hosts.change.addStatus", { label: String(label) });
   }
   if (operation.path === "/dns/records") {
     const source = operation.op === "remove" ? ("match" in operation ? operation.match : undefined) : "value" in operation ? operation.value : undefined;
     const address = String(record(record(source).rdata).address);
-    return operation.op === "remove" ? `Remove the address ${address}` : `Add the address ${address}`;
+    return operation.op === "remove" ? t("hosts.change.removeAddress", { address }) : t("hosts.change.addAddress", { address });
   }
   return `${operation.op} ${operation.path}`;
 }

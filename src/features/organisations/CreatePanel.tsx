@@ -1,3 +1,4 @@
+import { t } from "@/i18n";
 import { FormProvider, useForm } from "react-hook-form";
 import { EMPTY_ORGANISATION, type CreateOrganisationInput } from "@/application/organisations/organisationData";
 import { Callout } from "@/components/ui/callout";
@@ -31,21 +32,21 @@ export function CreatePanel({ organisationId, onOrganisationChange }: PanelProps
           <OrganisationField
             organisationId={organisationId}
             onOrganisationChange={onOrganisationChange}
-            hint="Chosen by you; it cannot be changed afterwards."
+            hint={t("organisations.create.idHint")}
           />
           <OrganisationFields />
-          <Callout tone="info" title="Users are added afterwards">
-            Create the organisation first. Its users are created in it, on the User tabs, and each user identifier only has to be unique within this organisation.
+          <Callout tone="info" title={t("organisations.create.usersAfterwardTitle")}>
+            {t("organisations.create.usersAfterwardDescription")}
           </Callout>
-          <Callout tone="info" title="What the registry requires varies">
-            Generally only a registry may create organisations. If something is missing or not allowed, the registry says which.
+          <Callout tone="info" title={t("organisations.create.requirementsTitle")}>
+            {t("organisations.create.requirementsDescription")}
           </Callout>
           <div>
-            <SubmitButton pending={create.pending}>Create organisation</SubmitButton>
+            <SubmitButton pending={create.pending}>{t("organisations.action.createOrganisation")}</SubmitButton>
           </div>
         </form>
       </FormProvider>
-      <OperationOutcome operation={create} success={`Created ${create.variables?.id.trim() || "the organisation"}`}>
+      <OperationOutcome operation={create} success={t("organisations.outcome.created", { name: create.variables?.id.trim() || t("organisations.noun.organisation") })}>
         {(organisation) => <OrganisationDetails organisation={organisation} />}
       </OperationOutcome>
     </div>

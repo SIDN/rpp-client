@@ -1,3 +1,4 @@
+import { t } from "@/i18n";
 import { STATUS_VOCABULARIES } from "@/rpp/core/status/statuses";
 import { isJsonObject } from "@/rpp/core/types/json";
 import type { Organisation, OrganisationCreate } from "@/rpp/core/types/objects";
@@ -99,7 +100,7 @@ export function organisationEditOf(organisation: Organisation): OrganisationData
 /** Whitespace around the identifier is dropped; nothing else is changed. */
 export function parseOrganisationId(input: string): string {
   const id = input.trim();
-  if (id === "") throw invalidRequest("Enter an organisation identifier");
+  if (id === "") throw invalidRequest(t("organisations.validation.organisationId"));
   return id;
 }
 
@@ -111,19 +112,19 @@ export function cleanOrganisation(data: OrganisationData): OrganisationData {
   const roles = data.roles.filter((role) => !blankRole(role)).map((role) => ({ ...role, name: role.name.trim(), roleId: role.roleId.trim() }));
   const contacts = data.contacts.filter((link) => !blankLink(link)).map((link) => ({ label: link.label.trim(), id: link.id.trim() }));
 
-  if (roles.length === 0) throw invalidRequest("An organisation needs at least one role");
+  if (roles.length === 0) throw invalidRequest(t("organisations.validation.roleRequired"));
   const names = new Set<string>();
   for (const role of roles) {
-    if (role.name === "") throw invalidRequest("Give every role a type, such as registrar");
-    if (names.has(role.name)) throw invalidRequest(`The role ${role.name} is given twice`);
+    if (role.name === "") throw invalidRequest(t("organisations.validation.roleTypeRequired"));
+    if (names.has(role.name)) throw invalidRequest(t("organisations.validation.roleDuplicate", { name: role.name }));
     names.add(role.name);
   }
   const links = new Set<string>();
   for (const link of contacts) {
-    if (link.id === "") throw invalidRequest(`Give the ${link.label} contact an identifier`);
-    if (link.label === "") throw invalidRequest(`Give the contact ${link.id} a type, such as admin`);
+    if (link.id === "") throw invalidRequest(t("organisations.validation.contactIdRequired", { type: link.label }));
+    if (link.label === "") throw invalidRequest(t("organisations.validation.contactTypeRequired", { id: link.id }));
     const key = `${link.label}\n${link.id}`;
-    if (links.has(key)) throw invalidRequest(`The contact ${link.id} is given twice as ${link.label}`);
+    if (links.has(key)) throw invalidRequest(t("organisations.validation.contactDuplicate", { id: link.id, type: link.label }));
     links.add(key);
   }
 
@@ -237,25 +238,37 @@ export function describeOrganisationOperation(operation: PatchOperation): string
   const [, member, name, leaf] = operation.path.split("/").map(unpointer);
   const value = record("value" in operation ? operation.value : undefined);
   const match = record("match" in operation ? operation.match : undefined);
-  const verb = operation.op === "remove" ? "Remove" : operation.op === "add" ? "Add" : "Change";
 
   if (member === "roles") {
-    if (leaf === undefined && name !== undefined) return `${verb} the role ${name}`;
-    if (leaf === "roleId") return `${verb} the role identifier of ${String(name)}`;
-    return operation.op === "remove" ? `Allow linking to the role ${String(name)} again` : `Prohibit linking to the role ${String(name)}`;
+    if (leaf === undefined && name !== undefined) {
+      if (operation.op === "remove") return t("organisations.operation.role.remove", { name });
+      if (operation.op === "add") return t("organisations.operation.role.add", { name });
+      return t("organisations.operation.role.change", { name });
+    }
+    if (leaf === "roleId") {
+      if (operation.op === "remove") return t("organisations.operation.roleId.remove", { name: String(name) });
+      if (operation.op === "add") return t("organisations.operation.roleId.add", { name: String(name) });
+      return t("organisations.operation.roleId.change", { name: String(name) });
+    }
+    return operation.op === "remove" ? t("organisations.operation.allowRoleLink", { name: String(name) }) : t("organisations.operation.prohibitRoleLink", { name: String(name) });
   }
   if (member === "parent") {
-    if (operation.op === "remove") return "Remove the parent organisation";
-    return `Set the parent organisation to ${text(operation.op === "add" ? value.id : operation.value)}`;
+    if (operation.op === "remove") return t("organisations.operation.removeParent");
+    return t("organisations.operation.setParent", { id: text(operation.op === "add" ? value.id : operation.value) });
   }
   if (member === "contacts") {
     const link = operation.op === "remove" ? { label: text(match.label), id: text(record(match.object).id) } : { label: text(value.label), id: text(record(value.object).id) };
-    return operation.op === "remove" ? `Remove the ${link.label} contact ${link.id}` : `Add the ${link.label} contact ${link.id}`;
+    return operation.op === "remove" ? t("organisations.operation.removeContact", { type: link.label, id: link.id }) : t("organisations.operation.addContact", { type: link.label, id: link.id });
   }
   if (member === "status") {
     const label = operation.op === "remove" ? text(match.label) : text(value.label);
-    return operation.op === "remove" ? `Remove status ${label}` : `Add status ${label}`;
+    return operation.op === "remove" ? t("organisations.operation.removeStatus", { status: label }) : t("organisations.operation.addStatus", { status: label });
   }
-  if (member === "contactInfo") return `${verb} ${name === "name" ? "the name" : name === "emails" ? "the email address" : name === "phones" ? "the phone number" : "the contact information"}`;
+  if (member === "contactInfo") {
+    const subject = name === "name" ? t("organisations.operation.subject.name") : name === "emails" ? t("organisations.operation.subject.email") : name === "phones" ? t("organisations.operation.subject.phone") : t("organisations.operation.subject.contactInfo");
+    if (operation.op === "remove") return t("organisations.operation.removeSubject", { subject });
+    if (operation.op === "add") return t("organisations.operation.addSubject", { subject });
+    return t("organisations.operation.changeSubject", { subject });
+  }
   return `${operation.op} ${operation.path}`;
 }

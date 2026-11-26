@@ -19,7 +19,7 @@ import { PlannedPage } from "@/features/planned/PlannedPage";
 import { AppShell, type RouteHandle } from "./AppShell";
 import { ALL_ITEMS } from "./navigation";
 
-const handle = (title: string): RouteHandle => ({ title });
+const handle = (titleKey: string): RouteHandle => ({ titleKey });
 
 const screens: Record<string, ReactElement> = {
   "/connection": <ConnectionPage />,
@@ -42,16 +42,16 @@ export const routes: RouteObject[] = [
     element: <AppShell />,
     errorElement: <RouteError />,
     children: [
-      { index: true, element: <DashboardPage />, handle: handle("Overview") },
+      { index: true, element: <DashboardPage />, handle: handle("nav.overview.label") },
       ...ALL_ITEMS.filter((item) => item.to !== "/").map(
         (item): RouteObject => ({
           path: item.to.slice(1),
           element: screens[item.to] ?? <PlannedPage item={item} />,
-          handle: handle(item.label),
+          handle: handle(item.labelKey),
         }),
       ),
-      { path: "client", element: <ClientPage />, handle: handle("Client") },
-      { path: "*", element: <NotFoundPage />, handle: handle("Not found") },
+      { path: "client", element: <ClientPage />, handle: handle("app.route.client") },
+      { path: "*", element: <NotFoundPage />, handle: handle("app.route.notFound") },
     ],
   },
 ];

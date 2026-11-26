@@ -1,4 +1,5 @@
 import { STATUS_VOCABULARIES } from "@/rpp/core/status/statuses";
+import { t } from "@/i18n";
 import { isJsonObject } from "@/rpp/core/types/json";
 import type { Contact } from "@/rpp/core/types/objects";
 import type { PatchOperation } from "@/rpp/operations/patch";
@@ -348,25 +349,6 @@ export function buildContactPatch(current: Contact, edit: ContactEdit, mode: Pos
   return operations;
 }
 
-const NAMES: Record<string, string> = {
-  name: "name",
-  organizations: "organisation",
-  addresses: "address",
-  "addresses/addr": "address",
-  "addresses/addr/countryCode": "country",
-  "phones/voice": "phone number",
-  "phones/voice/number": "phone number",
-  "phones/fax": "fax number",
-  "phones/fax/number": "fax number",
-  "emails/email": "email address",
-  "emails/email/address": "email address",
-  "name/full": "name",
-  "organizations/org": "organisation",
-  "organizations/org/name": "organisation",
-};
-
-const COMPONENT_NAMES: Record<string, string> = { name: "street line", locality: "city", region: "state or region", postcode: "postal code" };
-
 const valueOf = (value: unknown): string => {
   const entry = record(value);
   if (typeof value === "string") return fromTelUri(value);
@@ -378,22 +360,71 @@ const valueOf = (value: unknown): string => {
   return "";
 };
 
+function contactFieldName(member: string, localized: boolean, kind: unknown): string {
+  if (member === "addresses/addr/components") {
+    if (localized) {
+      switch (kind) {
+        case "name": return t("contacts.change.fields.localizedStreetLine");
+        case "locality": return t("contacts.change.fields.localizedCity");
+        case "region": return t("contacts.change.fields.localizedRegion");
+        case "postcode": return t("contacts.change.fields.localizedPostcode");
+        default: return t("contacts.change.fields.localizedAddressKind", { kind: String(kind) });
+      }
+    }
+    switch (kind) {
+      case "name": return t("contacts.change.fields.streetLine");
+      case "locality": return t("contacts.change.fields.city");
+      case "region": return t("contacts.change.fields.region");
+      case "postcode": return t("contacts.change.fields.postcode");
+      default: return t("contacts.change.fields.addressKind", { kind: String(kind) });
+    }
+  }
+  if (localized) {
+    switch (member) {
+      case "name": case "name/full": return t("contacts.change.fields.localizedName");
+      case "organizations": case "organizations/org": case "organizations/org/name": return t("contacts.change.fields.localizedOrganisation");
+      case "addresses": case "addresses/addr": return t("contacts.change.fields.localizedAddress");
+      case "addresses/addr/countryCode": return t("contacts.change.fields.localizedCountry");
+      case "phones/voice": case "phones/voice/number": return t("contacts.change.fields.localizedPhone");
+      case "phones/fax": case "phones/fax/number": return t("contacts.change.fields.localizedFax");
+      case "emails/email": case "emails/email/address": return t("contacts.change.fields.localizedEmail");
+      default: return t("contacts.change.fields.localizedUnknown", { member });
+    }
+  }
+  switch (member) {
+    case "name": case "name/full": return t("contacts.change.fields.name");
+    case "organizations": case "organizations/org": case "organizations/org/name": return t("contacts.change.fields.organisation");
+    case "addresses": case "addresses/addr": return t("contacts.change.fields.address");
+    case "addresses/addr/countryCode": return t("contacts.change.fields.country");
+    case "phones/voice": case "phones/voice/number": return t("contacts.change.fields.phone");
+    case "phones/fax": case "phones/fax/number": return t("contacts.change.fields.fax");
+    case "emails/email": case "emails/email/address": return t("contacts.change.fields.email");
+    default: return member;
+  }
+}
+
 /** One operation as a line a registrar can read before sending it. The password itself is never part of it. */
 export function describeContactOperation(operation: PatchOperation): string {
-  if (operation.path === "/authInfo") return "Set the transfer password";
+  if (operation.path === "/authInfo") return t("contacts.change.setAuthInfo");
   if (operation.path === "/status") {
-    return operation.op === "remove" ? `Remove status ${valueOf(operation.match)}` : `Add status ${valueOf(operation.value)}`;
+    const label = operation.op === "remove" ? valueOf(operation.match) : valueOf(operation.value);
+    return operation.op === "remove" ? t("contacts.change.removeStatus", { label }) : t("contacts.change.addStatus", { label });
   }
   let member = operation.path.slice(CARD.length + 1);
   const localized = /^localizations(?:\/[^/]+)?(?:\/(.*))?$/.exec(member);
   if (localized) member = localized[1] ?? "addresses";
-  const prefix = localized ? "localized " : "";
-  const kind = record("match" in operation ? operation.match : undefined).kind ?? record("value" in operation ? operation.value : undefined).kind;
-  const subject = `${prefix}${member === "addresses/addr/components" && typeof kind === "string" ? COMPONENT_NAMES[kind] ?? `address ${kind}` : NAMES[member] ?? member}`;
+  const subject = contactFieldName(member, localized !== null, record("match" in operation ? operation.match : undefined).kind ?? record("value" in operation ? operation.value : undefined).kind);
   if (operation.op === "remove") {
     const old = "match" in operation && operation.match ? valueOf(operation.match) : "";
-    return `Remove the ${subject}${old ? ` ${old}` : ""}`;
+    return old
+      ? t("contacts.change.removeFieldWithValue", { field: subject, value: old })
+      : t("contacts.change.removeField", { field: subject });
   }
   const now = operation.op === "add" && (member === "addresses" || (localized !== null && localized[1] === undefined)) ? "" : valueOf(operation.value);
-  return operation.op === "add" ? `Add ${subject}${now ? ` ${now}` : ""}` : `Change the ${subject} to ${now}`;
+  if (operation.op === "add") {
+    return now
+      ? t("contacts.change.addFieldWithValue", { field: subject, value: now })
+      : t("contacts.change.addField", { field: subject });
+  }
+  return t("contacts.change.replaceField", { field: subject, value: now });
 }

@@ -1,3 +1,4 @@
+import { t } from "@/i18n";
 import { Plus, X } from "lucide-react";
 import { useFieldArray, useFormContext } from "react-hook-form";
 import type { DnskeyRdata, DnssecInput, DsRdata } from "@/application/domains/domainWorkflows";
@@ -29,27 +30,27 @@ export function dnssecOf(values: DnssecValues): DnssecInput | undefined {
   return keys.length > 0 ? { type: "dnskey", records: keys, ...maxSigLife } : undefined;
 }
 
-const integer = (label: string) => (value: string) => (/^\d{1,5}$/.test(value.trim()) ? true : `${label}: use a whole number`);
+const integer = (labelKey: string) => (value: string) => (/^\d{1,5}$/.test(value.trim()) ? true : t("domains.dnssec.integerError", { label: t(labelKey) }));
 
 interface Column {
   name: string;
-  label: string;
+  labelKey: string;
   width: string;
   check: (value: string) => true | string;
 }
 
 const DS_COLUMNS: Column[] = [
-  { name: "keyTag", label: "Key tag", width: "w-24", check: integer("Key tag") },
-  { name: "algorithm", label: "Algorithm", width: "w-24", check: integer("Algorithm") },
-  { name: "digestType", label: "Digest type", width: "w-28", check: integer("Digest type") },
-  { name: "digest", label: "Digest", width: "min-w-0 flex-1", check: (value) => (/^[0-9a-fA-F]+$/.test(value.trim()) ? true : "Digest: use hexadecimal digits") },
+  { name: "keyTag", labelKey: "domains.dnssec.keyTag", width: "w-24", check: integer("domains.dnssec.keyTag") },
+  { name: "algorithm", labelKey: "domains.dnssec.algorithm", width: "w-24", check: integer("domains.dnssec.algorithm") },
+  { name: "digestType", labelKey: "domains.dnssec.digestType", width: "w-28", check: integer("domains.dnssec.digestType") },
+  { name: "digest", labelKey: "domains.dnssec.digest", width: "min-w-0 flex-1", check: (value) => (/^[0-9a-fA-F]+$/.test(value.trim()) ? true : t("domains.dnssec.digestError")) },
 ];
 
 const KEY_COLUMNS: Column[] = [
-  { name: "flags", label: "Flags", width: "w-24", check: integer("Flags") },
-  { name: "protocol", label: "Protocol", width: "w-24", check: integer("Protocol") },
-  { name: "algorithm", label: "Algorithm", width: "w-24", check: integer("Algorithm") },
-  { name: "publicKey", label: "Public key", width: "min-w-0 flex-1", check: (value) => value.trim() !== "" || "Public key: enter the key" },
+  { name: "flags", labelKey: "domains.dnssec.flags", width: "w-24", check: integer("domains.dnssec.flags") },
+  { name: "protocol", labelKey: "domains.dnssec.protocol", width: "w-24", check: integer("domains.dnssec.protocol") },
+  { name: "algorithm", labelKey: "domains.dnssec.algorithm", width: "w-24", check: integer("domains.dnssec.algorithm") },
+  { name: "publicKey", labelKey: "domains.dnssec.publicKey", width: "min-w-0 flex-1", check: (value) => value.trim() !== "" || t("domains.dnssec.publicKeyError") },
 ];
 
 function Records({ kind, fields, onRemove }: { kind: "ds" | "dnskey"; fields: { id: string }[]; onRemove(index: number): void }) {
@@ -59,17 +60,17 @@ function Records({ kind, fields, onRemove }: { kind: "ds" | "dnskey"; fields: { 
   } = useFormContext<DnssecValues>();
   const arrayName = kind === "ds" ? "dsRecords" : "keyRecords";
   const columns = kind === "ds" ? DS_COLUMNS : KEY_COLUMNS;
-  const noun = kind === "ds" ? "DS record" : "DNSKEY record";
+  const nounKey = kind === "ds" ? "domains.dnssec.dsRecord" : "domains.dnssec.dnskeyRecord";
   return (
     <>
       {fields.map((field, index) => {
         const rowErrors = errors[arrayName]?.[index] as Record<string, { message?: string }> | undefined;
         const problem = Object.values(rowErrors ?? {}).find((error) => error?.message)?.message;
         return (
-          <div key={field.id} role="group" aria-label={`${noun} ${index + 1}`} className="flex flex-col">
+          <div key={field.id} role="group" aria-label={t("domains.dnssec.recordGroup", { record: t(nounKey), number: index + 1 })} className="flex flex-col">
             <div className="flex items-start gap-2">
               {columns.map((column) => (
-                <Field key={column.name} label={column.label} className={column.width}>
+                <Field key={column.name} label={t(column.labelKey)} className={column.width}>
                   {(control) => (
                     <Input
                       {...control}
@@ -81,7 +82,7 @@ function Records({ kind, fields, onRemove }: { kind: "ds" | "dnskey"; fields: { 
                   )}
                 </Field>
               ))}
-              <Button variant="ghost" size="icon" aria-label={`Remove ${noun} ${index + 1}`} className="mt-7 shrink-0" onClick={() => onRemove(index)}>
+              <Button variant="ghost" size="icon" aria-label={t("domains.dnssec.removeRecord", { record: t(nounKey), number: index + 1 })} className="mt-7 shrink-0" onClick={() => onRemove(index)}>
                 <X aria-hidden />
               </Button>
             </div>
@@ -103,34 +104,34 @@ export function DnssecFields() {
   return (
     <fieldset className="flex flex-col gap-2">
       <legend className="mb-1 text-sm font-medium">DNSSEC</legend>
-      {!hasDs && !hasKeys && <p className="text-sm text-muted-foreground">None. Add DS records or DNSKEY records, not both.</p>}
+      {!hasDs && !hasKeys && <p className="text-sm text-muted-foreground">{t("domains.dnssec.none")}</p>}
       <Records kind="ds" fields={ds.fields} onRemove={ds.remove} />
       <Records kind="dnskey" fields={keys.fields} onRemove={keys.remove} />
       <div className="flex flex-wrap gap-2">
         <Button variant="secondary" size="sm" disabled={hasKeys} onClick={() => ds.append(EMPTY_DS)}>
           <Plus aria-hidden />
-          Add a DS record
+          {t("domains.dnssec.addDs")}
         </Button>
         <Button variant="secondary" size="sm" disabled={hasDs} onClick={() => keys.append(EMPTY_KEY)}>
           <Plus aria-hidden />
-          Add a DNSKEY record
+          {t("domains.dnssec.addDnskey")}
         </Button>
       </div>
       {(hasDs || hasKeys) && (
-        <Field label="Max signature life (seconds)" hint="How long the signature over these records may live. The server may ignore it." className="max-w-64">
+        <Field label={t("domains.dnssec.maxSigLife")} hint={t("domains.dnssec.maxSigLifeHint")} className="max-w-64">
           {(control) => (
             <Input
               {...control}
               inputMode="numeric"
               autoComplete="off"
-              {...register("maxSigLife", { validate: (value) => value.trim() === "" || (/^[1-9]\d{0,9}$/.test(value.trim()) ? true : "Max signature life: use a whole number of seconds, at least 1") })}
+              {...register("maxSigLife", { validate: (value) => value.trim() === "" || (/^[1-9]\d{0,9}$/.test(value.trim()) ? true : t("domains.dnssec.maxSigLifeError")) })}
             />
           )}
         </Field>
       )}
       {(hasDs || hasKeys) && (
         <p className="text-sm text-muted-foreground">
-          {hasDs ? "Remove the DS records to add DNSKEY records instead." : "Remove the DNSKEY records to add DS records instead."}
+          {hasDs ? t("domains.dnssec.removeDsToAddDnskey") : t("domains.dnssec.removeDnskeyToAddDs")}
         </p>
       )}
     </fieldset>

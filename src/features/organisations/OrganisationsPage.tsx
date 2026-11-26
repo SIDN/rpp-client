@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from "react";
+import { t } from "@/i18n";
 import { objectSupport } from "@/application/capability";
 import { useConnection } from "@/app/connection-context";
 import { useDiscoveryState } from "@/app/discovery-context";
@@ -15,32 +16,36 @@ import { UserCreatePanel } from "./UserCreatePanel";
 import { UserDeletePanel } from "./UserDeletePanel";
 import { UserInfoPanel } from "./UserInfoPanel";
 
-const ORGANISATION_WORKFLOWS = [
-  { id: "info", label: "Info" },
-  { id: "create", label: "Create" },
-  { id: "change", label: "Change" },
-  { id: "delete", label: "Delete" },
-] as const;
+const ORGANISATION_WORKFLOWS = ["info", "create", "change", "delete"] as const;
+const USER_WORKFLOWS = ["userInfo", "userCreate", "userChange", "userDelete"] as const;
 
-const USER_WORKFLOWS = [
-  { id: "userInfo", label: "User info" },
-  { id: "userCreate", label: "Create user" },
-  { id: "userChange", label: "Change user" },
-  { id: "userDelete", label: "Delete user" },
-] as const;
+type WorkflowId = (typeof ORGANISATION_WORKFLOWS)[number] | (typeof USER_WORKFLOWS)[number];
 
-type WorkflowId = (typeof ORGANISATION_WORKFLOWS)[number]["id"] | (typeof USER_WORKFLOWS)[number]["id"];
+function workflowLabel(id: WorkflowId): string {
+  switch (id) {
+    case "info": return t("organisations.workflow.info");
+    case "create": return t("organisations.workflow.create");
+    case "change": return t("organisations.workflow.change");
+    case "delete": return t("organisations.workflow.delete");
+    case "userInfo": return t("organisations.workflow.userInfo");
+    case "userCreate": return t("organisations.workflow.userCreate");
+    case "userChange": return t("organisations.workflow.userChange");
+    case "userDelete": return t("organisations.workflow.userDelete");
+  }
+}
 
-const DESCRIPTIONS: Record<WorkflowId, string> = {
-  info: "Get organisation details.",
-  create: "Create an organisation",
-  change: "Modify the organisation details.",
-  delete: "Delete an organisation, after checking for users that are still linked to it.",
-  userInfo: "Get the details of a user of an organisation.",
-  userCreate: "Create a user in an organisation. The identifier has to be unique within that organisation.",
-  userChange: "Change the details, description or status of a user of an organisation.",
-  userDelete: "Delete one user of an organisation, leaving the organisation and its other users.",
-};
+function workflowDescription(id: WorkflowId): string {
+  switch (id) {
+    case "info": return t("organisations.workflowDescription.info");
+    case "create": return t("organisations.workflowDescription.create");
+    case "change": return t("organisations.workflowDescription.change");
+    case "delete": return t("organisations.workflowDescription.delete");
+    case "userInfo": return t("organisations.workflowDescription.userInfo");
+    case "userCreate": return t("organisations.workflowDescription.userCreate");
+    case "userChange": return t("organisations.workflowDescription.userChange");
+    case "userDelete": return t("organisations.workflowDescription.userDelete");
+  }
+}
 
 export function OrganisationsPage() {
   const discovery = useDiscoveryState();
@@ -51,7 +56,7 @@ export function OrganisationsPage() {
   const [organisationId, setOrganisationId] = useState("");
   const [userId, setUserId] = useState("");
 
-  const header = <PageHeader title="Organisations" description="Manage organisations and their users." />;
+  const header = <PageHeader title={t("organisations.page.title")} description={t("organisations.page.description")} />;
 
   if (discovery.status === "not-started") {
     return (
@@ -65,7 +70,7 @@ export function OrganisationsPage() {
     return (
       <>
         {header}
-        <Callout tone="info" title="Reading the capabilities of the server" />
+        <Callout tone="info" title={t("organisations.connection.readingCapabilities")} />
       </>
     );
   }
@@ -73,12 +78,12 @@ export function OrganisationsPage() {
     return (
       <>
         {header}
-        <Callout tone="warning" title={discovery.status === "failed" ? "The capabilities of the server could not be read" : support !== "offered" ? "This server does not offer organisations" : "There is no connection"}>
+        <Callout tone="warning" title={discovery.status === "failed" ? t("organisations.connection.capabilitiesFailed") : support !== "offered" ? t("organisations.connection.notOffered") : t("organisations.connection.noConnection")}>
           {discovery.status === "failed"
             ? discovery.error.message
             : support !== "offered"
-              ? "Its discovery document does not list organisation. Nothing on this screen can work against it."
-              : "Set up a connection first."}
+              ? t("organisations.connection.discoveryNotListed")
+              : t("organisations.connection.setUpFirst")}
         </Callout>
       </>
     );
@@ -95,15 +100,20 @@ export function OrganisationsPage() {
     userChange: <UserChangePanel {...panelProps} />,
     userDelete: <UserDeletePanel {...panelProps} />,
   };
-  const workflows = usersOffered ? [...ORGANISATION_WORKFLOWS, ...USER_WORKFLOWS] : ORGANISATION_WORKFLOWS;
+  const workflowIds: readonly WorkflowId[] = usersOffered ? [...ORGANISATION_WORKFLOWS, ...USER_WORKFLOWS] : ORGANISATION_WORKFLOWS;
+  const workflows = workflowIds.map((id) => ({ id, label: workflowLabel(id) }));
+  const descriptions: Record<WorkflowId, string> = {
+    info: workflowDescription("info"), create: workflowDescription("create"), change: workflowDescription("change"), delete: workflowDescription("delete"),
+    userInfo: workflowDescription("userInfo"), userCreate: workflowDescription("userCreate"), userChange: workflowDescription("userChange"), userDelete: workflowDescription("userDelete"),
+  };
 
   return (
     <>
       {header}
       <WorkflowTabs
-        label="What to do with an organisation or its users"
+        label={t("organisations.workflowTabs.label")}
         workflows={workflows}
-        descriptions={DESCRIPTIONS}
+        descriptions={descriptions}
         panels={panels}
         selected={workflow}
         onSelect={setWorkflow}

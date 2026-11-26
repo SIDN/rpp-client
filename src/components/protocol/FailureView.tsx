@@ -2,32 +2,36 @@ import type { ReactNode } from "react";
 import { Callout } from "@/components/ui/callout";
 import { ResultCodeChip } from "@/components/protocol/protocol-badges";
 import type { RppFailure } from "@/rpp/errors/RppError";
+import { t } from "@/i18n";
 
-const TITLES: Record<RppFailure["kind"], string> = {
-  transport: "The request did not complete",
-  authentication: "The server did not accept the credentials",
-  authorization: "This client is not allowed to do that",
-  "rpp-protocol": "The registry refused the request",
-  http: "The server answered with an error",
-  content: "The answer could not be read",
-  "schema-validation": "The data does not match the schema",
-  "schema-document": "The schema could not be used",
-  discovery: "The capabilities could not be read",
-  unknown: "Something unexpected went wrong",
-};
+function titleFor(failure: RppFailure): string {
+  if (failure.kind === "transport" && failure.transportKind === "invalid-request") return t("protocol.failure.notSent");
+  switch (failure.kind) {
+    case "transport": return t("protocol.failure.transport");
+    case "authentication": return t("protocol.failure.authentication");
+    case "authorization": return t("protocol.failure.authorization");
+    case "rpp-protocol": return t("protocol.failure.protocol");
+    case "http": return t("protocol.failure.http");
+    case "content": return t("protocol.failure.content");
+    case "schema-validation": return t("protocol.failure.schemaValidation");
+    case "schema-document": return t("protocol.failure.schemaDocument");
+    case "discovery": return t("protocol.failure.discovery");
+    case "unknown": return t("protocol.failure.unknown");
+  }
+}
 
 function hint(failure: RppFailure): string | undefined {
   switch (failure.kind) {
     case "transport":
       if (failure.transportKind === "network") {
-        return "Check your network and the server address. A browser also refuses answers from a server that does not allow requests from this page (CORS), which looks the same as being offline.";
+        return t("protocol.failure.networkHint");
       }
-      if (failure.transportKind === "timeout") return "The registry did not answer in time. The request may still have been carried out: look the object up before you try again.";
+      if (failure.transportKind === "timeout") return t("protocol.failure.timeoutHint");
       return undefined;
     case "authentication":
-      return "Check the user name and password on the Connection screen.";
+      return t("protocol.failure.authenticationHint");
     case "authorization":
-      return "Only the sponsoring registrar may do this, or the object authorisation information was missing or wrong.";
+      return t("protocol.failure.authorizationHint");
     default:
       return undefined;
   }
@@ -45,7 +49,7 @@ function Reference({ failure }: { failure: RppFailure }) {
         </span>
       )}
       <span>
-        Exchange <code>{failure.exchangeId}</code>
+        {t("protocol.exchange.label")} <code>{failure.exchangeId}</code>
       </span>
     </p>
   );
@@ -65,7 +69,7 @@ function Details({ failure }: { failure: RppFailure }): ReactNode {
             </span>
             {error.paths.length > 0 && (
               <span className="text-xs">
-                at {error.paths.map((path) => <code key={path} className="mr-2">{path}</code>)}
+                {t("protocol.failure.at")} {error.paths.map((path) => <code key={path} className="mr-2">{path}</code>)}
               </span>
             )}
           </li>
@@ -81,13 +85,13 @@ function Details({ failure }: { failure: RppFailure }): ReactNode {
             <code>{issue.instancePath || "/"}</code> {issue.message}
           </li>
         ))}
-        {failure.issues.length > 8 && <li>and {failure.issues.length - 8} more</li>}
+        {failure.issues.length > 8 && <li>{t("protocol.failure.more", { count: failure.issues.length - 8 })}</li>}
       </ul>
     );
   }
   if ((failure.kind === "http" || failure.kind === "content") && failure.body.kind !== "empty") {
     return (
-      <pre tabIndex={0} aria-label="Body of the answer" className="mt-2 max-h-48 overflow-auto rounded-sm bg-surface/60 p-2 font-mono text-xs">
+      <pre tabIndex={0} aria-label={t("protocol.failure.answerBody")} className="mt-2 max-h-48 overflow-auto rounded-sm bg-surface/60 p-2 font-mono text-xs">
         {failure.body.text.slice(0, 2000)}
       </pre>
     );
@@ -98,7 +102,7 @@ function Details({ failure }: { failure: RppFailure }): ReactNode {
 /** What went wrong in words, with the result code, the problem's own reasons and where to find the exchange. */
 export function FailureView({ failure }: { failure: RppFailure }) {
   const advice = hint(failure);
-  const title = failure.kind === "transport" && failure.transportKind === "invalid-request" ? "The request was not sent" : TITLES[failure.kind];
+  const title = titleFor(failure);
   return (
     <Callout tone="danger" title={title}>
       <p>{failure.message}</p>

@@ -8,6 +8,7 @@ import { DefinitionList, DefinitionRow, Nothing } from "@/components/common/defi
 import { Badge } from "@/components/ui/badge";
 import { Callout } from "@/components/ui/callout";
 import { buttonVariants } from "@/components/ui/button-variants";
+import { t } from "@/i18n";
 import { isResourceType } from "@/rpp/core/types/resources";
 import type { CapabilitySnapshot, PresetCapability, VersionedReference } from "@/rpp/discovery/capability-types";
 import { advertisedExtensions } from "@/rpp/discovery/capabilities";
@@ -17,7 +18,7 @@ import { originOf, referenceLabel, unmodelledMembers } from "./capabilityView";
 const Row = DefinitionRow;
 const Rows = DefinitionList;
 
-const None = ({ children = "None listed" }: { children?: ReactNode }) => <Nothing>{children}</Nothing>;
+const None = ({ children }: { children?: ReactNode }) => <Nothing>{children ?? t("connection.capability.noneListed")}</Nothing>;
 
 function References({ items }: { items: readonly VersionedReference[] }) {
   if (items.length === 0) return <None />;
@@ -35,7 +36,7 @@ function References({ items }: { items: readonly VersionedReference[] }) {
 export function CapabilitiesPage() {
   const discovery = useDiscoveryState();
 
-  const header = <PageHeader title="Capabilities" description="The discovery document of the server: what it offers, shown as it was received." />;
+  const header = <PageHeader title={t("capabilities.page.title")} description={t("capabilities.page.description")} />;
 
   if (discovery.status === "not-started") {
     return (
@@ -49,7 +50,7 @@ export function CapabilitiesPage() {
     return (
       <>
         {header}
-        <Callout tone="info" title="Reading the capabilities of the server" />
+        <Callout tone="info" title={t("capabilities.reading")} />
       </>
     );
   }
@@ -57,17 +58,17 @@ export function CapabilitiesPage() {
     return (
       <>
         {header}
-        <Callout tone="danger" title="The capabilities of the server could not be read">
+        <Callout tone="danger" title={t("capabilities.readFailed")}>
           {discovery.error.message}
           {discovery.error.exchangeId && (
             <>
               {" "}
-              The request is recorded as exchange <code>{discovery.error.exchangeId}</code>.
+              {t("capabilities.exchangeRecordedLead")} <code>{discovery.error.exchangeId}</code>{t("capabilities.exchangeRecordedEnd")}
             </>
           )}
         </Callout>
         <Link to="/connection" className={buttonVariants({ variant: "secondary", className: "self-start" })}>
-          Go to the connection
+          {t("capabilities.goToConnection")}
         </Link>
       </>
     );
@@ -90,7 +91,7 @@ function Document({ snapshot, warnings }: { snapshot: CapabilitySnapshot; warnin
   return (
     <>
       {warnings.length > 0 && (
-        <Callout tone="warning" title={`The discovery document has ${warnings.length} remark(s)`}>
+        <Callout tone="warning" title={t("connection.capability.remarks", { count: warnings.length })}>
           <ul className="list-disc pl-5">
             {warnings.map((warning) => (
               <li key={warning}>{warning}</li>
@@ -99,25 +100,25 @@ function Document({ snapshot, warnings }: { snapshot: CapabilitySnapshot; warnin
         </Callout>
       )}
 
-      <Section id="source" title="Document" description="Where this was read, and when.">
+      <Section id="source" title={t("capabilities.source.title")} description={t("capabilities.source.description")}>
         <Rows>
-          <Row term="Address">
+          <Row term={t("capabilities.source.address")}>
             <code className="break-all">{snapshot.source.url}</code>
           </Row>
-          <Row term="Read">{new Date(snapshot.source.retrievedAt).toLocaleString()} (this computer)</Row>
-          <Row term="Server time">{snapshot.serverDatetime ?? <None>Not given</None>}</Row>
-          <Row term="Exchange">
+          <Row term={t("capabilities.source.read")}>{new Date(snapshot.source.retrievedAt).toLocaleString()} ({t("capabilities.source.localTime")})</Row>
+          <Row term={t("capabilities.source.serverTime")}>{snapshot.serverDatetime ?? <None>{t("capabilities.notGiven")}</None>}</Row>
+          <Row term={t("capabilities.source.exchange")}>
             <code>{snapshot.source.exchangeId}</code>
           </Row>
         </Rows>
       </Section>
 
-      <Section id="server" title="Server">
+      <Section id="server" title={t("capabilities.server.title")}>
         <Rows>
-          <Row term="Environment">
-            {snapshot.environment ? `${snapshot.environment.name}, ${snapshot.environment.status}` : <None>Not given</None>}
+          <Row term={t("connection.capability.environment")}>
+            {snapshot.environment ? `${snapshot.environment.name}, ${snapshot.environment.status}` : <None>{t("capabilities.notGiven")}</None>}
           </Row>
-          <Row term="RPP versions">
+          <Row term={t("connection.capability.versions")}>
             {snapshot.versions.length === 0 ? (
               <None />
             ) : (
@@ -126,20 +127,20 @@ function Document({ snapshot, warnings }: { snapshot: CapabilitySnapshot; warnin
                   <li key={version.version} className="flex flex-wrap items-center gap-2">
                     <span>{version.version}</span>
                     <code className="break-all">{version.baseUrl}</code>
-                    {originOf(version.baseUrl) !== configuredOrigin && <Badge tone="warning">other origin, not followed</Badge>}
+                    {originOf(version.baseUrl) !== configuredOrigin && <Badge tone="warning">{t("capabilities.server.otherOrigin")}</Badge>}
                   </li>
                 ))}
               </ul>
             )}
           </Row>
-          <Row term="TLDs">{snapshot.tlds.length === 0 ? <None /> : snapshot.tlds.join(", ")}</Row>
-          <Row term="Profiles">
+          <Row term={t("capabilities.server.tlds")}>{snapshot.tlds.length === 0 ? <None /> : snapshot.tlds.join(", ")}</Row>
+          <Row term={t("capabilities.server.profiles")}>
             <References items={snapshot.profiles} />
           </Row>
         </Rows>
       </Section>
 
-      <Section id="objects" title="Objects" description="The object types the server manages.">
+      <Section id="objects" title={t("capabilities.objects.title")} description={t("capabilities.objects.description")}>
         {snapshot.objects.length === 0 ? (
           <None />
         ) : (
@@ -148,7 +149,7 @@ function Document({ snapshot, warnings }: { snapshot: CapabilitySnapshot; warnin
               <li key={type}>
                 <Badge tone={isResourceType(type) ? "success" : "warning"} dot>
                   <code>{type}</code>
-                  {!isResourceType(type) && <span className="font-normal">not known to this client</span>}
+                  {!isResourceType(type) && <span className="font-normal">{t("capabilities.objects.unknown")}</span>}
                 </Badge>
               </li>
             ))}
@@ -156,7 +157,7 @@ function Document({ snapshot, warnings }: { snapshot: CapabilitySnapshot; warnin
         )}
       </Section>
 
-      <Section id="presets" title="Presets" description="A preset fixes the extensions and profiles a request works with.">
+      <Section id="presets" title={t("capabilities.presets.title")} description={t("capabilities.presets.description")}>
         {snapshot.presets.length === 0 ? (
           <None />
         ) : (
@@ -174,29 +175,29 @@ function Document({ snapshot, warnings }: { snapshot: CapabilitySnapshot; warnin
 
       <Section
         id="extensions"
-        title="Extensions"
-        description="Offered by the server. This client has no extension modules yet, so none of them is supported here."
+        title={t("capabilities.extensions.title")}
+        description={t("capabilities.extensions.description")}
       >
         {extensions.advertised.length === 0 ? (
-          <None>None advertised</None>
+          <None>{t("connection.capability.noneAdvertised")}</None>
         ) : (
           <ul className="flex flex-col gap-6">
             {extensions.advertised.map(({ status, advertised }) => (
               <li key={referenceLabel(advertised)}>
-                <article aria-label={`Extension ${referenceLabel(advertised)}`} className="flex flex-col gap-2">
+                <article aria-label={t("capabilities.extensions.ariaLabel", { reference: referenceLabel(advertised) })} className="flex flex-col gap-2">
                   <h3 className="flex flex-wrap items-center gap-2">
                     <span>{advertised.name ?? advertised.id}</span>
                     <Badge tone={status === "available" ? "success" : "neutral"}>
-                      {status === "available" ? "supported by this client" : "not supported by this client"}
+                      {status === "available" ? t("capabilities.extensions.supported") : t("capabilities.extensions.unsupported")}
                     </Badge>
                   </h3>
                   <Rows>
-                    <Row term="Identifier">
+                    <Row term={t("capabilities.extensions.identifier")}>
                       <code className="break-all">{advertised.id}</code>
                     </Row>
-                    <Row term="Version">{advertised.version}</Row>
-                    <Row term="Address">{advertised.url ? <code className="break-all">{advertised.url}</code> : <None>Not given</None>}</Row>
-                    <Row term="In presets">{presetsUsing(snapshot, advertised).join(", ") || <None>None of the presets</None>}</Row>
+                    <Row term={t("capabilities.extensions.version")}>{advertised.version}</Row>
+                    <Row term={t("capabilities.extensions.address")}>{advertised.url ? <code className="break-all">{advertised.url}</code> : <None>{t("capabilities.notGiven")}</None>}</Row>
+                    <Row term={t("capabilities.extensions.inPresets")}>{presetsUsing(snapshot, advertised).join(", ") || <None>{t("capabilities.extensions.noneInPresets")}</None>}</Row>
                   </Rows>
                 </article>
               </li>
@@ -205,9 +206,9 @@ function Document({ snapshot, warnings }: { snapshot: CapabilitySnapshot; warnin
         )}
       </Section>
 
-      <Section id="raw" title="Document as received" description="Including members this client does not interpret.">
+      <Section id="raw" title={t("capabilities.raw.title")} description={t("capabilities.raw.description")}>
         {others.length > 0 && (
-          <Callout tone="info" title="Members this client does not interpret">
+          <Callout tone="info" title={t("capabilities.raw.uninterpreted")}>
             {others.map((name, index) => (
               <span key={name}>
                 {index > 0 && ", "}
@@ -217,8 +218,8 @@ function Document({ snapshot, warnings }: { snapshot: CapabilitySnapshot; warnin
           </Callout>
         )}
         <details className="rounded-md border border-border">
-          <summary className="cursor-pointer px-3 py-2 font-medium">Show the JSON</summary>
-          <pre tabIndex={0} aria-label="Discovery document" className="max-h-[32rem] overflow-auto border-t border-border p-3 font-mono text-xs">
+          <summary className="cursor-pointer px-3 py-2 font-medium">{t("capabilities.raw.showJson")}</summary>
+          <pre tabIndex={0} aria-label={t("capabilities.raw.ariaLabel")} className="max-h-[32rem] overflow-auto border-t border-border p-3 font-mono text-xs">
             {JSON.stringify(snapshot.raw, null, 2)}
           </pre>
         </details>
@@ -235,31 +236,31 @@ function presetsUsing(snapshot: CapabilitySnapshot, extension: VersionedReferenc
 
 function PresetEntry({ preset, inUse }: { preset: PresetCapability; inUse: boolean }) {
   return (
-    <article aria-label={`Preset ${referenceLabel(preset)}`} className="flex flex-col gap-2">
+    <article aria-label={t("capabilities.preset.ariaLabel", { reference: referenceLabel(preset) })} className="flex flex-col gap-2">
       <h3 className="flex flex-wrap items-center gap-2">
         <code>{referenceLabel(preset)}</code>
         {preset.name && <span className="font-normal">{preset.name}</span>}
-        {preset.isDefault && <Badge tone="info">default</Badge>}
-        {inUse && <Badge tone="success" dot>sent with requests</Badge>}
+        {preset.isDefault && <Badge tone="info">{t("capabilities.preset.default")}</Badge>}
+        {inUse && <Badge tone="success" dot>{t("capabilities.preset.inUse")}</Badge>}
       </h3>
       <Rows>
-        {preset.description && <Row term="Description">{preset.description}</Row>}
-        {preset.rppVersion && <Row term="RPP version">{preset.rppVersion}</Row>}
+        {preset.description && <Row term={t("capabilities.preset.description")}>{preset.description}</Row>}
+        {preset.rppVersion && <Row term={t("capabilities.preset.rppVersion")}>{preset.rppVersion}</Row>}
         {preset.url && (
-          <Row term="Schema address">
+          <Row term={t("capabilities.preset.schemaAddress")}>
             <code className="break-all">{preset.url}</code>
           </Row>
         )}
-        <Row term="Base presets">
+        <Row term={t("capabilities.preset.basePresets")}>
           <References items={preset.basePresets} />
         </Row>
-        <Row term="Extensions">
+        <Row term={t("capabilities.preset.extensions")}>
           <References items={preset.extensions} />
         </Row>
-        <Row term="Profiles">
+        <Row term={t("capabilities.preset.profiles")}>
           <References items={preset.profiles} />
         </Row>
-        <Row term="Bound profiles">
+        <Row term={t("capabilities.preset.boundProfiles")}>
           <References items={preset.boundProfiles} />
         </Row>
       </Rows>

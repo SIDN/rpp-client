@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { t } from "@/i18n";
 import { useForm } from "react-hook-form";
 import { Choice } from "@/components/ui/choice";
 import { OperationOutcome } from "../shared/OperationOutcome";
@@ -34,15 +35,15 @@ export function InfoPanel({ id, onIdChange, startNow = false }: PanelProps & { s
         <IdField id={id} onIdChange={onIdChange} />
         <Choice
           type="checkbox"
-          label="Include the transfer password"
-          hint="Only the sponsoring registrar is given it, and only if the registry can show it."
+          label={t("contacts.info.includeAuthInfo")}
+          hint={t("contacts.info.includeAuthInfoHint")}
           {...register("authInfo")}
         />
         <div>
-          <SubmitButton pending={info.pending}>Get info</SubmitButton>
+          <SubmitButton pending={info.pending}>{t("contacts.info.submit")}</SubmitButton>
         </div>
       </form>
-      <OperationOutcome operation={info} success={`Found ${info.variables?.id.trim() || "the contact"}`}>
+      <OperationOutcome operation={info} success={t("contacts.info.success", { contact: info.variables?.id.trim() || "the contact" })}>
         {(contact) => <ContactDetails contact={contact} />}
       </OperationOutcome>
     </div>

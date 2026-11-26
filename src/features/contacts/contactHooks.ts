@@ -1,5 +1,6 @@
 import { skipToken, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
+import { t } from "@/i18n";
 import { useConnection } from "@/app/connection-context";
 import { useDiscoveryState } from "@/app/discovery-context";
 import { postalModeOf, readContactSupport } from "@/application/contacts/contactSupport";
@@ -23,7 +24,7 @@ const trimmed = (input: string): string | undefined => {
 export function useContactWorkflows(): ContactWorkflows {
   const { session } = useConnection();
   return useMemo(() => {
-    if (!session) throw new Error("The contact workflows need a connection");
+    if (!session) throw new Error(t("contacts.errors.connectionRequired"));
     return createContactWorkflows(session.client);
   }, [session]);
 }
@@ -79,9 +80,9 @@ export function useContactForm(): ContactForm {
     staleTime: Infinity,
   });
 
-  if (!preset) return { status: "ready", mode: "both", authInfo: true, note: "No preset is known, so every field is offered and the server decides." };
-  if (query.isError) return { status: "ready", mode: "both", authInfo: true, note: `The schema of the preset could not be read (${query.error.message}), so every field is offered and the server decides.` };
+  if (!preset) return { status: "ready", mode: "both", authInfo: true, note: t("contacts.form.noPreset") };
+  if (query.isError) return { status: "ready", mode: "both", authInfo: true, note: t("contacts.form.schemaReadFailed", { reason: query.error.message }) };
   if (!query.data) return { status: "loading" };
-  if (query.data.kind === "unknown") return { status: "ready", mode: "both", authInfo: true, note: `The schema of the preset could not be used (${query.data.reason}), so every field is offered and the server decides.` };
+  if (query.data.kind === "unknown") return { status: "ready", mode: "both", authInfo: true, note: t("contacts.form.schemaNotUsable", { reason: query.data.reason }) };
   return { status: "ready", mode: postalModeOf(query.data.support), authInfo: query.data.support.authInfo, note: undefined };
 }

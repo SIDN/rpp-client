@@ -26,6 +26,20 @@
   --sidebar-active: color-mix(in srgb, var(--sidebar-foreground) 13%, var(--sidebar));
 }
 
+/* SIDN's navy, blue, cyan and orange brand palette. */
+:root[data-palette="sidn"] {
+  --background: #f4f4f4; --foreground: #002154; --surface: #ffffff; --muted: #e6edf4; --muted-foreground: #464646;
+  --border: #c6d3e2; --input: #7189a7; --primary: #1961ac; --primary-foreground: #ffffff; --accent: #e85422;
+  --accent-foreground: #141414; --ring: #1961ac; --success: #178d30; --warning: #e85422; --danger: #e10000;
+  --info: #30a8cb; --sidebar: #002154; --sidebar-foreground: #ffffff;
+}
+:root[data-palette="sidn"].dark {
+  --background: #002154; --foreground: #f4f4f4; --surface: #0b2f67; --muted: #123b75; --muted-foreground: #d3e0ee;
+  --border: #31527c; --input: #7189a7; --primary: #30a8cb; --primary-foreground: #002154; --accent: #fd7344;
+  --accent-foreground: #002154; --ring: #4fc2e3; --success: #26a040; --warning: #fd7344; --danger: #f75823;
+  --info: #4fc2e3; --sidebar: #001735; --sidebar-foreground: #f4f4f4;
+}
+
 /* Nord */
 :root[data-palette="nord"] {
   --background: #eceff4; --foreground: #2e3440; --surface: #ffffff; --muted: #e5e9f0; --muted-foreground: #4c566a;

@@ -6,6 +6,7 @@ import { useDiscoveryState } from "@/app/discovery-context";
 import { CapabilityMark } from "@/components/protocol/capability-mark";
 import { Logo } from "@/components/common/Logo";
 import { cn } from "@/lib/utils";
+import { t } from "@/i18n";
 
 /** Collapsing only applies on a wide screen: the drawer of a narrow one always shows the labels. */
 function SidebarLink({ item, collapsed }: { item: NavItem; collapsed: boolean }) {
@@ -15,7 +16,7 @@ function SidebarLink({ item, collapsed }: { item: NavItem; collapsed: boolean })
     <NavLink
       to={item.to}
       end={item.to === "/"}
-      title={collapsed ? item.label : undefined}
+      title={collapsed ? t(item.labelKey) : undefined}
       className={({ isActive }) =>
         cn(
           "relative flex h-9 items-center gap-3 rounded-md px-3 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-active focus-visible:outline-accent",
@@ -25,7 +26,7 @@ function SidebarLink({ item, collapsed }: { item: NavItem; collapsed: boolean })
       }
     >
       <Icon aria-hidden className={cn("size-4 shrink-0", collapsed && "lg:size-5")} />
-      <span className={cn("flex-1 truncate", collapsed && "lg:sr-only")}>{item.label}</span>
+      <span className={cn("flex-1 truncate", collapsed && "lg:sr-only")}>{t(item.labelKey)}</span>
       {item.requires && (
         <CapabilityMark support={objectSupport(discovery, item.requires)} className={cn("text-sidebar-muted", collapsed && "lg:absolute lg:top-1 lg:right-1.5")} />
       )}
@@ -42,17 +43,17 @@ export function Sidebar({ id, className, collapsed, onToggleCollapsed }: { id: s
         <span className={cn("text-base font-semibold tracking-tight text-white", collapsed && "lg:sr-only")}>{APP_TITLE}</span>
       </div>
 
-      <nav aria-label="Primary" className="flex flex-1 flex-col gap-5 overflow-y-auto overflow-x-hidden">
+      <nav aria-label={t("ui.sidebar.primary")} className="flex flex-1 flex-col gap-5 overflow-y-auto overflow-x-hidden">
         {NAVIGATION.map((group, index) => (
           <div
             key={group.id}
             role="group"
-            aria-label={group.label}
+            aria-label={group.labelKey ? t(group.labelKey) : undefined}
             className={cn("flex flex-col gap-0.5", collapsed && index > 0 && "lg:border-t lg:border-sidebar-border lg:pt-3")}
           >
-            {group.label && (
+            {group.labelKey && (
               <p aria-hidden className={cn("px-3 pb-1 text-sm font-medium text-sidebar-muted", collapsed && "lg:hidden")}>
-                {group.label}
+                {t(group.labelKey)}
               </p>
             )}
             {group.items.map((item) => (
@@ -63,15 +64,15 @@ export function Sidebar({ id, className, collapsed, onToggleCollapsed }: { id: s
       </nav>
 
       <div className="flex flex-col gap-0.5 border-t border-sidebar-border pt-4">
-        <nav aria-label="Server">
+        <nav aria-label={t("ui.sidebar.server")}>
           <SidebarLink item={CONNECTION_ITEM} collapsed={collapsed} />
         </nav>
         <button
           type="button"
           aria-expanded={!collapsed}
           aria-controls={id}
-          aria-label={collapsed ? "Expand the sidebar" : "Collapse the sidebar"}
-          title={collapsed ? "Expand the sidebar" : "Collapse the sidebar"}
+          aria-label={t(collapsed ? "ui.sidebar.expand" : "ui.sidebar.collapse")}
+          title={t(collapsed ? "ui.sidebar.expand" : "ui.sidebar.collapse")}
           onClick={onToggleCollapsed}
           className={cn(
             "hidden h-9 items-center gap-3 rounded-md px-3 text-sm font-medium text-sidebar-muted transition-colors hover:bg-sidebar-active hover:text-sidebar-foreground focus-visible:outline-accent lg:flex",
@@ -79,7 +80,7 @@ export function Sidebar({ id, className, collapsed, onToggleCollapsed }: { id: s
           )}
         >
           <Toggle aria-hidden className={cn("size-4 shrink-0", collapsed && "lg:size-5")} />
-          <span className={cn("flex-1 truncate text-left", collapsed && "lg:sr-only")}>Collapse</span>
+          <span className={cn("flex-1 truncate text-left", collapsed && "lg:sr-only")}>{t("ui.sidebar.collapse")}</span>
         </button>
       </div>
     </aside>

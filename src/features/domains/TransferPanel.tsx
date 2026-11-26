@@ -1,3 +1,4 @@
+import { t } from "@/i18n";
 import { FormProvider, useForm, useWatch } from "react-hook-form";
 import { Choice } from "@/components/ui/choice";
 import { Field, Input } from "@/components/ui/field";
@@ -22,13 +23,15 @@ interface TransferValues extends PeriodValues {
 
 type TransferCommand = { kind: "request"; name: string; authInfo: string; period?: PeriodInput } | { kind: Exclude<TransferAction, "request">; name: string };
 
-const SUCCESS: Record<TransferAction, string> = {
-  request: "The registry took the transfer request",
-  status: "The registry reported the transfer status",
-  cancel: "The transfer request was withdrawn",
-  approve: "The transfer was approved",
-  reject: "The transfer was rejected",
-};
+function transferSuccess(action: TransferAction): string {
+  switch (action) {
+    case "request": return t("domains.transfer.requestSuccess");
+    case "status": return t("domains.transfer.statusSuccess");
+    case "cancel": return t("domains.transfer.cancelSuccess");
+    case "approve": return t("domains.transfer.approveSuccess");
+    case "reject": return t("domains.transfer.rejectSuccess");
+  }
+}
 
 export function TransferPanel({ name, onNameChange }: PanelProps) {
   const workflows = useDomainWorkflows();
@@ -59,7 +62,7 @@ export function TransferPanel({ name, onNameChange }: PanelProps) {
 
   const submit = form.handleSubmit((values) => {
     if (values.action === "request") {
-      if (values.authInfo === "") return form.setError("authInfo", { message: "Enter the transfer password of the domain" });
+      if (values.authInfo === "") return form.setError("authInfo", { message: t("domains.validation.transferPassword") });
       return transfer.start({ kind: "request", name, authInfo: values.authInfo, period: periodOf(values) });
     }
     if (values.action === "status") transfer.start({ kind: "status", name });
@@ -71,26 +74,26 @@ export function TransferPanel({ name, onNameChange }: PanelProps) {
         <form onSubmit={submit} noValidate className="flex max-w-xl flex-col gap-6">
           <NameField name={name} onNameChange={onNameChange} />
           <fieldset className="flex flex-col gap-3">
-            <legend className="mb-1 font-medium">What to do</legend>
-            <Choice type="radio" value="request" label="Ask for the domain to be transferred to you" hint="As the gaining registrar, with the transfer password." {...form.register("action")} />
-            <Choice type="radio" value="status" label="Check the transfer status" {...form.register("action")} />
-            <Choice type="radio" value="cancel" label="Withdraw your transfer request" hint="As the registrar that asked for it." {...form.register("action")} />
-            <Choice type="radio" value="approve" label="Approve a transfer away from you" hint="As the sponsoring registrar." {...form.register("action")} />
-            <Choice type="radio" value="reject" label="Reject a transfer away from you" hint="As the sponsoring registrar." {...form.register("action")} />
+            <legend className="mb-1 font-medium">{t("domains.transfer.whatToDo")}</legend>
+            <Choice type="radio" value="request" label={t("domains.transfer.ask")} hint={t("domains.transfer.gainingHint")} {...form.register("action")} />
+            <Choice type="radio" value="status" label={t("domains.transfer.checkStatus")} {...form.register("action")} />
+            <Choice type="radio" value="cancel" label={t("domains.transfer.withdraw")} hint={t("domains.transfer.requestingHint")} {...form.register("action")} />
+            <Choice type="radio" value="approve" label={t("domains.transfer.approveAway")} hint={t("domains.transfer.sponsoringHint")} {...form.register("action")} />
+            <Choice type="radio" value="reject" label={t("domains.transfer.rejectAway")} hint={t("domains.transfer.sponsoringHint")} {...form.register("action")} />
           </fieldset>
 
           {action === "request" && (
             <div className="flex flex-col gap-5 border-l-2 border-border pl-5">
-              <Field label="Transfer password" hint="Sent in the RPP-Authorization header, never in the body of the request." error={form.formState.errors.authInfo?.message}>
+              <Field label={t("domains.register.transferPassword")} hint={t("domains.transfer.passwordHint")} error={form.formState.errors.authInfo?.message}>
                 {(control) => <Input {...control} type="password" autoComplete="off" className="max-w-64" {...form.register("authInfo")} />}
               </Field>
-              <PeriodFields label="Renew by" />
+              <PeriodFields label={t("domains.transfer.renewBy")} />
             </div>
           )}
 
           {(action === "request" || action === "status") && (
             <div>
-              <SubmitButton pending={transfer.pending}>{action === "request" ? "Ask for the transfer" : "Check the status"}</SubmitButton>
+              <SubmitButton pending={transfer.pending}>{action === "request" ? t("domains.transfer.submitRequest") : t("domains.transfer.submitStatus")}</SubmitButton>
             </div>
           )}
         </form>
@@ -99,21 +102,21 @@ export function TransferPanel({ name, onNameChange }: PanelProps) {
       {(action === "cancel" || action === "approve" || action === "reject") && (
         <ConfirmAction
           destructive={action !== "cancel"}
-          trigger={action === "cancel" ? "Withdraw the request" : action === "approve" ? "Approve the transfer" : "Reject the transfer"}
-          title={`${action === "cancel" ? "Withdraw the transfer request for" : action === "approve" ? "Approve the transfer of" : "Reject the transfer of"} ${target}?`}
-          confirmLabel={action === "cancel" ? `Withdraw for ${target}` : action === "approve" ? `Approve for ${target}` : `Reject for ${target}`}
+          trigger={action === "cancel" ? t("domains.transfer.withdrawTrigger") : action === "approve" ? t("domains.transfer.approveTrigger") : t("domains.transfer.rejectTrigger")}
+          title={action === "cancel" ? t("domains.transfer.withdrawTitle", { name: target }) : action === "approve" ? t("domains.transfer.approveTitle", { name: target }) : t("domains.transfer.rejectTitle", { name: target })}
+          confirmLabel={action === "cancel" ? t("domains.transfer.withdrawConfirm", { name: target }) : action === "approve" ? t("domains.transfer.approveConfirm", { name: target }) : t("domains.transfer.rejectConfirm", { name: target })}
           pending={transfer.pending}
           onConfirm={() => transfer.start({ kind: action, name })}
         >
           {action === "approve"
-            ? "The domain moves to the registrar that asked for it. This cannot be undone from here."
+            ? t("domains.transfer.approveExplanation")
             : action === "reject"
-              ? "The registrar that asked for the transfer is refused, and the domain stays with you."
-              : "The transfer request is withdrawn and the domain stays where it is."}
+              ? t("domains.transfer.rejectExplanation")
+              : t("domains.transfer.withdrawExplanation")}
         </ConfirmAction>
       )}
 
-      <OperationOutcome operation={transfer} success={SUCCESS[transfer.variables?.kind ?? "status"]}>
+      <OperationOutcome operation={transfer} success={transferSuccess(transfer.variables?.kind ?? "status")}>
         {(data) => <TransferResult data={data} />}
       </OperationOutcome>
     </div>

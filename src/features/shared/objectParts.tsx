@@ -4,10 +4,11 @@ import { formatDateTime } from "@/lib/dateTime";
 import { Nothing } from "@/components/common/definition";
 import { Button } from "@/components/ui/button";
 import type { ProvMetadata } from "@/rpp/core/types/objects";
+import { t } from "@/i18n";
 
 export function Timestamp({ value }: { value: string | undefined }) {
   const { settings } = useSettings();
-  if (value === undefined) return <Nothing>Not given</Nothing>;
+  if (value === undefined) return <Nothing>{t("common.notGiven")}</Nothing>;
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return <code>{value}</code>;
   return (
@@ -34,7 +35,7 @@ export function OtherMembers({ members }: { members: readonly (readonly [string,
 export function JsonView({ label, value }: { label: string; value: unknown }) {
   return (
     <details className="rounded-md border border-border">
-      <summary className="cursor-pointer px-3 py-2 font-medium">Show the JSON</summary>
+      <summary className="cursor-pointer px-3 py-2 font-medium">{t("common.showJson")}</summary>
       <pre tabIndex={0} aria-label={label} className="max-h-[28rem] overflow-auto border-t border-border p-3 font-mono text-xs">
         {JSON.stringify(value, null, 2)}
       </pre>
@@ -49,7 +50,7 @@ export function Secret({ value }: { value: string }) {
     <span className="flex flex-wrap items-center gap-3">
       <code>{shown ? value : "•".repeat(Math.min(Math.max(value.length, 6), 16))}</code>
       <Button variant="ghost" size="sm" aria-pressed={shown} onClick={() => setShown((current) => !current)}>
-        {shown ? "Hide" : "Show"}
+        {shown ? t("common.hide") : t("common.show")}
       </Button>
     </span>
   );
@@ -57,13 +58,13 @@ export function Secret({ value }: { value: string }) {
 
 export function Provisioning({ metadata }: { metadata: ProvMetadata }) {
   const rows: [string, string | undefined, boolean][] = [
-    ["Sponsoring registrar", metadata.spClientId, false],
-    ["Created by", metadata.crClientId, false],
-    ["Created", metadata.crDate, true],
-    ["Last updated by", metadata.upClientId, false],
-    ["Last updated", metadata.upDate, true],
-    ["Last transferred", metadata.trDate, true],
-    ["Repository", metadata.repositoryId, false],
+    ["shared.provisioning.sponsoringRegistrar", metadata.spClientId, false],
+    ["shared.provisioning.createdBy", metadata.crClientId, false],
+    ["shared.provisioning.created", metadata.crDate, true],
+    ["shared.provisioning.updatedBy", metadata.upClientId, false],
+    ["shared.provisioning.updated", metadata.upDate, true],
+    ["shared.provisioning.transferred", metadata.trDate, true],
+    ["shared.provisioning.repository", metadata.repositoryId, false],
   ];
   return (
     <dl className="grid gap-x-6 gap-y-1 sm:grid-cols-[max-content_minmax(0,1fr)]">
@@ -71,7 +72,7 @@ export function Provisioning({ metadata }: { metadata: ProvMetadata }) {
         .filter(([, value]) => value !== undefined)
         .map(([label, value, isTime]) => (
           <div key={label} className="contents">
-            <dt className="text-muted-foreground">{label}</dt>
+            <dt className="text-muted-foreground">{t(label)}</dt>
             <dd>{isTime ? <Timestamp value={value} /> : <code>{value}</code>}</dd>
           </div>
         ))}

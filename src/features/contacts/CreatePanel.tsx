@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { t } from "@/i18n";
 import { FormProvider, useForm } from "react-hook-form";
 import { toData, EMPTY_VALUES, type ContactValues } from "./formValues";
 import { Button } from "@/components/ui/button";
@@ -48,28 +49,28 @@ export function CreatePanel({ id, onIdChange }: PanelProps) {
               <SchemaNote note={shape.note} />
               <ContactFields withKind addresses={ADDRESSES[shape.mode]} />
               {shape.authInfo && (
-                <Field label="Authorisation Information" hint="Set now, or later in Change. Another registrar needs it to take the contact over.">
+                <Field label={t("contacts.create.authInfo")} hint={t("contacts.create.authInfoHint")}>
                   {(control) => (
                     <div className="flex items-center gap-2">
                       <Input {...control} type={authInfoShown ? "text" : "password"} autoComplete="off" className="max-w-64" {...form.register("authInfo")} />
                       <Button variant="ghost" size="sm" aria-pressed={authInfoShown} onClick={() => setAuthInfoShown((current) => !current)}>
-                        {authInfoShown ? "Hide" : "Show"}
+                        {authInfoShown ? t("contacts.create.hide") : t("contacts.create.show")}
                       </Button>
                     </div>
                   )}
                 </Field>
               )}
-              <Callout tone="info" title="What the registry requires varies">
-                Most registries need a name, an address with a country, and an email address. If one is missing, the registry says which.
+              <Callout tone="info" title={t("contacts.create.requirementsVary")}>
+                {t("contacts.create.requirementsDescription")}
               </Callout>
               <div>
-                <SubmitButton pending={create.pending}>Create contact</SubmitButton>
+                <SubmitButton pending={create.pending}>{t("contacts.create.submit")}</SubmitButton>
               </div>
             </>
           )}
         </form>
       </FormProvider>
-      <OperationOutcome operation={create} success={`Created ${create.variables?.id.trim() || "the contact"}`}>
+      <OperationOutcome operation={create} success={t("contacts.create.success", { contact: create.variables?.id.trim() || "the contact" })}>
         {(contact) => <ContactDetails contact={contact} />}
       </OperationOutcome>
     </div>

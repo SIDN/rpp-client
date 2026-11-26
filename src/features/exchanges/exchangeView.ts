@@ -61,3 +61,32 @@ export function filterExchanges(records: readonly ExchangeRecord[], query: strin
     return words.every((word) => haystack.includes(word));
   });
 }
+
+/*
+ * Raw text of an exchange, for pasting into a bug report or a terminal. It is built only from the recorded
+ * (already redacted) snapshot, so redacted values stay "[REDACTED]" and nothing is re-read from the live request.
+ * The HTTP version is left out because fetch does not expose it; header names are lower case as recorded; bodies
+ * are as recorded, not pretty-printed. A clipped body or a missing response is marked on a "#" line, since
+ * presenting either as a complete message would mislead; so is a redirect.
+ */
+function message(startLine: string, headers: Record<string, string>, body: string | undefined): string {
+  const lines = [startLine, ...Object.entries(headers).map(([name, value]) => `${name}: ${value}`)];
+  return body === undefined ? lines.join("\n") : `${lines.join("\n")}\n\n${body}`;
+}
+
+export function rawRequest(record: ExchangeRecord): string {
+  const { method, url, headers, body } = record.request;
+  return message(`${method} ${url}`, headers, body);
+}
+
+export function rawResponse(record: ExchangeRecord): string {
+  const { outcome } = record;
+  if (outcome.kind === "error") return `# No response (${outcome.errorKind}): ${outcome.message}`;
+  const text = message(`HTTP ${outcome.status} ${outcome.statusText}`.trim(), outcome.headers, outcome.body);
+  const redirect = outcome.redirected ? `# Redirected: the response came from ${outcome.url}\n` : "";
+  return `${redirect}${text}${outcome.bodyTruncated ? "\n# Body truncated: only the first part was recorded." : ""}`;
+}
+
+export function rawExchange(record: ExchangeRecord): string {
+  return `${rawRequest(record)}\n\n${rawResponse(record)}`;
+}

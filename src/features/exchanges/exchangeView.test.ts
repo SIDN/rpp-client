@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ExchangeRecord } from "@/rpp/client/diagnostics";
-import { filterExchanges, formatBody, summarize, targetOf } from "./exchangeView";
+import { filterExchanges, formatBody, rawExchange, rawRequest, rawResponse, summarize, targetOf } from "./exchangeView";
 
 const record = (id: string, status: number | "error", url = "https://rpp.example.test/rpp/hosts/a?x=1"): ExchangeRecord => ({
   id,
@@ -38,5 +38,40 @@ describe("exchange view", () => {
     expect(filterExchanges(all, "S-1").map((r) => r.id)).toEqual(["1"]);
     expect(filterExchanges(all, "rpp-client-3").map((r) => r.id)).toEqual(["3"]);
     expect(filterExchanges(all, "nothing")).toEqual([]);
+  });
+
+  it("writes a request as raw text from the redacted record", () => {
+    const sent: ExchangeRecord = {
+      ...record("1", 201),
+      request: {
+        method: "POST",
+        url: "https://rpp.example.test/rpp/domainNames",
+        headers: { authorization: "[REDACTED]", "content-type": "application/rpp+json" },
+        body: '{"name":"a.example","authInfo":"[REDACTED]"}',
+      },
+    };
+    expect(rawRequest(sent)).toBe(
+      'POST https://rpp.example.test/rpp/domainNames\nauthorization: [REDACTED]\ncontent-type: application/rpp+json\n\n{"name":"a.example","authInfo":"[REDACTED]"}',
+    );
+    expect(rawRequest(record("2", 200))).toBe("GET https://rpp.example.test/rpp/hosts/a?x=1\nrpp-cltrid: rpp-client-2");
+  });
+
+  it("writes a response as raw text and marks what is incomplete", () => {
+    const base = record("1", 404);
+    if (base.outcome.kind !== "response") throw new Error("fixture");
+    const outcome = { ...base.outcome, statusText: "Not Found", headers: { "set-cookie": "[REDACTED]" }, body: '{"title":"x"}' };
+    expect(rawResponse({ ...base, outcome })).toBe('HTTP 404 Not Found\nset-cookie: [REDACTED]\n\n{"title":"x"}');
+    expect(rawResponse({ ...base, outcome: { ...outcome, statusText: "", body: undefined, headers: {} } })).toBe("HTTP 404");
+
+    const clipped = rawResponse({ ...base, outcome: { ...outcome, bodyTruncated: true, redirected: true, url: "https://other.example.test/x" } });
+    expect(clipped.split("\n")[0]).toBe("# Redirected: the response came from https://other.example.test/x");
+    expect(clipped.endsWith("\n# Body truncated: only the first part was recorded.")).toBe(true);
+
+    expect(rawResponse(record("2", "error"))).toBe("# No response (network): down");
+  });
+
+  it("writes a whole exchange as request, blank line, response", () => {
+    const exchange = record("3", 200);
+    expect(rawExchange(exchange)).toBe(`${rawRequest(exchange)}\n\n${rawResponse(exchange)}`);
   });
 });

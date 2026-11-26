@@ -40,7 +40,7 @@ describe("session", () => {
   it("sends Basic credentials to operations but not to discovery", async () => {
     const fetchMock = vi.fn<typeof fetch>(async () => json());
     const session = createSession(
-      { baseUrl: "https://rpp.example.test/rpp", allowInsecureHttp: false, auth: { type: "basic", username: "u" }, preset: DEFAULT_PRESET_SETTINGS },
+      { baseUrl: "https://rpp.example.test/rpp", allowInsecureHttp: false, auth: { type: "basic", username: "u" }, preset: DEFAULT_PRESET_SETTINGS, updateMode: "partial" },
       { password: "p" },
       { fetch: fetchMock },
     );
@@ -54,7 +54,7 @@ describe("session", () => {
 
   it("keeps the credentials out of the diagnostics", async () => {
     const session = createSession(
-      { baseUrl: "https://rpp.example.test/rpp", allowInsecureHttp: false, auth: { type: "basic", username: "u" }, preset: DEFAULT_PRESET_SETTINGS },
+      { baseUrl: "https://rpp.example.test/rpp", allowInsecureHttp: false, auth: { type: "basic", username: "u" }, preset: DEFAULT_PRESET_SETTINGS, updateMode: "partial" },
       { password: "hunter2" },
       { fetch: async () => json() },
     );
@@ -65,10 +65,10 @@ describe("session", () => {
   });
 
   it("needs a password for Basic, refuses plain HTTP unless allowed, and numbers its sessions", () => {
-    const basic = { baseUrl: "https://rpp.example.test", allowInsecureHttp: false, auth: { type: "basic", username: "u" }, preset: DEFAULT_PRESET_SETTINGS } as const;
+    const basic = { baseUrl: "https://rpp.example.test", allowInsecureHttp: false, auth: { type: "basic", username: "u" }, preset: DEFAULT_PRESET_SETTINGS, updateMode: "partial" } as const;
     expect(() => createSession(basic, undefined)).toThrow("password");
-    expect(() => createSession({ baseUrl: "http://localhost:8000", allowInsecureHttp: false, auth: { type: "none" }, preset: DEFAULT_PRESET_SETTINGS }, undefined)).toThrow();
-    const none = { baseUrl: "http://localhost:8000", allowInsecureHttp: true, auth: { type: "none" }, preset: DEFAULT_PRESET_SETTINGS } as const;
+    expect(() => createSession({ baseUrl: "http://localhost:8000", allowInsecureHttp: false, auth: { type: "none" }, preset: DEFAULT_PRESET_SETTINGS, updateMode: "partial" }, undefined)).toThrow();
+    const none = { baseUrl: "http://localhost:8000", allowInsecureHttp: true, auth: { type: "none" }, preset: DEFAULT_PRESET_SETTINGS, updateMode: "partial" } as const;
     expect(createSession(none, undefined).id).toBeLessThan(createSession(none, undefined).id);
   });
 });

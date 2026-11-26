@@ -1,5 +1,6 @@
+import { type ObjectUpdate, fullUpdateOptions } from "@/application/updates/objectUpdate";
 import { t } from "@/i18n";
-import type { Organisation, User } from "@/rpp/core/types/objects";
+import type { Organisation, OrganisationUpdate, User, UserUpdate } from "@/rpp/core/types/objects";
 import type { PatchOperation } from "@/rpp/operations/patch";
 import { invalidRequest } from "@/rpp/operations/paths";
 import type { RppClient } from "@/rpp/operations/RppClient";
@@ -44,6 +45,14 @@ export function createOrganisationWorkflows(client: RppClient) {
       return organisations.patch(parseOrganisationId(id), operations, options);
     },
 
+    /** A partial update (PATCH, json §5.2) or a full update (PUT with the whole update view, json §5.1). */
+    async update(id: string, update: ObjectUpdate, options: Signal = {}): Promise<OperationSuccess<Organisation>> {
+      const organisationId = parseOrganisationId(id);
+      return update.mode === "full"
+        ? organisations.replace(organisationId, update.body as OrganisationUpdate, fullUpdateOptions(update, options))
+        : organisations.patch(organisationId, update.operations, options);
+    },
+
     /**
      * Deletes an organisation. The organisation is read again first, so that users added since it was last looked at are
      * seen: with users and without `deleteUsers` nothing is deleted. With it, the users go first, one at a time, and the
@@ -82,6 +91,12 @@ export function createOrganisationWorkflows(client: RppClient) {
 
       async change(organisationId: string, userId: string, operations: readonly PatchOperation[], options: Signal = {}): Promise<OperationSuccess<User>> {
         return usersOf(organisationId).patch(parseUserId(userId), operations, options);
+      },
+      /** A partial update (PATCH, json §5.2) or a full update (PUT with the whole update view, json §5.1). */
+      async update(organisationId: string, userId: string, update: ObjectUpdate, options: Signal = {}): Promise<OperationSuccess<User>> {
+        const users = usersOf(organisationId);
+        const id = parseUserId(userId);
+        return update.mode === "full" ? users.replace(id, update.body as UserUpdate, fullUpdateOptions(update, options)) : users.patch(id, update.operations, options);
       },
 
       async remove(organisationId: string, userId: string, options: Signal = {}): Promise<OperationSuccess<unknown>> {

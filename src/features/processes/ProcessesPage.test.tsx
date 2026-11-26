@@ -13,7 +13,7 @@ import { parseDiscoveryDocument } from "@/rpp/discovery/parseDiscoveryDocument";
 import { seenKey } from "../shared/seenObjects";
 import { ProcessesPage } from "./ProcessesPage";
 
-const PROFILE = { baseUrl: "https://rpp.example.test/rpp", allowInsecureHttp: false, auth: { type: "none" }, preset: DEFAULT_PRESET_SETTINGS } as const;
+const PROFILE = { baseUrl: "https://rpp.example.test/rpp", allowInsecureHttp: false, auth: { type: "none" }, preset: DEFAULT_PRESET_SETTINGS, updateMode: "partial" } as const;
 
 const SOURCE = {
   url: "https://rpp.example.test/.well-known/rpp",

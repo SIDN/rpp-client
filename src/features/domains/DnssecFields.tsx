@@ -94,8 +94,11 @@ function Records({ kind, fields, onRemove }: { kind: "ds" | "dnskey"; fields: { 
   );
 }
 
-/** The DNS Data of a registration, holding either DS records or DNSKEY records, never both. */
-export function DnssecFields() {
+/**
+ * The DNS Data of a registration, holding either DS records or DNSKEY records, never both. `kinds` limits what can be
+ * added, for a request that takes only one of them; `controls` offers the maximum signature life (`dns.controls`).
+ */
+export function DnssecFields({ kinds = ["ds", "dnskey"], controls = true }: { kinds?: readonly ("ds" | "dnskey")[]; controls?: boolean } = {}) {
   const { control, register } = useFormContext<DnssecValues>();
   const ds = useFieldArray({ control, name: "dsRecords" });
   const keys = useFieldArray({ control, name: "keyRecords" });
@@ -108,16 +111,20 @@ export function DnssecFields() {
       <Records kind="ds" fields={ds.fields} onRemove={ds.remove} />
       <Records kind="dnskey" fields={keys.fields} onRemove={keys.remove} />
       <div className="flex flex-wrap gap-2">
-        <Button variant="secondary" size="sm" disabled={hasKeys} onClick={() => ds.append(EMPTY_DS)}>
-          <Plus aria-hidden />
-          {t("domains.dnssec.addDs")}
-        </Button>
-        <Button variant="secondary" size="sm" disabled={hasDs} onClick={() => keys.append(EMPTY_KEY)}>
-          <Plus aria-hidden />
-          {t("domains.dnssec.addDnskey")}
-        </Button>
+        {kinds.includes("ds") && (
+          <Button variant="secondary" size="sm" disabled={hasKeys} onClick={() => ds.append(EMPTY_DS)}>
+            <Plus aria-hidden />
+            {t("domains.dnssec.addDs")}
+          </Button>
+        )}
+        {kinds.includes("dnskey") && (
+          <Button variant="secondary" size="sm" disabled={hasDs} onClick={() => keys.append(EMPTY_KEY)}>
+            <Plus aria-hidden />
+            {t("domains.dnssec.addDnskey")}
+          </Button>
+        )}
       </div>
-      {(hasDs || hasKeys) && (
+      {controls && (hasDs || hasKeys) && (
         <Field label={t("domains.dnssec.maxSigLife")} hint={t("domains.dnssec.maxSigLifeHint")} className="max-w-64">
           {(control) => (
             <Input
@@ -129,7 +136,7 @@ export function DnssecFields() {
           )}
         </Field>
       )}
-      {(hasDs || hasKeys) && (
+      {kinds.length > 1 && (hasDs || hasKeys) && (
         <p className="text-sm text-muted-foreground">
           {hasDs ? t("domains.dnssec.removeDsToAddDnskey") : t("domains.dnssec.removeDnskeyToAddDs")}
         </p>

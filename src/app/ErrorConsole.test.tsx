@@ -7,7 +7,7 @@ import { DEFAULT_PRESET_SETTINGS } from "@/config/connectionProfile";
 import { ConnectionContext, type ConnectionApi } from "./connection-context";
 import { ErrorConsole } from "./ErrorConsole";
 
-const PROFILE = { baseUrl: "https://rpp.example.test/rpp", allowInsecureHttp: false, auth: { type: "none" }, preset: DEFAULT_PRESET_SETTINGS } as const;
+const PROFILE = { baseUrl: "https://rpp.example.test/rpp", allowInsecureHttp: false, auth: { type: "none" }, preset: DEFAULT_PRESET_SETTINGS, updateMode: "partial" } as const;
 
 const problem = (title: string, result: string, reason: string, detail?: string) => ({
   type: "urn:ietf:params:rpp:error",

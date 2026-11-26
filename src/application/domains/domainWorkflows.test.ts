@@ -96,7 +96,7 @@ describe("register", () => {
   });
 
   it("refuses a contact role other than admin, billing or tech", () => {
-    expect(() => registerBody({ name: "example.test", contacts: [{ label: "owner", id: "C-1" }] })).toThrow("admin, billing or tech");
+    expect(() => registerBody({ name: "example.test", contacts: [{ label: "owner", id: "C-1" }] })).toThrow("one of admin, billing, tech, not owner");
     for (const label of ["admin", "billing", "tech"]) {
       expect(registerBody({ name: "example.test", contacts: [{ label, id: "C-1" }] })).toMatchObject({ contacts: [{ label }] });
     }
@@ -198,6 +198,20 @@ describe("change, renew and delete", () => {
     const { workflows, last } = setup(undefined);
     await workflows.remove("example.test");
     expect(last()).toMatchObject({ method: "DELETE", path: "/rpp/domainNames/example.test", body: undefined });
+  });
+});
+
+describe("update", () => {
+  it("sends a full update with includeElements only when it replaces an onDemand member", async () => {
+    const { workflows, last } = setup();
+    await workflows.update("example.test", { mode: "full", body: { "@type": "domainName", status: [] }, includeElements: [] });
+    expect(last()).toMatchObject({ method: "PUT", path: "/rpp/domainNames/example.test", body: { "@type": "domainName", status: [] } });
+
+    await workflows.update("example.test", { mode: "full", body: { "@type": "domainName" }, includeElements: ["authInfo"] });
+    expect(last()).toMatchObject({ method: "PUT", path: "/rpp/domainNames/example.test?includeElements=authInfo", body: { "@type": "domainName" } });
+
+    await workflows.update("example.test", { mode: "partial", operations: [{ op: "remove", path: "/authInfo" }] });
+    expect(last()).toMatchObject({ method: "PATCH", path: "/rpp/domainNames/example.test" });
   });
 });
 

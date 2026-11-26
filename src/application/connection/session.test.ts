@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { DEFAULT_PRESET_SETTINGS } from "@/config/connectionProfile";
 import { createSession } from "./session";
 
-const PROFILE = { baseUrl: "https://rpp.example.test", allowInsecureHttp: false, auth: { type: "none" }, preset: DEFAULT_PRESET_SETTINGS } as const;
+const PROFILE = { baseUrl: "https://rpp.example.test", allowInsecureHttp: false, auth: { type: "none" }, preset: DEFAULT_PRESET_SETTINGS, updateMode: "partial" } as const;
 
 const hang: typeof fetch = (_url, init) =>
   new Promise((_resolve, reject) => init?.signal?.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError"))));

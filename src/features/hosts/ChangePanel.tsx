@@ -6,10 +6,12 @@ import { Callout } from "@/components/ui/callout";
 import { Choice } from "@/components/ui/choice";
 import { Field, Input } from "@/components/ui/field";
 import type { Host } from "@/rpp/core/types/objects";
-import type { PatchOperation } from "@/rpp/operations/patch";
 import { OperationOutcome } from "../shared/OperationOutcome";
 import { SubmitButton } from "../shared/SubmitButton";
 import { useOperation, type Operation } from "../shared/useOperation";
+import { UpdateModeSection } from "../shared/UpdateModeSection";
+import { useObjectUpdate } from "../shared/useObjectUpdate";
+import type { ObjectUpdate } from "@/application/updates/objectUpdate";
 import { useCachedHost, useHostStore, useHostWorkflows } from "./hostHooks";
 import { HostDetails } from "./HostDetails";
 import { AddressFields, NameField, type AddressValues, type PanelProps } from "./parts";
@@ -21,7 +23,7 @@ interface ChangeValues extends AddressValues {
 
 interface Change {
   name: string;
-  operations: readonly PatchOperation[];
+  update: ObjectUpdate;
 }
 
 const toValues = (host: Host): ChangeValues => {
@@ -39,10 +41,11 @@ function ChangeForm({ host, change }: { host: Host; change: Operation<Change, Ho
   const form = useForm<ChangeValues>({ defaultValues: toValues(host) });
   const values = useWatch({ control: form.control });
   const operations = buildHostPatch(host, editOfValues(values as Partial<ChangeValues>));
+  const plan = useObjectUpdate("host.update", host, operations);
 
   return (
     <FormProvider {...form}>
-      <form onSubmit={form.handleSubmit(() => change.start({ name: host.hostName, operations }))} noValidate className="flex max-w-xl flex-col gap-8">
+      <form onSubmit={form.handleSubmit(() => plan.update && change.start({ name: host.hostName, update: plan.update }))} noValidate className="flex max-w-xl flex-col gap-8">
         <h3>
           {t("hosts.change.heading")} <code>{host.hostName}</code>
         </h3>
@@ -90,10 +93,11 @@ function ChangeForm({ host, change }: { host: Host; change: Operation<Change, Ho
           <p className="text-sm text-muted-foreground">
             {t("hosts.change.changesDescription")}
           </p>
+          <UpdateModeSection plan={plan} />
         </section>
 
         <div>
-          <SubmitButton pending={change.pending} disabled={operations.length === 0}>
+          <SubmitButton pending={change.pending} disabled={!plan.update}>
             {t("hosts.change.submit")}
           </SubmitButton>
         </div>
@@ -115,7 +119,7 @@ export function ChangePanel({ name, onNameChange }: PanelProps) {
   );
   // Held here, not in the form: the form starts over when the saved host replaces the loaded one.
   const change = useOperation(
-    (variables: Change, signal) => workflows.change(variables.name, variables.operations, { signal }),
+    (variables: Change, signal) => workflows.update(variables.name, variables.update, { signal }),
     (result, variables) => {
       const changed = result.data;
       if (changed) store.remember(changed.hostName, changed);

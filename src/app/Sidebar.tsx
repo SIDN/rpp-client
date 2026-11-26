@@ -1,6 +1,7 @@
 import { NavLink } from "react-router-dom";
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { objectSupport } from "@/application/capability";
+import { useExtensionActivation, useExtensionObjectSupport } from "@/features/extensions/useExtension";
 import { APP_TITLE, CONNECTION_ITEM, NAVIGATION, type NavItem } from "@/app/navigation";
 import { useDiscoveryState } from "@/app/discovery-context";
 import { CapabilityMark } from "@/components/protocol/capability-mark";
@@ -30,8 +31,25 @@ function SidebarLink({ item, collapsed }: { item: NavItem; collapsed: boolean })
       {item.requires && (
         <CapabilityMark support={objectSupport(discovery, item.requires)} className={cn("text-sidebar-muted", collapsed && "lg:absolute lg:top-1 lg:right-1.5")} />
       )}
+      {item.extension && <ExtensionMark extension={item.extension} collapsed={collapsed} />}
     </NavLink>
   );
+}
+
+function ExtensionMark({ extension, collapsed }: { extension: NonNullable<NavItem["extension"]>; collapsed: boolean }) {
+  const support = useExtensionObjectSupport(extension.module, extension.object);
+  return <CapabilityMark support={support} className={cn("text-sidebar-muted", collapsed && "lg:absolute lg:top-1 lg:right-1.5")} />;
+}
+
+/** A screen of an extension is listed only while the server advertises that extension, in whatever version. */
+function ExtensionNavEntry({ item, extension, collapsed }: { item: NavItem; extension: NonNullable<NavItem["extension"]>; collapsed: boolean }) {
+  const activation = useExtensionActivation(extension.module);
+  if (activation === undefined || activation.status === "not-advertised") return null;
+  return <SidebarLink item={item} collapsed={collapsed} />;
+}
+
+function NavEntry({ item, collapsed }: { item: NavItem; collapsed: boolean }) {
+  return item.extension ? <ExtensionNavEntry item={item} extension={item.extension} collapsed={collapsed} /> : <SidebarLink item={item} collapsed={collapsed} />;
 }
 
 export function Sidebar({ id, className, collapsed, onToggleCollapsed }: { id: string; className?: string; collapsed: boolean; onToggleCollapsed: () => void }) {
@@ -57,7 +75,7 @@ export function Sidebar({ id, className, collapsed, onToggleCollapsed }: { id: s
               </p>
             )}
             {group.items.map((item) => (
-              <SidebarLink key={item.to} item={item} collapsed={collapsed} />
+              <NavEntry key={item.to} item={item} collapsed={collapsed} />
             ))}
           </div>
         ))}

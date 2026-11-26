@@ -17,12 +17,21 @@ export interface PresetSettings {
 // The proxy's default signalling method; the server does not say which it supports, so this is a choice.
 export const DEFAULT_PRESET_SETTINGS: PresetSettings = { signalling: "header", selection: "default" };
 
+/**
+ * How a Change screen sends its edits by default: a partial update (PATCH with the operations that differ, json §5.2)
+ * or a full update (PUT with the whole update view of the object, json §5.1). Each Change screen can still switch.
+ */
+export type UpdateMode = "partial" | "full";
+
+export const DEFAULT_UPDATE_MODE: UpdateMode = "partial";
+
 export interface ConnectionProfile {
   /** The RPP base URL: https, or http in development mode. */
   baseUrl: string;
   allowInsecureHttp: boolean;
   auth: { type: "none" } | { type: "basic"; username: string };
   preset: PresetSettings;
+  updateMode: UpdateMode;
 }
 
 /** What a session needs beyond the profile. Never stored. */
@@ -77,6 +86,7 @@ export const connectionFormSchema = z
     authType: z.enum(["none", "basic"]),
     username: z.string(),
     password: z.string(),
+    updateMode: z.enum(["partial", "full"]),
   })
   .superRefine((form, ctx) => {
     const hostOk = form.host ? checkHost(form.host, ctx) : false;
@@ -99,11 +109,11 @@ export function toConnection(
   const baseUrl = new URL(buildBaseUrl(form.host, form.port, form.allowInsecureHttp)).origin;
   if (form.authType === "basic") {
     return {
-      profile: { baseUrl, allowInsecureHttp: form.allowInsecureHttp, auth: { type: "basic", username: form.username }, preset },
+      profile: { baseUrl, allowInsecureHttp: form.allowInsecureHttp, auth: { type: "basic", username: form.username }, preset, updateMode: form.updateMode },
       credentials: { password: form.password },
     };
   }
-  return { profile: { baseUrl, allowInsecureHttp: form.allowInsecureHttp, auth: { type: "none" }, preset }, credentials: undefined };
+  return { profile: { baseUrl, allowInsecureHttp: form.allowInsecureHttp, auth: { type: "none" }, preset, updateMode: form.updateMode }, credentials: undefined };
 }
 
 export function toFormValues(profile: ConnectionProfile | undefined, defaultBaseUrl?: string): ConnectionFormValues {
@@ -126,6 +136,7 @@ export function toFormValues(profile: ConnectionProfile | undefined, defaultBase
     authType: profile?.auth.type ?? "none",
     username: profile?.auth.type === "basic" ? profile.auth.username : "",
     password: "",
+    updateMode: profile?.updateMode ?? DEFAULT_UPDATE_MODE,
   };
 }
 
@@ -143,6 +154,8 @@ const storedProfileSchema = z.object({
       selection: z.union([z.literal("default"), z.object({ id: z.string().min(1), version: z.string().min(1) })]),
     })
     .default(DEFAULT_PRESET_SETTINGS),
+  // Profiles saved before the choice existed send partial updates, as the client did then.
+  updateMode: z.enum(["partial", "full"]).default(DEFAULT_UPDATE_MODE),
 });
 
 const STORAGE_KEY = "rpp-client.connection";

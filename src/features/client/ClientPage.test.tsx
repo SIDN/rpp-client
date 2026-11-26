@@ -10,7 +10,7 @@ import { ConnectionProvider } from "@/app/ConnectionProvider";
 import { DEFAULT_PRESET_SETTINGS } from "@/config/connectionProfile";
 import { ClientPage } from "./ClientPage";
 
-const profile = (auth: object) => ({ baseUrl: "https://rpp.example/rpp", allowInsecureHttp: false, auth, preset: DEFAULT_PRESET_SETTINGS });
+const profile = (auth: object) => ({ baseUrl: "https://rpp.example/rpp", allowInsecureHttp: false, auth, preset: DEFAULT_PRESET_SETTINGS, updateMode: "partial" });
 const bookmarks = [
   { id: "a", name: "Test registry", profile: profile({ type: "none" }) },
   { id: "b", name: "Production", profile: profile({ type: "basic", username: "reg" }) },

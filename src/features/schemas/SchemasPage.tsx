@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { skipToken, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { useConnection } from "@/app/connection-context";
 import { useDiscoveryState } from "@/app/discovery-context";
@@ -16,8 +16,7 @@ import { referenceLabel } from "@/features/capabilities/capabilityView";
 import type { CapabilitySnapshot, PresetCapability } from "@/rpp/discovery/capability-types";
 import { defaultPreset } from "@/rpp/discovery/capabilities";
 import { toFailure } from "@/rpp/errors/RppError";
-import { fetchPresetSchema } from "@/rpp/schemas/presetSchemaLoader";
-import { createSchemaRegistry, SchemaDocumentError } from "@/rpp/schemas/SchemaRegistry";
+import { presetSchemaQuery } from "@/features/shared/presetSchema";
 import { SchemaExplorer } from "./SchemaExplorer";
 import { buildSchemaTree } from "./schemaTree";
 
@@ -74,25 +73,7 @@ function PresetSchemas({ snapshot }: { snapshot: CapabilitySnapshot }) {
   const initial = resolvedPreset.chosen ?? defaultPreset(snapshot) ?? snapshot.presets[0];
   const preset: PresetCapability | undefined = snapshot.presets.find((entry) => referenceLabel(entry) === picked) ?? initial;
 
-  const query = useQuery({
-    queryKey: ["preset-schema", session?.id, preset?.id, preset?.version] as const,
-    queryFn:
-      session && preset
-        ? async ({ signal }) => {
-            const key = { id: preset.id, version: preset.version };
-            const document = await fetchPresetSchema({ transport: session.transport, preset: key, signal });
-            // Whatever the server sent is shown; the registry says whether it is a document this client would validate with.
-            let problem: string | undefined;
-            try {
-              createSchemaRegistry().addPresetSchema(document, key);
-            } catch (error) {
-              problem = error instanceof SchemaDocumentError ? error.message : String(error);
-            }
-            return { document, problem };
-          }
-        : skipToken,
-    staleTime: Infinity,
-  });
+  const query = useQuery(presetSchemaQuery(session, preset));
 
   const tree = useMemo(() => (query.data ? buildSchemaTree(query.data.document) : undefined), [query.data]);
   const [showRaw, setShowRaw] = useState(false);

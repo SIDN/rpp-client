@@ -100,6 +100,37 @@ describe("capabilities screen", () => {
     expect(extensions.querySelector("a")).toBeNull();
   });
 
+  it("tells server-confirmed extensions apart from what this client implements and what is in effect", () => {
+    const rri = { id: "de.denic.rpp.rri", version: "0.2.0", name: "DENIC RRI" };
+    const document = (rriDefault: boolean, version = "0.2.0") => ({
+      ...DOCUMENT,
+      objects: ["domainName", "requestContact"],
+      extensions: [{ ...rri, version }],
+      presets: [
+        { id: "base", version: "1.0", defaultPreset: !rriDefault, extensions: [] },
+        { id: "rri", version: "1.0", defaultPreset: rriDefault, extensions: [{ ...rri, version }] },
+      ],
+    });
+    const { unmount } = renderPage({ status: "ready", snapshot: undefined as never }, document(true));
+    const entry = screen.getByRole("article", { name: "Extension de.denic.rpp.rri 0.2.0" });
+    expect(entry).toHaveTextContent("supported by this client");
+    expect(entry).toHaveTextContent("in effect for requests");
+    expect(screen.getByRole("region", { name: "Objects" })).toHaveTextContent("requestContactdefined by the extension DENIC RRI");
+    unmount();
+
+    const other = renderPage({ status: "ready", snapshot: undefined as never }, document(false));
+    expect(screen.getByRole("article", { name: "Extension de.denic.rpp.rri 0.2.0" })).toHaveTextContent("not in effect: preset base 1.0 does not include it");
+    other.unmount();
+
+    renderPage({ status: "ready", snapshot: undefined as never }, document(true, "0.1.0"));
+    expect(screen.getByRole("article", { name: "Extension de.denic.rpp.rri 0.1.0" })).toHaveTextContent("this client supports version 0.2.0 only");
+  });
+
+  it("names the extensions this client implements that the server does not advertise", () => {
+    renderPage({ status: "ready", snapshot: undefined as never });
+    expect(screen.getByRole("region", { name: "Extensions" })).toHaveTextContent("not advertised by this server: de.denic.rpp.rri 0.2.0");
+  });
+
   it("lists remarks and members it does not interpret", () => {
     renderPage({ status: "partial", snapshot: undefined as never, warnings: [] }, { ...DOCUMENT, presets: [] });
     expect(screen.getAllByText(/remark\(s\)/).length).toBeGreaterThan(0);

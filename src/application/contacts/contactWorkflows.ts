@@ -1,4 +1,5 @@
-import type { Availability, Contact, ContactCreate, TransferProcess } from "@/rpp/core/types/objects";
+import { type ObjectUpdate, fullUpdateOptions } from "@/application/updates/objectUpdate";
+import type { Availability, Contact, ContactCreate, ContactUpdate, TransferProcess } from "@/rpp/core/types/objects";
 import { t } from "@/i18n";
 import type { PatchOperation } from "@/rpp/operations/patch";
 import { invalidRequest } from "@/rpp/operations/paths";
@@ -65,6 +66,12 @@ export function createContactWorkflows(client: RppClient) {
     /** Partial update: only what the operations name changes (json §5.2). */
     async change(id: string, operations: readonly PatchOperation[], options: Signal = {}): Promise<OperationSuccess<Contact>> {
       return contacts.patch(parseContactId(id), operations, options);
+    },
+
+    /** A partial update (PATCH, json §5.2) or a full update (PUT with the whole update view, json §5.1). */
+    async update(id: string, update: ObjectUpdate, options: Signal = {}): Promise<OperationSuccess<Contact>> {
+      const contactId = parseContactId(id);
+      return update.mode === "full" ? contacts.replace(contactId, update.body as ContactUpdate, fullUpdateOptions(update, options)) : contacts.patch(contactId, update.operations, options);
     },
 
     transfer: {

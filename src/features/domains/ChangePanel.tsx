@@ -16,8 +16,15 @@ import { DomainDataFields, NameField, type DomainDataValues, type PanelProps } f
 import { useDomainWorkflows } from "./useDomainWorkflows";
 import { SubmitButton } from "../shared/SubmitButton";
 import { useOperation, type Operation } from "../shared/useOperation";
+import { UpdateModeSection } from "../shared/UpdateModeSection";
+import { useObjectUpdate } from "../shared/useObjectUpdate";
+import type { ObjectUpdate } from "@/application/updates/objectUpdate";
+import { buildRriDomainPatch, describeRriPatchOperation, rriEditOf } from "@/application/extensions/denicRri/rriDomain";
+import { RequestContactFields } from "../extensions/denicRri/RequestContactFields";
+import type { RequestContactValues } from "../extensions/denicRri/formValues";
+import { useDomainExtensions } from "./useDomainExtensions";
 
-interface ChangeValues extends DomainDataValues, DnssecValues, DnsRecordValues {
+interface ChangeValues extends DomainDataValues, DnssecValues, DnsRecordValues, RequestContactValues {
   clientStatuses: string[];
   authAction: "keep" | "set" | "remove";
   authValue: string;
@@ -25,7 +32,7 @@ interface ChangeValues extends DomainDataValues, DnssecValues, DnsRecordValues {
 
 interface Change {
   name: string;
-  operations: readonly PatchOperation[];
+  update: ObjectUpdate;
 }
 
 const toValues = (domain: DomainName): ChangeValues => {
@@ -42,6 +49,7 @@ const toValues = (domain: DomainName): ChangeValues => {
     dsRecords: dnssec.ds as unknown as DnssecValues["dsRecords"],
     keyRecords: dnssec.keys as unknown as DnssecValues["keyRecords"],
     maxSigLife: dnssec.maxSigLife,
+    ...rriEditOf(domain),
   };
 };
 
@@ -66,19 +74,28 @@ function editOfValues(values: DeepPartial<ChangeValues>) {
   };
 }
 
+/** A line for each operation; those of an extension are described by it. */
+const describe = (operation: PatchOperation) => describeRriPatchOperation(operation) ?? describePatchOperation(operation);
+
 function ChangeForm({ domain, change }: { domain: DomainName; change: Operation<Change, DomainName> }) {
   const form = useForm<ChangeValues>({ defaultValues: toValues(domain) });
   const values = useWatch({ control: form.control });
-  const operations = buildDomainPatch(domain, editOfValues(values));
+  const { rri } = useDomainExtensions();
+  const operations = [
+    ...buildDomainPatch(domain, editOfValues(values)),
+    ...(rri ? buildRriDomainPatch(domain, { generalRequest: values.generalRequest ?? "", abuse: values.abuse ?? "" }) : []),
+  ];
+  const plan = useObjectUpdate("domainName.update", domain, operations);
 
   return (
     <FormProvider {...form}>
-      <form onSubmit={form.handleSubmit(() => change.start({ name: domain.name, operations }))} noValidate className="flex max-w-xl flex-col gap-6">
+      <form onSubmit={form.handleSubmit(() => plan.update && change.start({ name: domain.name, update: plan.update }))} noValidate className="flex max-w-xl flex-col gap-6">
         <h3>
           {t("domains.change.heading")} <code>{domain.name}</code>
         </h3>
         <DomainDataFields />
         <DnsRecordFields domain={domain.name} />
+        {rri && <RequestContactFields />}
 
         <fieldset className="flex flex-col gap-3">
           <legend className="mb-1 text-sm font-medium">{t("domains.change.locks")}</legend>
@@ -109,17 +126,18 @@ function ChangeForm({ domain, change }: { domain: DomainName; change: Operation<
           ) : (
             <ul className="list-disc pl-5">
               {operations.map((operation, index) => (
-                <li key={index}>{describePatchOperation(operation)}</li>
+                <li key={index}>{describe(operation)}</li>
               ))}
             </ul>
           )}
           <p className="text-sm text-muted-foreground">
             {t("domains.change.partialUpdate")}
           </p>
+          <UpdateModeSection plan={plan} />
         </section>
 
         <div>
-          <SubmitButton pending={change.pending} disabled={operations.length === 0}>
+          <SubmitButton pending={change.pending} disabled={!plan.update}>
             {t("domains.change.save")}
           </SubmitButton>
         </div>
@@ -141,7 +159,7 @@ export function ChangePanel({ name, onNameChange }: PanelProps) {
   );
   // Held here, not in the form: the form starts over when the saved domain replaces the loaded one.
   const change = useOperation(
-    (variables: Change, signal) => workflows.change(variables.name, variables.operations, { signal }),
+    (variables: Change, signal) => workflows.update(variables.name, variables.update, { signal }),
     (result, variables) => {
       if (result.data) store.remember(variables.name, result.data);
       else store.forget(variables.name);
@@ -170,7 +188,7 @@ export function ChangePanel({ name, onNameChange }: PanelProps) {
           {t("domains.change.loadHint")}
         </Callout>
       )}
-      {domain && <ChangeForm key={JSON.stringify(editOf(domain))} domain={domain} change={change} />}
+      {domain && <ChangeForm key={JSON.stringify([editOf(domain), rriEditOf(domain)])} domain={domain} change={change} />}
       <OperationOutcome operation={change} success={t("domains.change.success", { name: change.variables?.name ?? t("domains.name.generic") })}>
         {(changed) => <DomainDetails domain={changed} />}
       </OperationOutcome>

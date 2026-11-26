@@ -89,6 +89,36 @@ describe("application shell", () => {
     expect(screen.getByRole("banner")).toHaveTextContent("test, stable");
   });
 
+  it("lists the screen of an extension only while the server advertises it, and marks whether it is in effect", () => {
+    const before = renderAt("/");
+    expect(screen.queryByRole("link", { name: /Request contacts/ })).toBeNull();
+    before.unmount();
+
+    const rri = { id: "de.denic.rpp.rri", version: "0.2.0" };
+    const withRri = (defaultPreset: boolean) =>
+      parseDiscoveryDocument(
+        {
+          "@type": "discovery",
+          objects: ["domainName", "requestContact"],
+          extensions: [rri],
+          presets: [
+            { id: "base", version: "1.0", defaultPreset: !defaultPreset, extensions: [] },
+            { id: "rri", version: "1.0", defaultPreset, extensions: [rri] },
+          ],
+        },
+        SOURCE,
+      ).snapshot;
+    const { unmount } = renderAt("/", { status: "ready", snapshot: withRri(true) });
+    const link = within(screen.getByRole("navigation", { name: "Primary" })).getByRole("link", { name: /Request contacts/ });
+    expect(link).toHaveAttribute("href", "/request-contacts");
+    expect(within(link).getByRole("img")).toHaveAccessibleName("Offered by the server");
+    unmount();
+
+    renderAt("/", { status: "ready", snapshot: withRri(false) });
+    const notInEffect = within(screen.getByRole("navigation", { name: "Primary" })).getByRole("link", { name: /Request contacts/ });
+    expect(within(notInEffect).getByRole("img")).toHaveAccessibleName("Not offered by the server");
+  });
+
   it("shows partial and failed discovery without hiding the reason", () => {
     const { unmount } = renderAt("/", { status: "partial", snapshot, warnings: ["a", "b"] });
     expect(screen.getByRole("banner")).toHaveTextContent("Capabilities partly confirmed");

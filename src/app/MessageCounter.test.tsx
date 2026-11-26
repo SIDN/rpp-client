@@ -7,7 +7,7 @@ import { DEFAULT_PRESET_SETTINGS } from "@/config/connectionProfile";
 import { ConnectionContext, type ConnectionApi } from "./connection-context";
 import { MessageCounter } from "./MessageCounter";
 
-const PROFILE = { baseUrl: "https://rpp.example.test/rpp", allowInsecureHttp: false, auth: { type: "none" }, preset: DEFAULT_PRESET_SETTINGS } as const;
+const PROFILE = { baseUrl: "https://rpp.example.test/rpp", allowInsecureHttp: false, auth: { type: "none" }, preset: DEFAULT_PRESET_SETTINGS, updateMode: "partial" } as const;
 
 const newSession = (headers: () => Record<string, string>): Session =>
   createSession(PROFILE, undefined, {

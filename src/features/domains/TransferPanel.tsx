@@ -2,7 +2,7 @@ import { t } from "@/i18n";
 import { FormProvider, useForm, useWatch } from "react-hook-form";
 import { Choice } from "@/components/ui/choice";
 import { Field, Input } from "@/components/ui/field";
-import type { PeriodInput } from "@/application/domains/domainWorkflows";
+import { tryParseDomainName, type PeriodInput } from "@/application/domains/domainWorkflows";
 import type { OperationSuccess } from "@/rpp/operations/types";
 import { ConfirmAction } from "../shared/ConfirmAction";
 import { useDomainStore } from "./domainCache";
@@ -13,15 +13,25 @@ import { NameField, PeriodFields, type PanelProps, type PeriodValues } from "./p
 import { useDomainWorkflows } from "./useDomainWorkflows";
 import { SubmitButton } from "../shared/SubmitButton";
 import { useOperation } from "../shared/useOperation";
+import { Callout } from "@/components/ui/callout";
+import type { ExtensionMembers } from "@/application/domains/domainWorkflows";
+import { rriTransferMembers } from "@/application/extensions/denicRri/rriDomain";
+import { RriTransferFields } from "../extensions/denicRri/RriTransferFields";
+import { RRI_TRANSFER_DEFAULTS, rriTransferInputOf, type RriTransferValues } from "../extensions/denicRri/formValues";
+import { ExtensionBadge } from "../extensions/denicRri/ExtensionBadge";
+import { DENIC_RRI } from "@/rpp/extensions/modules/denicRri";
+import { useDomainExtensions } from "./useDomainExtensions";
 
 type TransferAction = "request" | "status" | "cancel" | "approve" | "reject";
 
-interface TransferValues extends PeriodValues {
+interface TransferValues extends PeriodValues, RriTransferValues {
   action: TransferAction;
   authInfo: string;
 }
 
-type TransferCommand = { kind: "request"; name: string; authInfo: string; period?: PeriodInput } | { kind: Exclude<TransferAction, "request">; name: string };
+type TransferCommand =
+  | { kind: "request"; name: string; authInfo: string; period?: PeriodInput; extensionMembers?: ExtensionMembers }
+  | { kind: Exclude<TransferAction, "request">; name: string };
 
 function transferSuccess(action: TransferAction): string {
   switch (action) {
@@ -36,15 +46,22 @@ function transferSuccess(action: TransferAction): string {
 export function TransferPanel({ name, onNameChange }: PanelProps) {
   const workflows = useDomainWorkflows();
   const store = useDomainStore();
-  const form = useForm<TransferValues>({ defaultValues: { action: "request", authInfo: "", periodValue: "", periodUnit: "y" } });
-  const action = useWatch({ control: form.control, name: "action" });
+  const form = useForm<TransferValues>({ defaultValues: { action: "request", authInfo: "", periodValue: "", periodUnit: "y", ...RRI_TRANSFER_DEFAULTS } });
+  const { rri } = useDomainExtensions();
+  // DENIC RRI completes a transfer at once and supports no other transfer operation (§Create (Transfer Request)).
+  const chosen = useWatch({ control: form.control, name: "action" });
+  const action: TransferAction = rri ? "request" : chosen;
   const target = name.trim();
 
   const transfer = useOperation(
     (command: TransferCommand, signal): Promise<OperationSuccess<unknown>> => {
       switch (command.kind) {
         case "request":
-          return workflows.transfer.request(command.name, { authInfo: command.authInfo, period: command.period }, { signal });
+          return workflows.transfer.request(
+            command.name,
+            { authInfo: command.authInfo, period: command.period, extensionMembers: command.extensionMembers },
+            { signal },
+          );
         case "status":
           return workflows.transfer.status(command.name, { signal });
         case "cancel":
@@ -61,9 +78,16 @@ export function TransferPanel({ name, onNameChange }: PanelProps) {
   );
 
   const submit = form.handleSubmit((values) => {
-    if (values.action === "request") {
+    if (rri || values.action === "request") {
       if (values.authInfo === "") return form.setError("authInfo", { message: t("domains.validation.transferPassword") });
-      return transfer.start({ kind: "request", name, authInfo: values.authInfo, period: periodOf(values) });
+      if (rri && values.rriRegistrant.trim() === "") return form.setError("rriRegistrant", { message: t("rri.transfer.registrantRequired") });
+      return transfer.start({
+        kind: "request",
+        name,
+        authInfo: values.authInfo,
+        period: periodOf(values),
+        ...(rri && { extensionMembers: rriTransferMembers(tryParseDomainName(name)?.name ?? "", rriTransferInputOf(values)) }),
+      });
     }
     if (values.action === "status") transfer.start({ kind: "status", name });
   });
@@ -73,6 +97,14 @@ export function TransferPanel({ name, onNameChange }: PanelProps) {
       <FormProvider {...form}>
         <form onSubmit={submit} noValidate className="flex max-w-xl flex-col gap-6">
           <NameField name={name} onNameChange={onNameChange} />
+          {rri ? (
+            <Callout tone="info" title={t("rri.transfer.immediateTitle")}>
+              <span className="flex flex-col items-start gap-2">
+                <span>{t("rri.transfer.immediate")}</span>
+                <ExtensionBadge module={DENIC_RRI} />
+              </span>
+            </Callout>
+          ) : (
           <fieldset className="flex flex-col gap-3">
             <legend className="mb-1 font-medium">{t("domains.transfer.whatToDo")}</legend>
             <Choice type="radio" value="request" label={t("domains.transfer.ask")} hint={t("domains.transfer.gainingHint")} {...form.register("action")} />
@@ -81,6 +113,7 @@ export function TransferPanel({ name, onNameChange }: PanelProps) {
             <Choice type="radio" value="approve" label={t("domains.transfer.approveAway")} hint={t("domains.transfer.sponsoringHint")} {...form.register("action")} />
             <Choice type="radio" value="reject" label={t("domains.transfer.rejectAway")} hint={t("domains.transfer.sponsoringHint")} {...form.register("action")} />
           </fieldset>
+          )}
 
           {action === "request" && (
             <div className="flex flex-col gap-5 border-l-2 border-border pl-5">
@@ -88,6 +121,7 @@ export function TransferPanel({ name, onNameChange }: PanelProps) {
                 {(control) => <Input {...control} type="password" autoComplete="off" className="max-w-64" {...form.register("authInfo")} />}
               </Field>
               <PeriodFields label={t("domains.transfer.renewBy")} />
+              {rri && <RriTransferFields domain={tryParseDomainName(name)?.name ?? ""} />}
             </div>
           )}
 

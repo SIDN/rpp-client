@@ -1,6 +1,7 @@
+import { type ObjectUpdate, fullUpdateOptions } from "@/application/updates/objectUpdate";
 import { isAscii, toALabel } from "@/rpp/core/idn";
 import { t } from "@/i18n";
-import type { Availability, Host, HostCreate } from "@/rpp/core/types/objects";
+import type { Availability, Host, HostCreate, HostUpdate } from "@/rpp/core/types/objects";
 import type { PatchOperation } from "@/rpp/operations/patch";
 import { invalidRequest } from "@/rpp/operations/paths";
 import type { RppClient } from "@/rpp/operations/RppClient";
@@ -80,6 +81,12 @@ export function createHostWorkflows(client: RppClient) {
     /** Partial update: only what the operations name changes (json §5.2). */
     async change(name: string, operations: readonly PatchOperation[], options: Signal = {}): Promise<OperationSuccess<Host>> {
       return hosts.patch(parseHostName(name).name, operations, options);
+    },
+
+    /** A partial update (PATCH, json §5.2) or a full update (PUT with the whole update view, json §5.1). */
+    async update(name: string, update: ObjectUpdate, options: Signal = {}): Promise<OperationSuccess<Host>> {
+      const hostName = parseHostName(name).name;
+      return update.mode === "full" ? hosts.replace(hostName, update.body as HostUpdate, fullUpdateOptions(update, options)) : hosts.patch(hostName, update.operations, options);
     },
 
     async remove(name: string, options: Signal = {}): Promise<OperationSuccess<unknown>> {

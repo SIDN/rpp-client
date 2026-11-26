@@ -312,6 +312,12 @@ export function ConnectionPage() {
             </div>
           )}
 
+          <fieldset className="flex flex-col gap-3">
+            <legend className="mb-1 font-medium">{t("connection.updateMode.legend")}</legend>
+            <Choice type="radio" value="partial" label={t("connection.updateMode.partial")} hint={t("connection.updateMode.partialHint")} {...register("updateMode")} />
+            <Choice type="radio" value="full" label={t("connection.updateMode.full")} hint={t("connection.updateMode.fullHint")} {...register("updateMode")} />
+          </fieldset>
+
           {errors.root?.message && (
             <Callout tone="danger" title={t("connection.server.setupFailed")}>
               {errors.root.message}

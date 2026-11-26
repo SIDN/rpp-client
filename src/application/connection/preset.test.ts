@@ -76,7 +76,7 @@ describe("session preset", () => {
   it("is read by the transport for every request after it is set", async () => {
     const seen: (string | null)[] = [];
     const session = createSession(
-      { baseUrl: "https://rpp.example.test", allowInsecureHttp: false, auth: { type: "none" }, preset: DEFAULT_PRESET_SETTINGS },
+      { baseUrl: "https://rpp.example.test", allowInsecureHttp: false, auth: { type: "none" }, preset: DEFAULT_PRESET_SETTINGS, updateMode: "partial" },
       undefined,
       {
         fetch: async (_url, init) => {

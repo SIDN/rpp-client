@@ -5,10 +5,12 @@ import { Callout } from "@/components/ui/callout";
 import { Choice } from "@/components/ui/choice";
 import { Field, Input } from "@/components/ui/field";
 import type { Contact } from "@/rpp/core/types/objects";
-import type { PatchOperation } from "@/rpp/operations/patch";
 import { OperationOutcome } from "../shared/OperationOutcome";
 import { SubmitButton } from "../shared/SubmitButton";
 import { useOperation, type Operation } from "../shared/useOperation";
+import { UpdateModeSection } from "../shared/UpdateModeSection";
+import { useObjectUpdate } from "../shared/useObjectUpdate";
+import type { ObjectUpdate } from "@/application/updates/objectUpdate";
 import { useCachedContact, useContactForm, useContactStore, useContactWorkflows } from "./contactHooks";
 import { ContactDetails } from "./ContactDetails";
 import { ContactFields } from "./ContactFields";
@@ -25,7 +27,7 @@ type ChangeValues = ContactValues & {
 
 interface Change {
   id: string;
-  operations: readonly PatchOperation[];
+  update: ObjectUpdate;
 }
 
 const toChangeValues = (contact: Contact, mode: PostalMode): ChangeValues => ({
@@ -47,12 +49,13 @@ function ChangeForm({ contact, change, mode, authInfo, note }: { contact: Contac
   const form = useForm<ChangeValues>({ defaultValues: toChangeValues(contact, mode) });
   const values = useWatch({ control: form.control });
   const operations = buildContactPatch(contact, editOfValues(values as Partial<ChangeValues>), mode);
+  const plan = useObjectUpdate("contact.update", contact, operations);
 
   return (
     <FormProvider {...form}>
       <form
         onSubmit={form.handleSubmit(
-          () => change.start({ id: contact.id, operations }),
+          () => plan.update && change.start({ id: contact.id, update: plan.update }),
           (errors) => {
             const type = addressTypeOfErrors(errors);
             if (type) form.setValue("addressType", type);
@@ -102,10 +105,11 @@ function ChangeForm({ contact, change, mode, authInfo, note }: { contact: Contac
           <p className="text-sm text-muted-foreground">
             {t("contacts.change.changesDescription")}
           </p>
+          <UpdateModeSection plan={plan} />
         </section>
 
         <div>
-          <SubmitButton pending={change.pending} disabled={operations.length === 0}>
+          <SubmitButton pending={change.pending} disabled={!plan.update}>
             {t("contacts.change.submit")}
           </SubmitButton>
         </div>
@@ -129,7 +133,7 @@ export function ChangePanel({ id, onIdChange }: PanelProps) {
   );
   // Held here, not in the form: the form starts over when the saved contact replaces the loaded one.
   const change = useOperation(
-    (variables: Change, signal) => workflows.change(variables.id, variables.operations, { signal }),
+    (variables: Change, signal) => workflows.update(variables.id, variables.update, { signal }),
     (result, variables) => {
       if (result.data) store.remember(variables.id, result.data);
       else store.forget(variables.id);

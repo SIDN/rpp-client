@@ -14,6 +14,13 @@ export interface RppRequest {
   query?: QueryParameters;
   /** Additional headers. Headers the transport owns (Accept, Content-Type, RPP-Preset, RPP-Cltrid, Authorization, Cookie) are refused. */
   headers?: Readonly<Record<string, string>>;
+  /**
+   * Diagnostic use only (the raw request screen): headers set after all of the transport's own, replacing them,
+   * owned headers included. Credential headers (Authorization, Proxy-Authorization, Cookie) are refused for an origin
+   * other than the base origin, as the transport's own credentials are. Browsers drop forbidden names such as Cookie.
+   * Responses are still checked against the transport's own Accept, so an overridden Accept may yield an unexpected media type.
+   */
+  headerOverrides?: Readonly<Record<string, string>>;
   /** JSON-serializable body; not allowed with GET and HEAD. */
   body?: unknown;
   /** Bare media types or ranges to accept; defaults to the transport configuration. */

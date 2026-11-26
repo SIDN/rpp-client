@@ -18,6 +18,8 @@ describe("request samples", () => {
         body: sample.body === undefined ? "" : JSON.stringify(sample.body),
         clientTransactionId: "",
         authenticate: true,
+        setStandardHeaders: false,
+        standardHeaders: "",
       });
       expect(result, sample.id).toMatchObject({ ok: true });
     }

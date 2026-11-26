@@ -96,7 +96,7 @@ describe("register", () => {
   });
 
   it("refuses a contact role other than admin, billing or tech", () => {
-    expect(() => registerBody({ name: "example.test", contacts: [{ label: "owner", id: "C-1" }] })).toThrow("admin, billing or tech");
+    expect(() => registerBody({ name: "example.test", contacts: [{ label: "owner", id: "C-1" }] })).toThrow("one of admin, billing, tech, not owner");
     for (const label of ["admin", "billing", "tech"]) {
       expect(registerBody({ name: "example.test", contacts: [{ label, id: "C-1" }] })).toMatchObject({ contacts: [{ label }] });
     }
@@ -115,6 +115,55 @@ describe("register", () => {
     const key = { flags: "257", protocol: "3", algorithm: "13", publicKey: "AAAA" };
     expect(registerBody({ name: "example.test", dnssec: { type: "dnskey", records: [key] } })).toMatchObject({ dns: { records: [{ type: "dnskey", rdata: key }] } });
     expect(registerBody({ name: "example.test", dnssec: { type: "ds", records: [] } })).not.toHaveProperty("dns");
+  });
+
+  it("delegates with NS records and glue in the DNS data, without hosts (data objects §11.2)", () => {
+    const body = registerBody({
+      name: "example.de",
+      records: [
+        { type: "ns", name: "@", nsdname: "ns1.example.de" },
+        { type: "a", name: "ns1", address: "192.0.2.1" },
+        { type: "aaaa", name: "ns1.example.de.", address: "2001:db8::1" },
+        { type: "mx", name: "@", preference: "10", exchange: "mail.example.net" },
+      ],
+      dnssec: { type: "dnskey", records: [{ flags: "257", protocol: "3", algorithm: "13", publicKey: "AAAA" }] },
+    });
+    expect(body).not.toHaveProperty("nameservers");
+    expect(body.dns).toEqual({
+      "@type": "dnsData",
+      records: [
+        { "@type": "dnsRecord", name: "@", type: "ns", rdata: { nsdname: "ns1.example.de" } },
+        { "@type": "dnsRecord", name: "ns1", type: "a", rdata: { address: "192.0.2.1" } },
+        { "@type": "dnsRecord", name: "ns1.example.de.", type: "aaaa", rdata: { address: "2001:db8::1" } },
+        { "@type": "dnsRecord", name: "@", type: "mx", rdata: { preference: "10", exchange: "mail.example.net" } },
+        { "@type": "dnsRecord", name: "@", type: "dnskey", rdata: { flags: "257", protocol: "3", algorithm: "13", publicKey: "AAAA" } },
+      ],
+    });
+  });
+
+  it("refuses DNS records next to name servers given as hosts, and records with a problem", () => {
+    const ns = { type: "ns" as const, name: "@", nsdname: "ns1.example.net" };
+    expect(() => registerBody({ name: "example.de", nameservers: ["ns1.example.net"], records: [ns] })).toThrow(/not both/);
+    expect(() => registerBody({ name: "example.de", nameservers: ["ns1.example.net"], records: [{ type: "mx", name: "@", preference: "1", exchange: "m.example" }] })).toThrow(RppError);
+    expect(() => registerBody({ name: "example.de", records: [{ type: "a", name: "ns1.other.de.", address: "192.0.2.1" }] })).toThrow(/example\.de\./);
+    expect(() => registerBody({ name: "example.de", records: [{ type: "aaaa", name: "ns1", address: "192.0.2.1" }] })).toThrow(/IPv6/);
+  });
+
+  it("sends an MX record of 0 .", () => {
+    expect(registerBody({ name: "example.de", records: [{ type: "mx", name: "@", preference: "0", exchange: "." }] }).dns?.records).toEqual([
+      { "@type": "dnsRecord", name: "@", type: "mx", rdata: { preference: "0", exchange: "." } },
+    ]);
+  });
+
+  it("sends the records in the create request without contacting the server for a refused one", async () => {
+    const { workflows, last, fetchMock } = setup();
+    await workflows.register({ name: "example.de", records: [{ type: "ns", name: "@", nsdname: "a.nic.example" }] });
+    const sent = last();
+    expect(sent.method).toBe("POST");
+    expect(sent.body).toMatchObject({ dns: { records: [{ type: "ns", name: "@", rdata: { nsdname: "a.nic.example" } }] } });
+    fetchMock.mockClear();
+    await expect(workflows.register({ name: "example.de", records: [{ type: "a", name: "ns1", address: "nope" }] })).rejects.toBeInstanceOf(RppError);
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("creates with POST", async () => {
@@ -149,6 +198,20 @@ describe("change, renew and delete", () => {
     const { workflows, last } = setup(undefined);
     await workflows.remove("example.test");
     expect(last()).toMatchObject({ method: "DELETE", path: "/rpp/domainNames/example.test", body: undefined });
+  });
+});
+
+describe("update", () => {
+  it("sends a full update with includeElements only when it replaces an onDemand member", async () => {
+    const { workflows, last } = setup();
+    await workflows.update("example.test", { mode: "full", body: { "@type": "domainName", status: [] }, includeElements: [] });
+    expect(last()).toMatchObject({ method: "PUT", path: "/rpp/domainNames/example.test", body: { "@type": "domainName", status: [] } });
+
+    await workflows.update("example.test", { mode: "full", body: { "@type": "domainName" }, includeElements: ["authInfo"] });
+    expect(last()).toMatchObject({ method: "PUT", path: "/rpp/domainNames/example.test?includeElements=authInfo", body: { "@type": "domainName" } });
+
+    await workflows.update("example.test", { mode: "partial", operations: [{ op: "remove", path: "/authInfo" }] });
+    expect(last()).toMatchObject({ method: "PATCH", path: "/rpp/domainNames/example.test" });
   });
 });
 

@@ -14,7 +14,13 @@ export interface ProcessDefinition {
 }
 
 export interface ResourceDefinition {
-  type: ResourceType;
+  /** The `@type` of the object: a resource type of the drafts, or the identifier of an object an extension defines. */
+  type: ResourceType | (string & {});
+  /**
+   * Prefix of the schema definitions of the object, such as `domainName` in `domainName.read`; the type when absent. An
+   * extension's object has the prefix of its schema (json §7), such as `ext.rri.requestContact`.
+   */
+  schemaPrefix?: string;
   /** Collection segment (core Rule 1); for a user it is relative to its organisation. */
   collection: string;
   /** Identifier of the Availability Object, when the resource has an availability endpoint. */

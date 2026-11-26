@@ -1,4 +1,6 @@
-import type { DiscoveryState } from "@/rpp/discovery/capability-types";
+import type { DiscoveryState, VersionedReference } from "@/rpp/discovery/capability-types";
+import { activationOf, type ExtensionActivation } from "@/rpp/extensions/ExtensionRegistry";
+import type { RppExtensionModule } from "@/rpp/extensions/ExtensionModule";
 import { supportsObject } from "@/rpp/discovery/capabilities";
 import type { ResourceType } from "@/rpp/core/types/resources";
 
@@ -34,4 +36,28 @@ export function idnLgrsFor(discovery: DiscoveryState, name = ""): IdnLgr[] {
     lgrs.push({ name: lgrName, tlds: own, isDefault: isDefault === true });
   }
   return lgrs;
+}
+
+/**
+ * Whether an extension module may be used: undefined while the discovery document has not been read, which neither
+ * confirms nor denies it. `preset` is the preset requests are made under; the server's default when undefined.
+ */
+export function extensionActivation(
+  discovery: DiscoveryState,
+  module: RppExtensionModule,
+  preset: VersionedReference | undefined,
+): ExtensionActivation | undefined {
+  if (discovery.status !== "ready" && discovery.status !== "partial") return undefined;
+  return activationOf(module, discovery.snapshot, preset);
+}
+
+/** What is known about an object type an extension defines: the extension has to be active and the object listed. */
+export function extensionObjectSupport(
+  discovery: DiscoveryState,
+  module: RppExtensionModule,
+  type: string,
+  preset: VersionedReference | undefined,
+): ServerSupport {
+  if (discovery.status !== "ready" && discovery.status !== "partial") return "unknown";
+  return activationOf(module, discovery.snapshot, preset).status === "active" && supportsObject(discovery.snapshot, type) ? "offered" : "not-offered";
 }

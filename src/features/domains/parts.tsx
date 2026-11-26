@@ -1,10 +1,11 @@
 import { t } from "@/i18n";
 import { Plus, X } from "lucide-react";
 import { useFormContext, useFieldArray } from "react-hook-form";
-import { CONTACT_ROLES, tryParseDomainName } from "@/application/domains/domainWorkflows";
+import { tryParseDomainName } from "@/application/domains/domainWorkflows";
 import { Button } from "@/components/ui/button";
 import { Field, Input, Select } from "@/components/ui/field";
 import { ContactLookup } from "../shared/ContactLookup";
+import { useDomainExtensions } from "./useDomainExtensions";
 
 /** What every workflow panel receives: the name being worked on, which the panels share. */
 export interface PanelProps {
@@ -91,14 +92,16 @@ function ContactFields() {
     formState: { errors },
   } = useFormContext<DomainDataValues>();
   const { fields, append, remove } = useFieldArray({ control, name: "contacts" });
+  const { contactRoles, rri } = useDomainExtensions();
   return (
     <fieldset className="flex flex-col gap-2">
-      <legend className="mb-1 text-sm font-medium">{t("domains.contacts.other")}</legend>
+      <legend className="mb-1 text-sm font-medium">{rri ? t("rri.domain.otherHolders") : t("domains.contacts.other")}</legend>
+      {rri && <p className="text-sm text-muted-foreground">{t("rri.domain.otherHoldersHint")}</p>}
       {fields.length === 0 && <p className="text-sm text-muted-foreground">{t("domains.contacts.none")}</p>}
       {fields.map((field, index) => {
         const problem = errors.contacts?.[index]?.label?.message ?? errors.contacts?.[index]?.id?.message;
         // A contact the domain already has under another role keeps it, so that saving does not change it.
-        const kept = field.label !== "" && !(CONTACT_ROLES as readonly string[]).includes(field.label) ? field.label : undefined;
+        const kept = field.label !== "" && !contactRoles.includes(field.label) ? field.label : undefined;
         return (
           <div key={field.id} className="flex flex-col gap-1">
             <div className="flex flex-wrap items-center gap-2">
@@ -111,7 +114,7 @@ function ContactFields() {
                 })}
               >
                 <option value="">{t("domains.contacts.chooseRole")}</option>
-                {CONTACT_ROLES.map((role) => (
+                {contactRoles.map((role) => (
                   <option key={role} value={role}>
                     {role}
                   </option>

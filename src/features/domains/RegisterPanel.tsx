@@ -7,6 +7,8 @@ import { tryParseDomainName } from "@/application/domains/domainWorkflows";
 import { Field, Input, Select } from "@/components/ui/field";
 import { useDomainStore } from "./domainCache";
 import { DomainDetails } from "./DomainDetails";
+import { DnsRecordFields } from "./DnsRecordFields";
+import { DNS_RECORD_DEFAULTS, recordInputsOf, type DnsRecordValues } from "./dnsRecordValues";
 import { DnssecFields, DNSSEC_DEFAULTS, dnssecOf, type DnssecValues } from "./DnssecFields";
 import { domainDataOf, periodOf } from "./formValues";
 import { OperationOutcome } from "../shared/OperationOutcome";
@@ -15,20 +17,25 @@ import { useDomainWorkflows } from "./useDomainWorkflows";
 import { SubmitButton } from "../shared/SubmitButton";
 import { useOperation } from "../shared/useOperation";
 import type { RegisterInput } from "@/application/domains/domainWorkflows";
+import { rriDomainMembers } from "@/application/extensions/denicRri/rriDomain";
+import { RequestContactFields } from "../extensions/denicRri/RequestContactFields";
+import { REQUEST_CONTACT_DEFAULTS, type RequestContactValues } from "../extensions/denicRri/formValues";
+import { useDomainExtensions } from "./useDomainExtensions";
 
-interface RegisterValues extends PeriodValues, DomainDataValues, DnssecValues {
+interface RegisterValues extends PeriodValues, DomainDataValues, DnssecValues, DnsRecordValues, RequestContactValues {
   authInfo: string;
   uName: string;
   lgr: string;
 }
 
-const DEFAULTS: RegisterValues = { periodValue: "", periodUnit: "y", registrant: "", contacts: [], nameservers: [], authInfo: "", uName: "", lgr: "", ...DNSSEC_DEFAULTS };
+const DEFAULTS: RegisterValues = { periodValue: "", periodUnit: "y", registrant: "", contacts: [], nameservers: [], authInfo: "", uName: "", lgr: "", ...DNSSEC_DEFAULTS, ...DNS_RECORD_DEFAULTS, ...REQUEST_CONTACT_DEFAULTS };
 
 export function RegisterPanel({ name, onNameChange }: PanelProps) {
   const workflows = useDomainWorkflows();
   const store = useDomainStore();
   const form = useForm<RegisterValues>({ defaultValues: DEFAULTS });
   const discovery = useDiscoveryState();
+  const extensions = useDomainExtensions();
   const idnOffered = idnLgrsFor(discovery).length > 0;
   const forTld = idnLgrsFor(discovery, tryParseDomainName(name)?.name ?? name);
   const lgrs = forTld.length > 0 ? forTld : idnLgrsFor(discovery);
@@ -53,7 +60,10 @@ export function RegisterPanel({ name, onNameChange }: PanelProps) {
       period: periodOf(values),
       authInfo: values.authInfo || undefined,
       dnssec: dnssecOf(values),
+      records: recordInputsOf(values.dnsRecords),
       ...domainDataOf(values),
+      contactRoles: extensions.contactRoles,
+      ...(extensions.rri && { extensionMembers: rriDomainMembers(values) }),
     });
   });
 
@@ -86,6 +96,8 @@ export function RegisterPanel({ name, onNameChange }: PanelProps) {
           </Field>
           <PeriodFields label={t("domains.register.period")} />
           <DomainDataFields />
+          <DnsRecordFields domain={tryParseDomainName(name)?.name ?? ""} />
+          {extensions.rri && <RequestContactFields />}
           <DnssecFields />
           <Field label={t("domains.register.transferPassword")} hint={t("domains.register.transferPasswordHint")}>
             {(control) => <Input {...control} type="password" autoComplete="off" className="max-w-64" {...form.register("authInfo")} />}

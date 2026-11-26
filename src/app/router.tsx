@@ -16,6 +16,7 @@ import { SchemasPage } from "@/features/schemas/SchemasPage";
 import { MessagesPage } from "@/features/messages/MessagesPage";
 import { SettingsPage } from "@/features/settings/SettingsPage";
 import { PlannedPage } from "@/features/planned/PlannedPage";
+import { RequestContactsPage } from "@/features/extensions/denicRri/RequestContactsPage";
 import { AppShell, type RouteHandle } from "./AppShell";
 import { ALL_ITEMS } from "./navigation";
 
@@ -26,6 +27,7 @@ const screens: Record<string, ReactElement> = {
   "/domains": <DomainsPage />,
   "/contacts": <ContactsPage />,
   "/hosts": <HostsPage />,
+  "/request-contacts": <RequestContactsPage />,
   "/organisations": <OrganisationsPage />,
   "/messages": <MessagesPage />,
   "/processes": <ProcessesPage />,

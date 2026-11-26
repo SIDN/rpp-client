@@ -1,3 +1,4 @@
+import { type ObjectUpdate, fullUpdateOptions } from "@/application/updates/objectUpdate";
 import { t } from "@/i18n";
 import { toALabel, isAscii } from "@/rpp/core/idn";
 import type {
@@ -5,6 +6,7 @@ import type {
   DnsData,
   DomainName,
   DomainNameCreate,
+  DomainNameUpdate,
   Period,
   RenewProcess,
   RestoreProcess,
@@ -12,6 +14,7 @@ import type {
   TransferProcess,
 } from "@/rpp/core/types/objects";
 import type { PatchOperation } from "@/rpp/operations/patch";
+import { describeRecord, dnsRecordOf, isDelegationType, recordProblems, type DnsRecordInput } from "./dnsRecords";
 import { invalidRequest } from "@/rpp/operations/paths";
 import type { RppClient } from "@/rpp/operations/RppClient";
 import type { AvailabilityResult, OperationSuccess } from "@/rpp/operations/types";
@@ -64,12 +67,23 @@ export type DnssecInput = (
   maxSigLife?: number;
 };
 
-function dnsDataOf({ type, records, maxSigLife }: DnssecInput): DnsData | undefined {
-  if (records.length === 0) return undefined;
+/** The DNS Data element of `domain` from its records and DNSSEC data, each record checked first; undefined when there are none. */
+export function dnsDataOf(domain: string, dnssec: DnssecInput | undefined, records: readonly DnsRecordInput[]): DnsData | undefined {
+  for (const record of records) {
+    const problems = Object.values(recordProblems(record, domain));
+    if (problems.length > 0) throw invalidRequest(t("domains.errors.dnsRecordProblem", { record: describeRecord(record), problems: problems.join("; ") }));
+  }
+  const dnssecRecords = dnssec?.records ?? [];
+  const all = [
+    ...records.map(dnsRecordOf),
+    ...dnssecRecords.map((rdata) => ({ "@type": "dnsRecord" as const, name: "@", type: dnssec?.type ?? "", rdata: { ...rdata } })),
+  ];
+  if (all.length === 0) return undefined;
+  const maxSigLife = dnssec && dnssecRecords.length > 0 ? dnssec.maxSigLife : undefined;
   return {
     "@type": "dnsData",
-    records: records.map((rdata) => ({ "@type": "dnsRecord", name: "@", type, rdata: { ...rdata } })),
-    ...(maxSigLife !== undefined && { controls: { "@type": "dnsControls", maxSigLifetime: { [type]: maxSigLife } } }),
+    records: all,
+    ...(dnssec && maxSigLife !== undefined && { controls: { "@type": "dnsControls", maxSigLifetime: { [dnssec.type]: maxSigLife } } }),
   };
 }
 
@@ -77,6 +91,11 @@ export interface RegisterInput {
   name: string;
   /** DNSSEC data for the DNS Data element: DS records or DNSKEY records, whose values are sent as the strings given. */
   dnssec?: DnssecInput;
+  /**
+   * NS, A, AAAA and MX records for the DNS Data element. NS records with their A/AAAA glue delegate the domain without
+   * host objects (draft-ietf-rpp-data-objects §11.2), which is how registries without a host object model work.
+   */
+  records?: readonly DnsRecordInput[];
   /** The Unicode name, when given apart from `name`; it must be the Unicode form of `name`. */
   uName?: string;
   /** Names the Label Generation Ruleset of a Unicode name; the draft requires it with `uName`. */
@@ -87,6 +106,21 @@ export interface RegisterInput {
   nameservers?: readonly string[];
   /** The transfer password, set as the domain's authorisation information (method `authinfo`, the EPP-compatible one). */
   authInfo?: string;
+  /** The labels `contacts` may have; default `CONTACT_ROLES`. An active extension can define others. */
+  contactRoles?: readonly string[];
+  /** Members an active extension adds to the domain (json §7), such as the request contacts of DENIC RRI. */
+  extensionMembers?: ExtensionMembers;
+}
+
+/** Members an extension adds to a base object. They never replace a member of the base object. */
+export type ExtensionMembers = Readonly<Record<string, unknown>>;
+
+/** Adds the members of an extension to a body; a member the body already has is refused, not overwritten. */
+export function withExtensionMembers<T extends object>(body: T, members: ExtensionMembers | undefined): T {
+  if (!members) return body;
+  const clash = Object.keys(members).find((key) => Object.hasOwn(body, key));
+  if (clash !== undefined) throw invalidRequest(t("domains.errors.extensionMemberClash", { member: clash }));
+  return { ...body, ...members };
 }
 
 /** Which host information a domain name read returns (data objects, Domain Name Read): all, delegated, subordinate or none. */
@@ -132,12 +166,23 @@ export function registerBody(input: RegisterInput): DomainNameCreate {
   }
   if (ref.unicode !== undefined && !input.lgr) throw invalidRequest(t("domains.errors.unicodeNeedsLgr"));
   const contacts = present(input.contacts);
+  const roles: readonly string[] = input.contactRoles ?? CONTACT_ROLES;
   for (const { label } of contacts ?? []) {
-    if (!(CONTACT_ROLES as readonly string[]).includes(label)) throw invalidRequest(t("domains.errors.invalidContactRole", { label }));
+    if (!roles.includes(label)) throw invalidRequest(t("domains.errors.invalidContactRole", { label, roles: roles.join(", ") }));
   }
   const nameservers = present(input.nameservers);
-  const dns = input.dnssec && dnsDataOf(input.dnssec);
-  return {
+  const records = input.records ?? [];
+  // The draft: DNS Data "MUST not be used when 1 or more nameservers are specified" (§11.2). DNSSEC records have been
+  // sent next to name servers by this client before, so only the delegation and mail records are refused here.
+  if (nameservers && records.length > 0) {
+    throw invalidRequest(
+      records.some((record) => isDelegationType(record.type))
+        ? t("domains.errors.hostsOrNsRecords")
+        : t("domains.errors.recordsWithHosts"),
+    );
+  }
+  const dns = dnsDataOf(ref.name, input.dnssec, records);
+  return withExtensionMembers<DomainNameCreate>({
     "@type": "domainName",
     name: ref.name,
     ...(dns && { dns }),
@@ -149,7 +194,7 @@ export function registerBody(input: RegisterInput): DomainNameCreate {
     ...(input.period && {
       processes: { "@type": "processes", createProcess: [{ "@type": "domainCreateProcess", period: periodOf(input.period) }] },
     }),
-  };
+  }, input.extensionMembers);
 }
 
 export type DomainWorkflows = ReturnType<typeof createDomainWorkflows>;
@@ -188,6 +233,12 @@ export function createDomainWorkflows(client: RppClient) {
       return domains.patch(parseDomainName(input).name, operations, options);
     },
 
+    /** A partial update (PATCH, json §5.2) or a full update (PUT with the whole update view, json §5.1). */
+    async update(input: string, update: ObjectUpdate, options: Signal = {}): Promise<OperationSuccess<DomainName>> {
+      const name = parseDomainName(input).name;
+      return update.mode === "full" ? domains.replace(name, update.body as DomainNameUpdate, fullUpdateOptions(update, options)) : domains.patch(name, update.operations, options);
+    },
+
     /** Renew. Naming the current expiry date lets the server refuse a renewal that was already done. */
     async renew(input: string, renewal: { expiryDate?: string; period?: PeriodInput }, options: Signal = {}): Promise<OperationSuccess<RenewProcess>> {
       const body: RenewProcess = {
@@ -215,9 +266,19 @@ export function createDomainWorkflows(client: RppClient) {
     },
 
     transfer: {
-      /** Asks for the domain to be transferred to this client; the password goes in `RPP-Authorization`, never the body. */
-      async request(input: string, transfer: { authInfo: string; period?: PeriodInput }, options: Signal = {}): Promise<OperationSuccess<TransferProcess>> {
-        const body = { "@type": "domainTransferProcess", ...(transfer.period && { transferPeriod: periodOf(transfer.period) }) };
+      /**
+       * Asks for the domain to be transferred to this client; the password goes in `RPP-Authorization`, never the body.
+       * `extensionMembers` are the input data elements an active extension adds to the request.
+       */
+      async request(
+        input: string,
+        transfer: { authInfo: string; period?: PeriodInput; extensionMembers?: ExtensionMembers },
+        options: Signal = {},
+      ): Promise<OperationSuccess<TransferProcess>> {
+        const body = withExtensionMembers(
+          { "@type": "domainTransferProcess", ...(transfer.period && { transferPeriod: periodOf(transfer.period) }) },
+          transfer.extensionMembers,
+        );
         return typed(
           processOf("transfer").create(parseDomainName(input).name, body, { ...options, authorization: { value: transfer.authInfo } }),
         );

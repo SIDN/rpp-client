@@ -28,6 +28,7 @@ describe("domain patch", () => {
       nameservers: ["ns1.example.test", "ns2.example.test"],
       clientStatuses: ["clientHold"],
       authInfo: { action: "keep" },
+      records: [],
       dnssec: { ds: [], keys: [], maxSigLife: "" },
     });
     expect(buildDomainPatch(domain, edit)).toEqual([]);
@@ -137,5 +138,105 @@ describe("domain patch", () => {
       const edit = { ...editOf(withDs), dnssec: { ds: [ds], keys: [], maxSigLife: "" } };
       expect(buildDomainPatch(withDs, edit)).toEqual([{ op: "remove", path: "/dns/controls" }]);
     });
+  });
+});
+
+describe("DNS records in the domain patch", () => {
+  const delegated: DomainName = {
+    "@type": "domainName",
+    name: "example.de",
+    provMetadata: { "@type": "provMetadata", spClientId: "REG" },
+    status: [],
+    dns: {
+      "@type": "dnsData",
+      records: [
+        { "@type": "dnsRecord", name: "@", type: "NS", rdata: { nsdname: "ns1.example.de" } },
+        { "@type": "dnsRecord", name: "ns1", type: "a", rdata: { address: "192.0.2.1" } },
+        { "@type": "dnsRecord", name: "@", type: "ds", rdata: { keyTag: "1", algorithm: "13", digestType: "2", digest: "AB" } },
+        { "@type": "dnsRecord", name: "@", type: "mx", rdata: { preference: "10", exchange: "mail.example.net", future: "kept" } },
+      ],
+    },
+  };
+
+  it("edits only NS, A, AAAA and MX records, matching types without case", () => {
+    expect(editOf(delegated).records).toEqual([
+      { type: "ns", name: "@", nsdname: "ns1.example.de" },
+      { type: "a", name: "ns1", address: "192.0.2.1" },
+      { type: "mx", name: "@", preference: "10", exchange: "mail.example.net" },
+    ]);
+    expect(buildDomainPatch(delegated, editOf(delegated))).toEqual([]);
+  });
+
+  it("removes a record by its type, name and RDATA as received, and adds new ones to the list", () => {
+    const edit = editOf(delegated);
+    const records = [edit.records[1]!, edit.records[2]!, { type: "aaaa" as const, name: "ns1", address: "2001:db8::1" }, { type: "ns" as const, name: "@", nsdname: "ns2.example.net" }];
+    expect(buildDomainPatch(delegated, { ...edit, records })).toEqual([
+      { op: "remove", path: "/dns/records", match: { type: "NS", name: "@", rdata: { nsdname: "ns1.example.de" } } },
+      { op: "add", path: "/dns/records", value: { "@type": "dnsRecord", name: "ns1", type: "aaaa", rdata: { address: "2001:db8::1" } } },
+      { op: "add", path: "/dns/records", value: { "@type": "dnsRecord", name: "@", type: "ns", rdata: { nsdname: "ns2.example.net" } } },
+    ]);
+  });
+
+  it("adds the whole DNS data element when the domain has none, and switches from hosts to NS records in one patch", () => {
+    const edit = { ...editOf(domain), nameservers: [], records: [{ type: "ns" as const, name: "@", nsdname: "a.nic.example" }] };
+    expect(buildDomainPatch(domain, edit)).toEqual([
+      { op: "remove", path: "/nameservers", match: { hostName: "ns1.example.test" } },
+      { op: "remove", path: "/nameservers", match: { hostName: "ns2.example.test" } },
+      { op: "add", path: "/dns", value: { "@type": "dnsData", records: [{ "@type": "dnsRecord", name: "@", type: "ns", rdata: { nsdname: "a.nic.example" } }] } },
+    ]);
+  });
+
+  it("adds NS and DS records to a domain without DNS data as one DNS data element", () => {
+    const edit = {
+      ...editOf(domain),
+      nameservers: [],
+      records: [{ type: "ns" as const, name: "@", nsdname: "a.nic.example" }],
+      dnssec: { ds: [{ keyTag: "1", algorithm: "13", digestType: "2", digest: "AB" }], keys: [], maxSigLife: "600" },
+    };
+    const adds = buildDomainPatch(domain, edit).filter((operation) => operation.path === "/dns");
+    expect(adds).toEqual([
+      {
+        op: "add",
+        path: "/dns",
+        value: {
+          "@type": "dnsData",
+          records: [
+            { "@type": "dnsRecord", name: "@", type: "ns", rdata: { nsdname: "a.nic.example" } },
+            { "@type": "dnsRecord", name: "@", type: "ds", rdata: { keyTag: "1", algorithm: "13", digestType: "2", digest: "AB" } },
+          ],
+          controls: { "@type": "dnsControls", maxSigLifetime: { ds: 600 } },
+        },
+      },
+    ]);
+  });
+
+  it("leaves out records with a problem and the same record twice", () => {
+    const edit = editOf(delegated);
+    const bad = { type: "a" as const, name: "ns2", address: "2001:db8::1" };
+    const twice = { type: "aaaa" as const, name: "ns1", address: "2001:db8::2" };
+    expect(buildDomainPatch(delegated, { ...edit, records: [...edit.records, bad, twice, twice] })).toEqual([
+      { op: "add", path: "/dns/records", value: { "@type": "dnsRecord", name: "ns1", type: "aaaa", rdata: { address: "2001:db8::2" } } },
+    ]);
+  });
+
+  it("replaces an MX record with 0 .", () => {
+    const edit = editOf(delegated);
+    expect(buildDomainPatch(delegated, { ...edit, records: [edit.records[0]!, edit.records[1]!, { type: "mx", name: "@", preference: "0", exchange: "." }] })).toEqual([
+      { op: "remove", path: "/dns/records", match: { type: "mx", name: "@", rdata: { preference: "10", exchange: "mail.example.net", future: "kept" } } },
+      { op: "add", path: "/dns/records", value: { "@type": "dnsRecord", name: "@", type: "mx", rdata: { preference: "0", exchange: "." } } },
+    ]);
+  });
+
+  it("describes record operations as DNS presentation lines", () => {
+    expect(describePatchOperation({ op: "remove", path: "/dns/records", match: { type: "NS", name: "@", rdata: { nsdname: "ns1.example.de" } } })).toBe(
+      "Remove DNS record @ NS ns1.example.de",
+    );
+    expect(describePatchOperation({ op: "add", path: "/dns/records", value: { name: "@", type: "mx", rdata: { preference: "10", exchange: "mx.example.net" } } })).toBe(
+      "Add DNS record @ MX 10 mx.example.net",
+    );
+    expect(describePatchOperation({ op: "add", path: "/dns", value: { records: [{ name: "@", type: "ns", rdata: { nsdname: "a.example" } }] } })).toBe(
+      "Add DNS data @ NS a.example",
+    );
+    expect(describePatchOperation({ op: "remove", path: "/dns/records", match: { type: "txt", name: "@" } })).toBe('Remove DNS record TXT {}');
   });
 });

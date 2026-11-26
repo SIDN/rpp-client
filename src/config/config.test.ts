@@ -19,6 +19,7 @@ const form = (overrides: Partial<ConnectionFormValues> = {}): ConnectionFormValu
   authType: "none",
   username: "",
   password: "",
+  updateMode: "partial",
   ...overrides,
 });
 
@@ -71,18 +72,18 @@ describe("connection form", () => {
 
   it("separates what may be stored from the password", () => {
     expect(toConnection(form({ host: "rpp.example.test", port: "8443", authType: "basic", username: "u", password: "secret" }))).toEqual({
-      profile: { baseUrl: "https://rpp.example.test:8443", allowInsecureHttp: false, auth: { type: "basic", username: "u" }, preset: DEFAULT_PRESET_SETTINGS },
+      profile: { baseUrl: "https://rpp.example.test:8443", allowInsecureHttp: false, auth: { type: "basic", username: "u" }, preset: DEFAULT_PRESET_SETTINGS, updateMode: "partial" },
       credentials: { password: "secret" },
     });
     expect(toConnection(form({ host: "rpp.example.test" }))).toEqual({
-      profile: { baseUrl: "https://rpp.example.test", allowInsecureHttp: false, auth: { type: "none" }, preset: DEFAULT_PRESET_SETTINGS },
+      profile: { baseUrl: "https://rpp.example.test", allowInsecureHttp: false, auth: { type: "none" }, preset: DEFAULT_PRESET_SETTINGS, updateMode: "partial" },
       credentials: undefined,
     });
   });
 });
 
 describe("stored profile", () => {
-  const profile: ConnectionProfile = { baseUrl: "https://rpp.example.test", allowInsecureHttp: false, auth: { type: "basic", username: "u" }, preset: DEFAULT_PRESET_SETTINGS };
+  const profile: ConnectionProfile = { baseUrl: "https://rpp.example.test", allowInsecureHttp: false, auth: { type: "basic", username: "u" }, preset: DEFAULT_PRESET_SETTINGS, updateMode: "partial" };
 
   it("round-trips without any password", () => {
     const storage = memoryStorage();
@@ -94,7 +95,7 @@ describe("stored profile", () => {
 
   it("gives a profile saved before presets existed the default preset settings", () => {
     const { preset: _preset, ...old } = profile;
-    expect(loadProfile(memoryStorage(JSON.stringify(old)))).toEqual({ ...old, preset: DEFAULT_PRESET_SETTINGS });
+    expect(loadProfile(memoryStorage(JSON.stringify(old)))).toEqual({ ...old, preset: DEFAULT_PRESET_SETTINGS, updateMode: "partial" });
     const chosen = { signalling: "media-type", selection: { id: "p", version: "1.0" } };
     expect(loadProfile(memoryStorage(JSON.stringify({ ...profile, preset: chosen })))?.preset).toEqual(chosen);
     expect(loadProfile(memoryStorage(JSON.stringify({ ...profile, preset: { signalling: "x", selection: "default" } })))).toBeUndefined();

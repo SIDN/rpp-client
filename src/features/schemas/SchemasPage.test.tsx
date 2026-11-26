@@ -12,7 +12,7 @@ import type { DiscoveryState } from "@/rpp/discovery/capability-types";
 import { parseDiscoveryDocument } from "@/rpp/discovery/parseDiscoveryDocument";
 import { SchemasPage } from "./SchemasPage";
 
-const PROFILE = { baseUrl: "https://rpp.example.test/rpp", allowInsecureHttp: false, auth: { type: "none" }, preset: DEFAULT_PRESET_SETTINGS } as const;
+const PROFILE = { baseUrl: "https://rpp.example.test/rpp", allowInsecureHttp: false, auth: { type: "none" }, preset: DEFAULT_PRESET_SETTINGS, updateMode: "partial" } as const;
 
 const SOURCE = {
   url: "https://rpp.example.test/.well-known/rpp",

@@ -7,7 +7,7 @@ import { createSession, type Session } from "@/application/connection/session";
 import { DEFAULT_PRESET_SETTINGS } from "@/config/connectionProfile";
 import { ExchangesPage } from "./ExchangesPage";
 
-const PROFILE = { baseUrl: "https://rpp.example.test/rpp", allowInsecureHttp: false, auth: { type: "basic", username: "u" }, preset: DEFAULT_PRESET_SETTINGS } as const;
+const PROFILE = { baseUrl: "https://rpp.example.test/rpp", allowInsecureHttp: false, auth: { type: "basic", username: "u" }, preset: DEFAULT_PRESET_SETTINGS, updateMode: "partial" } as const;
 
 const rpp = (body: unknown, init: ResponseInit = {}) =>
   new Response(JSON.stringify(body), {

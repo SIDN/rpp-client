@@ -6,7 +6,7 @@ import { autoConnectProfile, defaultBookmark } from "./defaultConnection";
 const open: Bookmark = {
   id: "a",
   name: "Open",
-  profile: { baseUrl: "https://rpp.example/rpp", allowInsecureHttp: false, auth: { type: "none" }, preset: DEFAULT_PRESET_SETTINGS },
+  profile: { baseUrl: "https://rpp.example/rpp", allowInsecureHttp: false, auth: { type: "none" }, preset: DEFAULT_PRESET_SETTINGS, updateMode: "partial" },
 };
 const signedIn: Bookmark = { id: "b", name: "Signed in", profile: { ...open.profile, auth: { type: "basic", username: "me" } } };
 

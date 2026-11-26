@@ -54,12 +54,27 @@ Server discovery completed
      |
      +---- advertised --------> compatibility check
                                    |
-                                   +--> compatible: activate
+                                   +--> compatible --> in the preset requests use?
+                                   |                      |
+                                   |                      +--> yes: activate
+                                   |                      +--> no: show diagnostic
                                    |
                                    +--> incompatible: show diagnostic
 ```
 
 Server metadata is data, never executable code.
+
+### Where extension code lives
+
+| Layer | Path | Holds |
+|---|---|---|
+| Protocol | `src/rpp/extensions/ExtensionRegistry.ts` | `BUNDLED_EXTENSIONS` and `activationOf(module, snapshot, preset)` |
+| Protocol | `src/rpp/extensions/modules/<name>/` | the module's metadata, its own types, schema definition names (`ext.<prefix>.*`) and operations built with `client.extension(factory)` |
+| Application | `src/application/extensions/<name>/` | use cases and body builders; core workflows take extension members through `extensionMembers`, never as core fields |
+| Presentation | `src/features/extensions/<name>/` | screens and fields, gated by `useExtensionActive(module)` |
+
+An extension is in effect only under a preset that includes it (the preset requests carry, else the server's default).
+Core screens show an extension's members as unknown members until the extension is active.
 
 ## Authentication
 

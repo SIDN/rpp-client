@@ -93,7 +93,19 @@ describe("connection screen", () => {
       allowInsecureHttp: false,
       auth: { type: "none" },
       preset: { signalling: "header", selection: "default" },
+      updateMode: "partial",
     });
+  });
+
+  it("stores the default update mode with the profile and with a bookmark", async () => {
+    renderConnection();
+    type("Server hostname or TLD", "rpp.example.test");
+    fireEvent.click(screen.getByRole("radio", { name: /Full update \(PUT\)/ }));
+    type("Connection name", "Full");
+    fireEvent.click(screen.getByRole("button", { name: "Save as a bookmark" }));
+    expect(JSON.parse(localStorage.getItem("rpp-client.bookmarks") ?? "[]")[0]?.profile.updateMode).toBe("full");
+    connect();
+    await waitFor(() => expect(JSON.parse(localStorage.getItem("rpp-client.connection") ?? "{}").updateMode).toBe("full"));
   });
 
   it("asks for a user name and password only for Basic, and never stores the password", async () => {

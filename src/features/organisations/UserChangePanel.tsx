@@ -4,10 +4,12 @@ import { FormProvider, useForm, useWatch } from "react-hook-form";
 import { buildUserPatch, describeUserOperation, userEditOf } from "@/application/organisations/userData";
 import { Callout } from "@/components/ui/callout";
 import type { User } from "@/rpp/core/types/objects";
-import type { PatchOperation } from "@/rpp/operations/patch";
 import { OperationOutcome } from "../shared/OperationOutcome";
 import { SubmitButton } from "../shared/SubmitButton";
 import { useOperation, type Operation } from "../shared/useOperation";
+import { UpdateModeSection } from "../shared/UpdateModeSection";
+import { useObjectUpdate } from "../shared/useObjectUpdate";
+import type { ObjectUpdate } from "@/application/updates/objectUpdate";
 import { useCachedOrganisation, useCachedUser, useKnownUsers, useOrganisationStore, useOrganisationWorkflows } from "./organisationHooks";
 import { OrganisationField, type PanelProps } from "./parts";
 import { UserDetails } from "./UserDetails";
@@ -21,17 +23,18 @@ interface Target {
 }
 
 interface Change extends Target {
-  operations: readonly PatchOperation[];
+  update: ObjectUpdate;
 }
 
 function ChangeForm({ target, user, change }: { target: Target; user: User; change: Operation<Change, User> }) {
   const form = useForm<UserValues>({ defaultValues: toValues(userEditOf(user)) });
   const values = useWatch({ control: form.control });
   const operations = buildUserPatch(user, toData(values as Partial<UserValues>));
+  const plan = useObjectUpdate("user.update", user, operations);
 
   return (
     <FormProvider {...form}>
-      <form onSubmit={form.handleSubmit(() => change.start({ ...target, operations }))} noValidate className="flex max-w-xl flex-col gap-8">
+      <form onSubmit={form.handleSubmit(() => plan.update && change.start({ ...target, update: plan.update }))} noValidate className="flex max-w-xl flex-col gap-8">
         <h3>
           {t("organisations.userChange.heading", { user: user.id, organisation: target.organisationId })}
         </h3>
@@ -52,10 +55,11 @@ function ChangeForm({ target, user, change }: { target: Target; user: User; chan
           <p className="text-sm text-muted-foreground">
             {t("organisations.change.previewHint")}
           </p>
+          <UpdateModeSection plan={plan} />
         </section>
 
         <div>
-          <SubmitButton pending={change.pending} disabled={operations.length === 0}>
+          <SubmitButton pending={change.pending} disabled={!plan.update}>
             {t("organisations.action.saveChanges")}
           </SubmitButton>
         </div>
@@ -86,7 +90,7 @@ export function UserChangePanel({ organisationId, onOrganisationChange, onUserCh
   );
   // Held here, not in the form: the form starts over when the saved user replaces the loaded one.
   const change = useOperation(
-    (variables: Change, signal) => workflows.users.change(variables.organisationId, variables.userId, variables.operations, { signal }),
+    (variables: Change, signal) => workflows.users.update(variables.organisationId, variables.userId, variables.update, { signal }),
     (result, variables) => {
       if (result.data) store.rememberUser(variables.organisationId, variables.userId, result.data);
     },

@@ -12,7 +12,8 @@ import { t } from "@/i18n";
 import { isResourceType } from "@/rpp/core/types/resources";
 import type { CapabilitySnapshot, PresetCapability, VersionedReference } from "@/rpp/discovery/capability-types";
 import { advertisedExtensions } from "@/rpp/discovery/capabilities";
-import { detectExtensions } from "@/rpp/discovery/extensionDetection";
+import { detectExtensions, type ExtensionAvailability } from "@/rpp/discovery/extensionDetection";
+import { activationOf, BUNDLED_EXTENSIONS, findExtensionModule } from "@/rpp/extensions/ExtensionRegistry";
 import { originOf, referenceLabel, unmodelledMembers } from "./capabilityView";
 
 const Row = DefinitionRow;
@@ -85,7 +86,8 @@ export function CapabilitiesPage() {
 function Document({ snapshot, warnings }: { snapshot: CapabilitySnapshot; warnings: readonly string[] }) {
   const { session, resolvedPreset } = useConnection();
   const configuredOrigin = session ? originOf(session.profile.baseUrl) : undefined;
-  const extensions = detectExtensions(advertisedExtensions(snapshot), []);
+  const extensions = detectExtensions(advertisedExtensions(snapshot), BUNDLED_EXTENSIONS);
+  const presetInEffect = resolvedPreset?.chosen;
   const others = unmodelledMembers(snapshot.raw);
 
   return (
@@ -147,10 +149,7 @@ function Document({ snapshot, warnings }: { snapshot: CapabilitySnapshot; warnin
           <ul className="flex flex-wrap gap-2">
             {snapshot.objects.map((type) => (
               <li key={type}>
-                <Badge tone={isResourceType(type) ? "success" : "warning"} dot>
-                  <code>{type}</code>
-                  {!isResourceType(type) && <span className="font-normal">{t("capabilities.objects.unknown")}</span>}
-                </Badge>
+                <ObjectBadge type={type} />
               </li>
             ))}
           </ul>
@@ -182,27 +181,23 @@ function Document({ snapshot, warnings }: { snapshot: CapabilitySnapshot; warnin
           <None>{t("connection.capability.noneAdvertised")}</None>
         ) : (
           <ul className="flex flex-col gap-6">
-            {extensions.advertised.map(({ status, advertised }) => (
-              <li key={referenceLabel(advertised)}>
-                <article aria-label={t("capabilities.extensions.ariaLabel", { reference: referenceLabel(advertised) })} className="flex flex-col gap-2">
-                  <h3 className="flex flex-wrap items-center gap-2">
-                    <span>{advertised.name ?? advertised.id}</span>
-                    <Badge tone={status === "available" ? "success" : "neutral"}>
-                      {status === "available" ? t("capabilities.extensions.supported") : t("capabilities.extensions.unsupported")}
-                    </Badge>
-                  </h3>
-                  <Rows>
-                    <Row term={t("capabilities.extensions.identifier")}>
-                      <code className="break-all">{advertised.id}</code>
-                    </Row>
-                    <Row term={t("capabilities.extensions.version")}>{advertised.version}</Row>
-                    <Row term={t("capabilities.extensions.address")}>{advertised.url ? <code className="break-all">{advertised.url}</code> : <None>{t("capabilities.notGiven")}</None>}</Row>
-                    <Row term={t("capabilities.extensions.inPresets")}>{presetsUsing(snapshot, advertised).join(", ") || <None>{t("capabilities.extensions.noneInPresets")}</None>}</Row>
-                  </Rows>
-                </article>
+            {extensions.advertised.map((availability) => (
+              <li key={referenceLabel(availability.advertised)}>
+                <ExtensionEntry snapshot={snapshot} availability={availability} preset={presetInEffect} />
               </li>
             ))}
           </ul>
+        )}
+        {extensions.notAdvertised.length > 0 && (
+          <p className="mt-4 text-sm text-muted-foreground">
+            {t("capabilities.extensions.localOnly")}{" "}
+            {extensions.notAdvertised.map((support, index) => (
+              <span key={support.id}>
+                {index > 0 && ", "}
+                <code>{support.id}</code> {support.supportedVersions.join(", ")}
+              </span>
+            ))}
+          </p>
         )}
       </Section>
 
@@ -225,6 +220,74 @@ function Document({ snapshot, warnings }: { snapshot: CapabilitySnapshot; warnin
         </details>
       </Section>
     </>
+  );
+}
+
+/** An object type: known when the drafts define it or a bundled extension module does. */
+function ObjectBadge({ type }: { type: string }) {
+  const module = isResourceType(type) ? undefined : BUNDLED_EXTENSIONS.find((candidate) => candidate.objects.includes(type));
+  const known = isResourceType(type) || module !== undefined;
+  return (
+    <Badge tone={known ? "success" : "warning"} dot>
+      <code>{type}</code>
+      {module && <span className="font-normal">{t("capabilities.objects.ofExtension", { name: module.displayName })}</span>}
+      {!known && <span className="font-normal">{t("capabilities.objects.unknown")}</span>}
+    </Badge>
+  );
+}
+
+function clientSupportText(availability: ExtensionAvailability): string {
+  switch (availability.status) {
+    case "available": return t("capabilities.extensions.supported");
+    case "version-mismatch": return t("capabilities.extensions.otherVersion", { versions: availability.supportedVersions.join(", ") });
+    case "unrecognized": return t("capabilities.extensions.unsupported");
+  }
+}
+
+/** Whether a supported extension applies to the requests of this client, which depends on the preset they are made under. */
+function InEffect({ snapshot, id, preset }: { snapshot: CapabilitySnapshot; id: string; preset: VersionedReference | undefined }) {
+  const module = findExtensionModule(id);
+  if (!module) return null;
+  const activation = activationOf(module, snapshot, preset);
+  if (activation.status === "active") return <Badge tone="success" dot>{t("capabilities.extensions.inEffect")}</Badge>;
+  if (activation.status === "not-in-preset") {
+    return (
+      <Badge tone="warning" dot>
+        {activation.preset
+          ? t("capabilities.extensions.notInPreset", { preset: referenceLabel(activation.preset) })
+          : t("capabilities.extensions.noPresetInEffect")}
+      </Badge>
+    );
+  }
+  return null;
+}
+
+function ExtensionEntry({
+  snapshot,
+  availability,
+  preset,
+}: {
+  snapshot: CapabilitySnapshot;
+  availability: ExtensionAvailability;
+  preset: VersionedReference | undefined;
+}) {
+  const { advertised, status } = availability;
+  return (
+    <article aria-label={t("capabilities.extensions.ariaLabel", { reference: referenceLabel(advertised) })} className="flex flex-col gap-2">
+      <h3 className="flex flex-wrap items-center gap-2">
+        <span>{advertised.name ?? advertised.id}</span>
+        <Badge tone={status === "available" ? "success" : status === "version-mismatch" ? "warning" : "neutral"}>{clientSupportText(availability)}</Badge>
+        {status === "available" && <InEffect snapshot={snapshot} id={advertised.id} preset={preset} />}
+      </h3>
+      <Rows>
+        <Row term={t("capabilities.extensions.identifier")}>
+          <code className="break-all">{advertised.id}</code>
+        </Row>
+        <Row term={t("capabilities.extensions.version")}>{advertised.version}</Row>
+        <Row term={t("capabilities.extensions.address")}>{advertised.url ? <code className="break-all">{advertised.url}</code> : <None>{t("capabilities.notGiven")}</None>}</Row>
+        <Row term={t("capabilities.extensions.inPresets")}>{presetsUsing(snapshot, advertised).join(", ") || <None>{t("capabilities.extensions.noneInPresets")}</None>}</Row>
+      </Rows>
+    </article>
   );
 }
 

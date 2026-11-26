@@ -5,6 +5,9 @@ import { StatusLabel } from "@/components/protocol/protocol-badges";
 import { Badge } from "@/components/ui/badge";
 import type { DomainName } from "@/rpp/core/types/objects";
 import { Provisioning, Secret, Timestamp } from "../shared/objectParts";
+import { RriDomainRows } from "../extensions/denicRri/RriDomainRows";
+import { rriMembersShown } from "../extensions/denicRri/formValues";
+import { useDomainExtensions } from "./useDomainExtensions";
 
 const MODELLED = new Set([
   "@type", "name", "uName", "lgr", "provMetadata", "status", "registrant", "contacts", "nameservers", "dns",
@@ -48,7 +51,9 @@ function List({ items }: { items: readonly string[] | undefined }) {
 export function DomainDetails({ domain }: { domain: DomainName }) {
   const records = domain.dns?.records ?? [];
   const processes = domain.processes ? Object.entries(domain.processes).filter(([key]) => key !== "@type") : [];
-  const others = Object.entries(domain).filter(([key]) => !MODELLED.has(key));
+  const { rri } = useDomainExtensions();
+  const shownByExtensions = new Set(rri ? rriMembersShown(domain) : []);
+  const others = Object.entries(domain).filter(([key]) => !MODELLED.has(key) && !shownByExtensions.has(key));
   const authInfo = domain.authInfo;
 
   return (
@@ -94,6 +99,7 @@ export function DomainDetails({ domain }: { domain: DomainName }) {
             <Nothing />
           )}
         </DefinitionRow>
+        {rri && <RriDomainRows domain={domain} />}
         <DefinitionRow term={t("domains.nameservers.label")}>
           <List items={domain.nameservers?.map((host) => host.hostName)} />
         </DefinitionRow>

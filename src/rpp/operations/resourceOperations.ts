@@ -182,6 +182,7 @@ export function createResourceOperations<Read, Create, Update>(
   collectionPath: string,
 ): ResourceOperations<Read, Create, Update> {
   const type = definition.type;
+  const schema = definition.schemaPrefix ?? type;
   const ownerPath = (id: string) => `${collectionPath}/${segment(id, `${type} identifier`, definition.aLabelIdentifier)}`;
 
   const processes: Partial<Record<ProcessKind, ProcessOperations>> = {};
@@ -195,7 +196,7 @@ export function createResourceOperations<Read, Create, Update>(
     read: async (id, options) =>
       performTyped(
         context,
-        { method: "GET", target: ownerPath(id), query: queryOf(options), options, responseDefinition: `${type}.read` },
+        { method: "GET", target: ownerPath(id), query: queryOf(options), options, responseDefinition: `${schema}.read` },
         type,
       ),
     create: async (body, options) =>
@@ -207,8 +208,8 @@ export function createResourceOperations<Read, Create, Update>(
           query: queryOf(options),
           body,
           options,
-          requestDefinition: `${type}.create`,
-          responseDefinition: `${type}.read`,
+          requestDefinition: `${schema}.create`,
+          responseDefinition: `${schema}.read`,
         },
         type,
       ),
@@ -221,8 +222,8 @@ export function createResourceOperations<Read, Create, Update>(
           query: queryOf(options),
           body,
           options,
-          requestDefinition: `${type}.update`,
-          responseDefinition: `${type}.read`,
+          requestDefinition: `${schema}.update`,
+          responseDefinition: `${schema}.read`,
         },
         type,
       ),
@@ -236,7 +237,7 @@ export function createResourceOperations<Read, Create, Update>(
           query: queryOf(options),
           body: operations,
           options,
-          responseDefinition: `${type}.read`,
+          responseDefinition: `${schema}.read`,
         },
         type,
       );

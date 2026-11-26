@@ -36,6 +36,12 @@ Rendered versions are on the [IETF datatracker](https://datatracker.ietf.org/wg/
   [ietf-rpp-api-epp-proxy-python](https://github.com/pawel-kow/ietf-rpp-api-epp-proxy-python) repository, which is the backend this client talks to.
   The proxy may lag or differ from the drafts; when they disagree, the draft wins and the difference is documented as an assumption.
 
+## Extensions implemented by this client
+
+| Extension | Version | Definition | Schema |
+|---|---|---|---|
+| `de.denic.rpp.rri` (DENIC RRI) | 0.2.0 | [rri-extension.md](https://github.com/pawel-kow/ietf-rpp-api-epp-proxy-python/blob/main/docs/rri/rri-extension.md) (draft-kowalik-rpp-denic-rri-00) | [rri-extension.schema.json](https://github.com/pawel-kow/ietf-rpp-api-epp-proxy-python/blob/main/.spec/rri-extension.schema.json) |
+
 ## Other working group material
 
 - [wg-materials](https://github.com/ietf-wg-rpp/wg-materials): agendas, minutes and WG decisions.

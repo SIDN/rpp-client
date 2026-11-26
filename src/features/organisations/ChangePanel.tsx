@@ -12,6 +12,9 @@ import type { PatchOperation } from "@/rpp/operations/patch";
 import { OperationOutcome } from "../shared/OperationOutcome";
 import { SubmitButton } from "../shared/SubmitButton";
 import { useOperation, type Operation } from "../shared/useOperation";
+import { UpdateModeSection } from "../shared/UpdateModeSection";
+import { useObjectUpdate } from "../shared/useObjectUpdate";
+import type { ObjectUpdate } from "@/application/updates/objectUpdate";
 import { useCachedOrganisation, useOrganisationStore, useOrganisationWorkflows } from "./organisationHooks";
 import { OrganisationDetails } from "./OrganisationDetails";
 import { OrganisationFields } from "./OrganisationFields";
@@ -20,7 +23,7 @@ import { OrganisationField, type PanelProps } from "./parts";
 
 interface Change {
   id: string;
-  operations: readonly PatchOperation[];
+  update: ObjectUpdate;
 }
 
 /** The operations for what is typed so far, or why there are none yet: a form half filled in is not an error. */
@@ -36,10 +39,11 @@ function ChangeForm({ organisation, change }: { organisation: Organisation; chan
   const form = useForm<OrganisationValues>({ defaultValues: toValues(organisationEditOf(organisation)) });
   const values = useWatch({ control: form.control });
   const { operations, problem } = planOf(organisation, toData(values as Partial<OrganisationValues>));
+  const plan = useObjectUpdate("organisation.update", organisation, operations);
 
   return (
     <FormProvider {...form}>
-      <form onSubmit={form.handleSubmit(() => change.start({ id: organisation.id, operations }))} noValidate className="flex max-w-xl flex-col gap-8">
+      <form onSubmit={form.handleSubmit(() => plan.update && change.start({ id: organisation.id, update: plan.update }))} noValidate className="flex max-w-xl flex-col gap-8">
         <h3>
           {t("organisations.change.heading", { id: organisation.id })}
         </h3>
@@ -64,10 +68,11 @@ function ChangeForm({ organisation, change }: { organisation: Organisation; chan
           <p className="text-sm text-muted-foreground">
             {t("organisations.change.previewHint")}
           </p>
+          <UpdateModeSection plan={plan} />
         </section>
 
         <div>
-          <SubmitButton pending={change.pending} disabled={operations.length === 0}>
+          <SubmitButton pending={change.pending} disabled={!plan.update}>
             {t("organisations.action.saveChanges")}
           </SubmitButton>
         </div>
@@ -89,7 +94,7 @@ export function ChangePanel({ organisationId, onOrganisationChange }: PanelProps
   );
   // Held here, not in the form: the form starts over when the saved organisation replaces the loaded one.
   const change = useOperation(
-    (variables: Change, signal) => workflows.change(variables.id, variables.operations, { signal }),
+    (variables: Change, signal) => workflows.update(variables.id, variables.update, { signal }),
     (result, variables) => {
       if (result.data) store.remember(variables.id, result.data);
     },

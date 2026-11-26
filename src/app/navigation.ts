@@ -7,6 +7,7 @@ import {
   Inbox,
   LayoutDashboard,
   ListChecks,
+  Megaphone,
   Radar,
   Server,
   Settings,
@@ -15,6 +16,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import type { ResourceType } from "@/rpp/core/types/resources";
+import type { RppExtensionModule } from "@/rpp/extensions/ExtensionModule";
+import { DENIC_RRI } from "@/rpp/extensions/modules/denicRri";
 import { env } from "@/config/env";
 
 export const APP_TITLE: string = env.appTitle;
@@ -27,6 +30,11 @@ export interface NavItem {
   requires?: ResourceType;
   /** What the screen is for, shown while it is not built yet. */
   purposeKey: string;
+  /**
+   * The extension that defines the object of this screen, and that object. The item is only listed while the server
+   * advertises the extension, and marked as offered while the extension is active and the object listed.
+   */
+  extension?: { module: RppExtensionModule; object: string };
 }
 
 export interface NavGroup {
@@ -55,6 +63,13 @@ export const NAVIGATION: readonly NavGroup[] = [
       { to: "/domains", labelKey: "nav.domainNames.label", icon: Globe, requires: "domainName", purposeKey: "nav.domainNames.purpose" },
       { to: "/contacts", labelKey: "nav.contacts.label", icon: UserRound, requires: "contact", purposeKey: "nav.contacts.purpose" },
       { to: "/hosts", labelKey: "nav.hosts.label", icon: Server, requires: "host", purposeKey: "nav.hosts.purpose" },
+      {
+        to: "/request-contacts",
+        labelKey: "nav.requestContacts.label",
+        icon: Megaphone,
+        purposeKey: "nav.requestContacts.purpose",
+        extension: { module: DENIC_RRI, object: "requestContact" },
+      },
       { to: "/organisations", labelKey: "nav.organisations.label", icon: Building2, requires: "organisation", purposeKey: "nav.organisations.purpose" },
       { to: "/messages", labelKey: "nav.messages.label", icon: Inbox, requires: "message", purposeKey: "nav.messages.purpose" },
       { to: "/processes", labelKey: "nav.processes.label", icon: ListChecks, purposeKey: "nav.processes.purpose" },

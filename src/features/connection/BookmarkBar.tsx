@@ -1,11 +1,8 @@
 import { useId, useState } from "react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/field";
 import type { Bookmark } from "@/config/bookmarks";
 import { t } from "@/i18n";
-
-const authText = (bookmark: Bookmark) => (bookmark.profile.auth.type === "basic" ? t("connection.bookmarks.authUser", { username: bookmark.profile.auth.username }) : t("connection.bookmarks.noAuthentication"));
 
 /**
  * The bar at the top of the connection screen: pick a saved server in the list, then use it (fill the form, so that only
@@ -14,8 +11,6 @@ const authText = (bookmark: Bookmark) => (bookmark.profile.auth.type === "basic"
 export function BookmarkBar({
   bookmarks,
   pickedId,
-  activeId,
-  editing,
   onPick,
   onUse,
   onEdit,
@@ -23,9 +18,6 @@ export function BookmarkBar({
 }: {
   bookmarks: readonly Bookmark[];
   pickedId: string | undefined;
-  /** The bookmark that is in the form. */
-  activeId: string | undefined;
-  editing: boolean;
   onPick(id: string | undefined): void;
   onUse(bookmark: Bookmark): void;
   onEdit(bookmark: Bookmark): void;
@@ -71,19 +63,6 @@ export function BookmarkBar({
           </Button>
         </div>
       </div>
-
-      {picked ? (
-        <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
-          <code>{picked.profile.baseUrl}</code>
-          <span aria-hidden>·</span>
-          {authText(picked)}
-          {picked.id === activeId && <Badge tone="info">{editing ? t("connection.bookmarks.editing") : t("connection.bookmarks.inForm")}</Badge>}
-        </p>
-      ) : (
-        <p className="text-sm text-muted-foreground">
-          {bookmarks.length === 0 ? t("connection.bookmarks.noneSaved") : t("connection.bookmarks.exceptPassword")}
-        </p>
-      )}
 
       {picked && asking && (
         <div role="group" aria-labelledby={`${id}-confirm`} className="flex max-w-xl flex-col gap-3 rounded-md border-2 border-danger bg-background p-4">

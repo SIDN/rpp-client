@@ -204,15 +204,13 @@ export function ConnectionPage() {
       <BookmarkBar
         bookmarks={bookmarks}
         pickedId={pickedId}
-        activeId={activeId}
-        editing={editing}
         onPick={setPickedId}
         onUse={(bookmark) => load(bookmark, false)}
         onEdit={(bookmark) => load(bookmark, true)}
         onDelete={deleteBookmark}
       />
 
-      <Section id="server" title={t("connection.server.title")}>
+      <section id="server" aria-label={t("connection.server.title")} className="flex flex-col gap-4">
         {active && !editing && (
           <Callout title={t("connection.bookmark.inForm", { name: active.name })} className="max-w-xl">
             {active.profile.auth.type === "basic" ? t("connection.bookmark.passwordNeeded") : t("connection.bookmark.ready")}
@@ -367,7 +365,7 @@ export function ConnectionPage() {
             )}
           </div>
         </form>
-      </Section>
+      </section>
 
       <Section id="capabilities" title={t("connection.capabilities.title")}>
         {discovery.status === "not-started" && (

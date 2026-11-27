@@ -310,8 +310,6 @@ describe("bookmarks", () => {
 
     await waitFor(() => expect(names()).toEqual(["Registry A"]));
     expect(select()).toHaveValue(stored()[0]?.id);
-    expect(bar().getByText("https://rpp.example.test")).toBeInTheDocument();
-    expect(screen.getByRole("toolbar", { name: "Bookmarks" })).toHaveTextContent("User registrar");
     expect(stored()).toEqual([expect.objectContaining({ name: "Registry A", profile: expect.objectContaining({ baseUrl: "https://rpp.example.test", auth: { type: "basic", username: "registrar" } }) })]);
     expect(JSON.stringify(Object.entries(localStorage))).not.toContain("hunter2");
     expect(fetchMock).not.toHaveBeenCalled();
@@ -343,7 +341,6 @@ describe("bookmarks", () => {
     expect(screen.getByLabelText("User name")).toHaveValue("registrar");
     expect(screen.getByLabelText("Password")).toHaveValue("");
     expect(screen.getByLabelText("Connection name")).toHaveValue("Registry A");
-    expect(screen.getByRole("toolbar", { name: "Bookmarks" })).toHaveTextContent("In the form");
 
     connect();
     expect(await screen.findByText("Enter the password")).toBeInTheDocument();
@@ -365,7 +362,6 @@ describe("bookmarks", () => {
     await waitFor(() => expect(screen.getByLabelText("Connection name")).toHaveFocus());
     expect(screen.getByLabelText("Connection name")).toHaveValue("Registry A");
     expect(screen.getByText("Editing bookmark Registry A")).toBeInTheDocument();
-    expect(screen.getByRole("toolbar", { name: "Bookmarks" })).toHaveTextContent("Being edited");
 
     type("Server hostname or TLD", "other.example.test");
     save("Save changes to the bookmark");

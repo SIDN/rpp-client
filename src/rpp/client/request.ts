@@ -1,6 +1,6 @@
 import type { PresetSignalling } from "./negotiation";
 
-export type HttpMethod = "GET" | "HEAD" | "POST" | "PUT" | "PATCH" | "DELETE" | "OPTIONS";
+export type HttpMethod = "GET" | "HEAD" | "POST" | "PUT" | "PATCH" | "DELETE" | "OPTIONS" | "QUERY";
 
 type QueryValue = string | number | boolean;
 

@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { t } from "@/i18n";
 import { useForm } from "react-hook-form";
 import { HOSTS_FILTERS, type HostsFilter } from "@/application/domains/domainWorkflows";
@@ -11,7 +12,8 @@ import { useDomainWorkflows } from "./useDomainWorkflows";
 import { SubmitButton } from "../shared/SubmitButton";
 import { useOperation } from "../shared/useOperation";
 
-export function InfoPanel({ name, onNameChange }: PanelProps) {
+/** `startNow` asks for the info of the name as soon as the panel is shown, as when a link leads here. */
+export function InfoPanel({ name, onNameChange, startNow = false }: PanelProps & { startNow?: boolean }) {
   const workflows = useDomainWorkflows();
   const store = useDomainStore();
   const { register, handleSubmit } = useForm<{ authInfo: boolean; hostsFilter: HostsFilter | "" }>({ defaultValues: { authInfo: false, hostsFilter: "" } });
@@ -22,6 +24,14 @@ export function InfoPanel({ name, onNameChange }: PanelProps) {
       if (result.data) store.remember(variables.name, result.data);
     },
   );
+
+  const started = useRef(false);
+  const { start } = info;
+  useEffect(() => {
+    if (!startNow || started.current || name.trim() === "") return;
+    started.current = true;
+    start({ name, authInfo: false });
+  }, [startNow, name, start]);
 
   return (
     <div className="flex flex-col gap-6">

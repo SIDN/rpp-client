@@ -40,6 +40,25 @@
   --info: #4fc2e3; --sidebar: #001735; --sidebar-foreground: #f4f4f4;
 }
 
+/* DENIC (member.secure.denic.de): orange #ff9a00 (buttons, link underlines), warm grey #3c3637 (text) and #676062,
+   DENIC blue #34789a (R52 G120 B154; dark mode uses its shades #13303e #1b3f51 #245166 and tint #79b0cc), light greys #eeeeee #eae6e3 #dad8d8,
+   alert #d94e1f, success #2ba182, ochre #c68316 and #ddc38c. Text on orange is the warm grey: white is too faint.
+   The logo globe is light orange #ffc266: the accent blue would vanish on the blue sidebar. */
+:root[data-palette="denic"] {
+  --background: #eeeeee; --foreground: #3c3637; --surface: #ffffff; --muted: #eae6e3; --muted-foreground: #676062;
+  --border: #dad8d8; --input: #888888; --primary: #ff9a00; --primary-foreground: #3c3637; --accent: #34789a;
+  --accent-foreground: #ffffff; --ring: #34789a; --success: #2ba182; --warning: #c68316; --danger: #d94e1f;
+  --info: #34789a; --sidebar: #34789a; --sidebar-foreground: #ffffff;
+  --logo-globe: #ffc266;
+}
+:root[data-palette="denic"].dark {
+  --background: #13303e; --foreground: #eeeeee; --surface: #1b3f51; --muted: #245166; --muted-foreground: #dad8d8;
+  --border: #3d6d85; --input: #888888; --primary: #ff9a00; --primary-foreground: #3c3637; --accent: #79b0cc;
+  --accent-foreground: #17242f; --ring: #ff9a00; --success: #2ba182; --warning: #ddc38c; --danger: #f07a52;
+  --info: #79b0cc; --sidebar: #34789a; --sidebar-foreground: #ffffff;
+  --logo-globe: #ffc266;
+}
+
 /* Nord */
 :root[data-palette="nord"] {
   --background: #eceff4; --foreground: #2e3440; --surface: #ffffff; --muted: #e5e9f0; --muted-foreground: #4c566a;

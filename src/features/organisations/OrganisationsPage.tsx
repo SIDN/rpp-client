@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from "react";
+import { useSearchParams } from "react-router-dom";
 import { t } from "@/i18n";
 import { objectSupport } from "@/application/capability";
 import { useConnection } from "@/app/connection-context";
@@ -52,8 +53,10 @@ export function OrganisationsPage() {
   const { session } = useConnection();
   const support = objectSupport(discovery, "organisation");
   const usersOffered = objectSupport(discovery, "user") === "offered";
-  const [workflow, setWorkflow] = useState<WorkflowId>("info");
-  const [organisationId, setOrganisationId] = useState("");
+  const [params] = useSearchParams();
+  const [workflow, setWorkflow] = useState<WorkflowId>(() => ORGANISATION_WORKFLOWS.find((id) => id === params.get("tab")) ?? "info");
+  const [organisationId, setOrganisationId] = useState(() => params.get("name") ?? "");
+  const [lookUpAtOnce] = useState(() => params.get("run") === "1");
   const [userId, setUserId] = useState("");
 
   const header = <PageHeader title={t("organisations.page.title")} description={t("organisations.page.description")} />;
@@ -91,7 +94,7 @@ export function OrganisationsPage() {
 
   const panelProps = { organisationId, onOrganisationChange: setOrganisationId, userId, onUserChange: setUserId };
   const panels: Record<WorkflowId, ReactNode> = {
-    info: <InfoPanel {...panelProps} />,
+    info: <InfoPanel {...panelProps} startNow={lookUpAtOnce} />,
     create: <CreatePanel {...panelProps} />,
     change: <ChangePanel {...panelProps} />,
     delete: <DeletePanel {...panelProps} />,

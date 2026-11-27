@@ -134,6 +134,13 @@ describe("domain names screen", () => {
     expect(screen.getByRole("tab", { name: "Delete" })).toHaveAttribute("aria-selected", "true");
   });
 
+  it("looks a domain up at once when a link asks for it", async () => {
+    const { calls } = renderPage(() => answer(DOMAIN), undefined, "/domains?name=example.test&tab=info&run=1");
+    await waitFor(() => expect(panel().getByText("Found example.test")).toBeInTheDocument());
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toMatchObject({ method: "GET", path: "/domainNames/example.test" });
+  });
+
   it("looks a domain up and shows all of it", async () => {
     const { calls } = renderPage(() => answer(DOMAIN));
     typeName(" example.test ");

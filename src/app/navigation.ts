@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   ListChecks,
   Radar,
+  Search,
   Server,
   Settings,
   Terminal,
@@ -58,6 +59,7 @@ export const NAVIGATION: readonly NavGroup[] = [
       { to: "/organisations", labelKey: "nav.organisations.label", icon: Building2, requires: "organisation", purposeKey: "nav.organisations.purpose" },
       { to: "/messages", labelKey: "nav.messages.label", icon: Inbox, requires: "message", purposeKey: "nav.messages.purpose" },
       { to: "/processes", labelKey: "nav.processes.label", icon: ListChecks, purposeKey: "nav.processes.purpose" },
+      { to: "/search", labelKey: "nav.search.label", icon: Search, purposeKey: "nav.search.purpose" },
     ],
   },
   {

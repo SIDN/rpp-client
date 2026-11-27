@@ -29,6 +29,7 @@ export function DomainsPage() {
   const [params] = useSearchParams();
   const [workflow, setWorkflow] = useState<WorkflowId>(() => WORKFLOWS.find((id) => id === params.get("tab")) ?? "info");
   const [name, setName] = useState(() => params.get("name") ?? "");
+  const [lookUpAtOnce] = useState(() => params.get("run") === "1");
 
   const labels: Record<WorkflowId, string> = {
     info: t("domains.page.info"), check: t("domains.page.check"), register: t("domains.page.register"), change: t("domains.page.change"),
@@ -71,7 +72,7 @@ export function DomainsPage() {
 
   const panelProps = { name, onNameChange: setName };
   const panels: Record<WorkflowId, ReactNode> = {
-    info: <InfoPanel {...panelProps} />,
+    info: <InfoPanel {...panelProps} startNow={lookUpAtOnce} />,
     check: <CheckPanel {...panelProps} onRegister={() => setWorkflow("register")} />,
     register: <RegisterPanel {...panelProps} />,
     change: <ChangePanel {...panelProps} />,

@@ -7,6 +7,7 @@ import { ContactsPage } from "@/features/contacts/ContactsPage";
 import { HostsPage } from "@/features/hosts/HostsPage";
 import { OrganisationsPage } from "@/features/organisations/OrganisationsPage";
 import { ProcessesPage } from "@/features/processes/ProcessesPage";
+import { SearchPage } from "@/features/search/SearchPage";
 import { ConnectionPage } from "@/features/connection/ConnectionPage";
 import { ClientPage } from "@/features/client/ClientPage";
 import { NotFoundPage, RouteError } from "@/features/errors/ErrorPages";
@@ -29,6 +30,7 @@ const screens: Record<string, ReactElement> = {
   "/organisations": <OrganisationsPage />,
   "/messages": <MessagesPage />,
   "/processes": <ProcessesPage />,
+  "/search": <SearchPage />,
   "/developer/capabilities": <CapabilitiesPage />,
   "/developer/exchanges": <ExchangesPage />,
   "/developer/requests": <RawRequestPage />,

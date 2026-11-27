@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { t } from "@/i18n";
 import { SubmitButton } from "../shared/SubmitButton";
 import { OperationOutcome } from "../shared/OperationOutcome";
@@ -6,7 +7,8 @@ import { useOrganisationStore, useOrganisationWorkflows } from "./organisationHo
 import { OrganisationDetails } from "./OrganisationDetails";
 import { OrganisationField, type PanelProps } from "./parts";
 
-export function InfoPanel({ organisationId, onOrganisationChange }: PanelProps) {
+/** `startNow` asks for the info of the organisation as soon as the panel is shown, as when a link leads here. */
+export function InfoPanel({ organisationId, onOrganisationChange, startNow = false }: PanelProps & { startNow?: boolean }) {
   const workflows = useOrganisationWorkflows();
   const store = useOrganisationStore();
   const info = useOperation(
@@ -15,6 +17,14 @@ export function InfoPanel({ organisationId, onOrganisationChange }: PanelProps) 
       if (result.data) store.remember(variables, result.data);
     },
   );
+
+  const started = useRef(false);
+  const { start } = info;
+  useEffect(() => {
+    if (!startNow || started.current || organisationId.trim() === "") return;
+    started.current = true;
+    start(organisationId);
+  }, [startNow, organisationId, start]);
 
   return (
     <div className="flex flex-col gap-6">

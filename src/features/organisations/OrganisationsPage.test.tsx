@@ -68,7 +68,7 @@ const answer = (body: unknown, init: { status?: number; code?: string } = {}) =>
     headers: { "Content-Type": "application/rpp+json", "RPP-Code": init.code ?? "01000", "RPP-Svtrid": "S-7" },
   });
 
-function renderPage(responder: Responder, discovery: DiscoveryState = discoveryWith(["organisation", "user"])) {
+function renderPage(responder: Responder, discovery: DiscoveryState = discoveryWith(["organisation", "user"]), entry = "/") {
   const calls: Call[] = [];
   const session = createSession(PROFILE, undefined, {
     fetch: async (input, init) => {
@@ -85,7 +85,7 @@ function renderPage(responder: Responder, discovery: DiscoveryState = discoveryW
   const snapshot = discovery.status === "ready" ? discovery.snapshot : undefined;
   render(
     <Providers>
-      <MemoryRouter>
+      <MemoryRouter initialEntries={[entry]}>
         <ConnectionContext.Provider value={{ session, resolvedPreset: resolvePreset(DEFAULT_PRESET_SETTINGS, snapshot) } as ConnectionApi}>
           <DiscoveryContext.Provider value={discovery}>
             <OrganisationsPage />
@@ -101,6 +101,21 @@ const panel = () => within(screen.getByRole("tabpanel"));
 const openTab = (name: string) => fireEvent.click(screen.getByRole("tab", { name }));
 const type = (label: string, value: string) => fireEvent.change(panel().getByLabelText(label), { target: { value } });
 const press = (name: string) => fireEvent.click(panel().getByRole("button", { name }));
+
+describe("a link to an organisation", () => {
+  it("opens the info of the organisation and asks the registry for it at once", async () => {
+    const { calls } = renderPage(() => answer(ORGANISATION), undefined, "/organisations?name=ORG-1&tab=info&run=1");
+    await waitFor(() => expect(panel().getByText("Found ORG-1")).toBeInTheDocument());
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toMatchObject({ method: "GET", path: "/organisations/ORG-1" });
+  });
+
+  it("only fills in the identifier without the run flag", () => {
+    const { calls } = renderPage(() => answer(ORGANISATION), undefined, "/organisations?name=ORG-1&tab=info");
+    expect(panel().getByLabelText("Organisation identifier")).toHaveValue("ORG-1");
+    expect(calls).toHaveLength(0);
+  });
+});
 
 describe("organisations screen", () => {
   it("waits for a connection", () => {

@@ -3,6 +3,7 @@ import { classifyResponse, RppError } from "../errors/RppError";
 import { parseResultCode, type ParsedResultCode } from "../core/status/resultCodes";
 import { objectTypeOf } from "../core/types/resources";
 import type { Availability } from "../core/types/objects";
+import { parseQueryResults, validateQueryObject, type QueryObject, type QueryResults } from "../query/queryObject";
 import { exchange, metaOf, perform, type OperationContext, type OperationSpec } from "./context";
 import type { ProcessDefinition, ProcessKind, ProcessOperation, ResourceDefinition } from "./definitions";
 import { assertPatch, type PatchOperation } from "./patch";
@@ -86,6 +87,24 @@ export interface ResourceOperations<Read, Create, Update> {
   /** The processes of all types of an object (core Rule 6). */
   listProcesses(id: string, options?: ParameterOptions): Promise<OperationSuccess<unknown>>;
   readonly processes: Readonly<Partial<Record<ProcessKind, ProcessOperations>>>;
+  /**
+   * Searches the collection with a Query Object (`QUERY /{collection}`, draft-ietf-rpp-data-objects issue 210). The
+   * operation is optional: a server without it answers 501. Results of another `@type` are kept and reported.
+   */
+  query(body: QueryObject, options?: CallOptions): Promise<OperationSuccess<QueryResults<Read>>>;
+}
+
+/** The warnings of a result envelope: no envelope, or results that are not of the searched type. */
+function envelopeWarnings(body: unknown, parsed: QueryResults<unknown> | undefined, expected: string): string[] {
+  if (!parsed) return [`The response is not a query result envelope with a results array${body === undefined ? " (no content)" : ""}.`];
+  const warnings: string[] = [];
+  parsed.results.forEach((result, index) => {
+    const actual = objectTypeOf(result);
+    if (actual !== expected) {
+      warnings.push(`Result ${index} is ${actual === undefined ? "not an RPP object" : `of type ${actual}`}, expected ${expected}.`);
+    }
+  });
+  return warnings;
 }
 
 function createProcessOperations(
@@ -243,6 +262,31 @@ export function createResourceOperations<Read, Create, Update>(
     },
     // DELETE takes no content (core Rule 4); the response may carry some.
     delete: async (id, options) => perform(context, { method: "DELETE", target: ownerPath(id), query: queryOf(options), options }),
+    async query(body, options) {
+      const mode = options?.validation ?? context.validation?.request ?? "enforce";
+      const requestValidation = mode === "off" ? undefined : validateQueryObject(body);
+      if (requestValidation?.status === "invalid" && mode === "enforce") {
+        const first = requestValidation.issues[0];
+        throw new RppError({
+          kind: "schema-validation",
+          direction: "request",
+          definition: "query",
+          issues: requestValidation.issues,
+          message: `The Query Object is not valid: ${requestValidation.issues.length} issue(s), first ${first?.instancePath || "/"} ${first?.message ?? ""}`.trim(),
+        });
+      }
+      const result = await perform(context, { method: "QUERY", target: collectionPath, body, options });
+      const parsed = parseQueryResults(result.data);
+      const warnings = envelopeWarnings(result.data, parsed, type);
+      return {
+        data: (parsed ?? { results: [] }) as QueryResults<Read>,
+        meta: {
+          ...result.meta,
+          warnings: [...result.meta.warnings, ...warnings],
+          validation: { ...result.meta.validation, ...(requestValidation && { request: requestValidation }) },
+        },
+      };
+    },
     listProcesses: async (id, options) =>
       perform(context, { method: "GET", target: `${ownerPath(id)}/processes`, query: queryOf(options), options }),
     async availability(id, options) {

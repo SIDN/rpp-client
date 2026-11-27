@@ -9,6 +9,7 @@ export interface Palette {
 export const PALETTES: readonly Palette[] = [
   { id: "default", label: "Teal and sodium", swatches: ["#f1f3f1", "#0d2f36", "#e8a317", "#0b1618", "#d9ebe7", "#e8a317"] },
   { id: "sidn", label: "SIDN", swatches: ["#f4f4f4", "#1961ac", "#e85422", "#002154", "#30a8cb", "#e85422"] },
+  { id: "denic", label: "DENIC", swatches: ["#eeeeee", "#ff9a00", "#34789a", "#13303e", "#ff9a00", "#79b0cc"] },
   { id: "nord", label: "Nord", swatches: ["#eceff4", "#4c6a92", "#ebcb8b", "#2e3440", "#88c0d0", "#ebcb8b"] },
   { id: "solarized", label: "Solarized", swatches: ["#fdf6e3", "#2075b5", "#b58900", "#002b36", "#2aa198", "#b58900"] },
   { id: "catppuccin", label: "Catppuccin", swatches: ["#eff1f5", "#8839ef", "#df8e1d", "#1e1e2e", "#cba6f7", "#f9e2af"] },

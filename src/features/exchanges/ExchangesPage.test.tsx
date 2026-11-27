@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it } from "vitest";
 import { ConnectionContext, type ConnectionApi } from "@/app/connection-context";
@@ -105,5 +105,57 @@ describe("exchanges screen", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Clear" }));
     expect(screen.getByText("Nothing has been sent yet")).toBeInTheDocument();
+  });
+
+  describe("replay", () => {
+    it("opens the request for editing, sends the change and shows the new exchange", async () => {
+      const seen: { url: string; headers: Headers; body: unknown }[] = [];
+      const session = createSession(PROFILE, { password: "hunter2" }, {
+        fetch: async (input, init) => {
+          seen.push({ url: String(input), headers: new Headers(init?.headers), body: init?.body });
+          return rpp({ name: "example.test" });
+        },
+      });
+      await session.transport.send({ method: "POST", target: "domainNames", body: { name: "example.test", authInfo: "s3cret" }, headers: { "X-Trace": "abc" } });
+      renderPage(session);
+
+      fireEvent.click(screen.getByRole("button", { name: "Replay request" }));
+      const dialog = screen.getByRole("dialog", { name: "Replay request" });
+      expect(within(dialog).getByText("Redacted values")).toBeInTheDocument();
+      expect(within(dialog).getByLabelText("Path or address")).toHaveValue("domainNames");
+      expect(within(dialog).getByLabelText("Extra headers")).toHaveValue("x-trace: abc");
+      expect(within(dialog).getByLabelText(/^Send the credentials/)).toBeChecked();
+
+      fireEvent.change(within(dialog).getByLabelText("Body"), { target: { value: '{"name":"other.test"}' } });
+      fireEvent.change(within(dialog).getByLabelText("Extra headers"), { target: { value: "X-Trace: changed" } });
+      fireEvent.click(within(dialog).getByRole("button", { name: "Send" }));
+
+      await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+      expect(seen).toHaveLength(2);
+      expect(seen[1]?.body).toBe('{"name":"other.test"}');
+      expect(seen[1]?.headers.get("x-trace")).toBe("changed");
+      expect(seen[1]?.headers.get("authorization")).toMatch(/^Basic /);
+      expect(session.exchanges.entries()).toHaveLength(2);
+      const rows = within(screen.getByRole("list", { name: "Exchanges" })).getAllByRole("button");
+      expect(rows).toHaveLength(2);
+      expect(rows[0]).toHaveAttribute("aria-current", "true");
+      expect(screen.getByLabelText("Request body, formatted")).toHaveTextContent('"other.test"');
+    });
+
+    it("keeps the dialog open with the reason when the request cannot be sent", async () => {
+      const session = newSession(() => rpp({}));
+      await session.transport.send({ method: "GET", target: "domainNames/example.test" });
+      renderPage(session);
+
+      fireEvent.click(screen.getByRole("button", { name: "Replay request" }));
+      const dialog = screen.getByRole("dialog", { name: "Replay request" });
+      fireEvent.change(within(dialog).getByLabelText("Body"), { target: { value: "{not json" } });
+      fireEvent.click(within(dialog).getByRole("button", { name: "Send" }));
+      expect(await within(dialog).findByText(/The body is not valid JSON/)).toBeInTheDocument();
+      expect(session.exchanges.entries()).toHaveLength(1);
+
+      fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
   });
 });

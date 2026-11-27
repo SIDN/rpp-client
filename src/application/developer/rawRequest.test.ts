@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildRawRequest, type RawRequestForm } from "./rawRequest";
+import { buildRawRequest, formFromExchange, type RawRequestForm } from "./rawRequest";
 
 const FORM: RawRequestForm = { method: "GET", target: "domainNames/example.test", query: "", headers: "", body: "", clientTransactionId: "", authenticate: true };
 
@@ -48,5 +48,36 @@ describe("raw request", () => {
 
   it("keeps a JSON null body", () => {
     expect(buildRawRequest({ ...FORM, method: "PUT", body: "null" })).toMatchObject({ ok: true, request: { body: null } });
+  });
+});
+
+describe("form from a recorded exchange", () => {
+  const BASE = "https://rpp.example.test/rpp";
+  const record = {
+    method: "POST",
+    url: "https://rpp.example.test/rpp/domainNames?flag=1&flag=2&token=%5BREDACTED%5D",
+    headers: { accept: "application/rpp+json", authorization: "[REDACTED]", "rpp-cltrid": "T-1", "content-type": "application/rpp+json", "x-trace": "abc" },
+    body: '{"name":"example.test","authInfo":"[REDACTED]"}',
+  };
+
+  it("gives a path, query lines, the headers the caller may set and a formatted body", () => {
+    const { form, hasRedactions } = formFromExchange(record, BASE);
+    expect(form).toEqual({
+      method: "POST",
+      target: "domainNames",
+      query: "flag=1\nflag=2\ntoken=[REDACTED]",
+      headers: "x-trace: abc",
+      body: '{\n  "name": "example.test",\n  "authInfo": "[REDACTED]"\n}',
+      clientTransactionId: "",
+      authenticate: true,
+    });
+    expect(hasRedactions).toBe(true);
+    expect(buildRawRequest(form)).toMatchObject({ ok: true, request: { method: "POST", target: "domainNames", headers: { "x-trace": "abc" } } });
+  });
+
+  it("keeps an address on another origin absolute, and does not authenticate a request that had no credentials", () => {
+    const { form, hasRedactions } = formFromExchange({ method: "GET", url: "https://other.example.test/x/y", headers: {}, body: undefined }, BASE);
+    expect(form).toMatchObject({ method: "GET", target: "https://other.example.test/x/y", query: "", body: "", authenticate: false });
+    expect(hasRedactions).toBe(false);
   });
 });

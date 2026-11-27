@@ -1,5 +1,5 @@
 import { useState, useSyncExternalStore, type ReactNode } from "react";
-import { Trash2 } from "lucide-react";
+import { RotateCw, Trash2 } from "lucide-react";
 import { useConnection } from "@/app/connection-context";
 import { EmptyState, PageHeader, Section } from "@/components/common/layout";
 import { NotConnected } from "@/components/common/NotConnected";
@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 import { REDACTED } from "@/rpp/client/redaction";
 import type { ExchangeLog, ExchangeRecord } from "@/rpp/client/diagnostics";
 import { filterExchanges, formatBody, summarize } from "./exchangeView";
+import { ReplayDialog } from "./ReplayDialog";
 
 const NONE: readonly ExchangeRecord[] = [];
 const noSubscription = () => () => {};
@@ -33,6 +34,7 @@ export function ExchangesPage() {
   const records = useExchanges(session?.exchanges);
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState<string>();
+  const [replaying, setReplaying] = useState<ExchangeRecord>();
 
   if (!session) {
     return (
@@ -87,12 +89,33 @@ export function ExchangesPage() {
 
           <div className="min-w-0">
             {selected ? (
-              <ExchangeDetail record={selected} />
+              <ExchangeDetail
+                record={selected}
+                actions={
+                  <Button variant="secondary" size="sm" onClick={() => setReplaying(selected)}>
+                    <RotateCw aria-hidden />
+                    {t("exchanges.replay.button")}
+                  </Button>
+                }
+              />
             ) : (
               <EmptyState title={t("exchanges.empty.noMatch")} />
             )}
           </div>
         </div>
+      )}
+
+      {replaying && (
+        <ReplayDialog
+          session={session}
+          record={replaying}
+          onClose={() => setReplaying(undefined)}
+          onSent={(exchangeId) => {
+            setReplaying(undefined);
+            setQuery("");
+            setSelectedId(exchangeId);
+          }}
+        />
       )}
     </>
   );
@@ -121,7 +144,7 @@ function ExchangeRow({ record, current, onSelect }: { record: ExchangeRecord; cu
   );
 }
 
-export function ExchangeDetail({ record }: { record: ExchangeRecord }) {
+export function ExchangeDetail({ record, actions }: { record: ExchangeRecord; actions?: ReactNode }) {
   const summary = summarize(record);
   const { request, outcome } = record;
   const response = outcome.kind === "response" ? outcome : undefined;
@@ -139,6 +162,7 @@ export function ExchangeDetail({ record }: { record: ExchangeRecord }) {
             {response ? `${response.status} ${response.statusText}`.trim() : summary.outcome}
           </Badge>
           {summary.resultCode !== undefined && <ResultCodeChip code={summary.resultCode} />}
+          {actions && <span className="ml-auto">{actions}</span>}
         </div>
         <dl className="mt-2 grid grid-cols-[max-content_minmax(0,1fr)] gap-x-6 gap-y-1 text-sm">
           <Term name={t("exchanges.detail.started")}>{new Date(record.startedAt).toString()}</Term>

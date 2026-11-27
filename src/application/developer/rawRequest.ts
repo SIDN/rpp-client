@@ -1,8 +1,10 @@
 import { OWNED_HEADERS } from "@/rpp/client/FetchTransport";
 import { t } from "@/i18n";
+import type { RequestSnapshot } from "@/rpp/client/diagnostics";
+import { REDACTED } from "@/rpp/client/redaction";
 import type { HttpMethod, RppRequest } from "@/rpp/client/request";
 
-export const RAW_METHODS: readonly HttpMethod[] = ["GET", "HEAD", "OPTIONS", "POST", "PUT", "PATCH", "DELETE"];
+export const RAW_METHODS: readonly HttpMethod[] = ["GET", "HEAD", "OPTIONS", "POST", "PUT", "PATCH", "DELETE", "QUERY"];
 
 /** What the raw request form holds, as typed. */
 export interface RawRequestForm {
@@ -92,4 +94,51 @@ export function buildRawRequest(form: RawRequestForm): RawRequestResult {
       ...(!form.authenticate && { authenticate: false }),
     },
   };
+}
+
+const AUTHORIZATION_HEADERS = ["authorization", "proxy-authorization", "rpp-authorization"];
+
+/**
+ * The raw request form for sending a recorded request again. The record holds what was sent after redaction, so secrets
+ * are gone: credentials are added again by the connection (`authenticate`), and any other value that was redacted is left
+ * as `[REDACTED]` for the user to replace; `hasRedactions` says whether there is one. Headers the transport owns
+ * (RPP-Cltrid, Accept, Content-Type, ...) are left out, so a replay gets a new transaction id.
+ */
+export function formFromExchange(request: RequestSnapshot, baseUrl: string): { form: RawRequestForm; hasRedactions: boolean } {
+  let target = request.url;
+  let query = "";
+  try {
+    const url = new URL(request.url);
+    const base = new URL(baseUrl);
+    if (!base.pathname.endsWith("/")) base.pathname += "/";
+    target = url.origin === base.origin && url.pathname.startsWith(base.pathname) ? url.pathname.slice(base.pathname.length) : `${url.origin}${url.pathname}`;
+    query = [...url.searchParams].map(([name, value]) => `${name}=${value}`).join("\n");
+  } catch {
+    // An address that does not parse is shown as recorded, for the user to fix.
+  }
+
+  const headers = Object.entries(request.headers).filter(([name]) => !OWNED_HEADERS.has(name.toLowerCase()));
+  const body = request.body === undefined ? "" : formatJson(request.body);
+  const method = RAW_METHODS.find((known) => known === request.method.toUpperCase()) ?? "GET";
+
+  return {
+    form: {
+      method,
+      target,
+      query,
+      headers: headers.map(([name, value]) => `${name}: ${value}`).join("\n"),
+      body,
+      clientTransactionId: "",
+      authenticate: AUTHORIZATION_HEADERS.some((name) => request.headers[name] === REDACTED),
+    },
+    hasRedactions: [query, body, ...headers.map(([, value]) => value)].some((text) => text.includes(REDACTED)),
+  };
+}
+
+function formatJson(text: string): string {
+  try {
+    return JSON.stringify(JSON.parse(text), null, 2);
+  } catch {
+    return text;
+  }
 }

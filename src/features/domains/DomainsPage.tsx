@@ -12,7 +12,8 @@ import { ChangePanel } from "./ChangePanel";
 import { CheckPanel } from "./CheckPanel";
 import { DeletePanel } from "./DeletePanel";
 import { InfoPanel } from "./InfoPanel";
-import { RegisterPanel } from "./RegisterPanel";
+import { RegisterPanel, type RegisterClone } from "./RegisterPanel";
+import { cloneValuesOf } from "./formValues";
 import { RenewPanel } from "./RenewPanel";
 import { RestorePanel } from "./RestorePanel";
 import { TransferPanel } from "./TransferPanel";
@@ -29,6 +30,7 @@ export function DomainsPage() {
   const [params] = useSearchParams();
   const [workflow, setWorkflow] = useState<WorkflowId>(() => WORKFLOWS.find((id) => id === params.get("tab")) ?? "info");
   const [name, setName] = useState(() => params.get("name") ?? "");
+  const [clone, setClone] = useState<RegisterClone>();
   const [lookUpAtOnce] = useState(() => params.get("run") === "1");
 
   const labels: Record<WorkflowId, string> = {
@@ -72,9 +74,19 @@ export function DomainsPage() {
 
   const panelProps = { name, onNameChange: setName };
   const panels: Record<WorkflowId, ReactNode> = {
-    info: <InfoPanel {...panelProps} startNow={lookUpAtOnce} />,
+    info: (
+      <InfoPanel
+        {...panelProps}
+        startNow={lookUpAtOnce}
+        onClone={(domain) => {
+          setClone((current) => ({ serial: (current?.serial ?? 0) + 1, from: domain.name, values: cloneValuesOf(domain) }));
+          setName("");
+          setWorkflow("register");
+        }}
+      />
+    ),
     check: <CheckPanel {...panelProps} onRegister={() => setWorkflow("register")} />,
-    register: <RegisterPanel {...panelProps} />,
+    register: <RegisterPanel {...panelProps} clone={clone} />,
     change: <ChangePanel {...panelProps} />,
     renew: <RenewPanel {...panelProps} />,
     restore: <RestorePanel {...panelProps} />,

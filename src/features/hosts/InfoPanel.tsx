@@ -6,10 +6,13 @@ import { SubmitButton } from "../shared/SubmitButton";
 import { tryParseHostName } from "@/application/hosts/hostWorkflows";
 import { useHostStore, useHostWorkflows } from "./hostHooks";
 import { HostDetails } from "./HostDetails";
-import { NameField, type PanelProps } from "./parts";
+import { NameField, type AddressValues, type PanelProps } from "./parts";
+import { CloneAction } from "../shared/CloneAction";
+import { editOf } from "@/application/hosts/hostData";
+import type { Host } from "@/rpp/core/types/objects";
 
 /** `startNow` asks for the info of the host name as soon as the panel is shown, as when a link leads here. */
-export function InfoPanel({ name, onNameChange, startNow = false }: PanelProps & { startNow?: boolean }) {
+export function InfoPanel({ name, onNameChange, onClone, startNow = false }: PanelProps & { startNow?: boolean; onClone(host: Host, values: AddressValues): void }) {
   const workflows = useHostWorkflows();
   const store = useHostStore();
   const info = useOperation(
@@ -42,7 +45,12 @@ export function InfoPanel({ name, onNameChange, startNow = false }: PanelProps &
         </div>
       </form>
       <OperationOutcome operation={info} success={t("hosts.info.success", { host: tryParseHostName(info.variables ?? "")?.name ?? "the host" })}>
-        {(host) => <HostDetails host={host} />}
+        {(host) => (
+          <div className="flex flex-col gap-6">
+            <CloneAction onClone={() => onClone(host, { addresses: editOf(host).addresses.map((value) => ({ value })) })} hint={t("hosts.info.cloneHint")} />
+            <HostDetails host={host} />
+          </div>
+        )}
       </OperationOutcome>
     </div>
   );

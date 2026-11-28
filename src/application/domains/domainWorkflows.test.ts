@@ -184,8 +184,22 @@ describe("transfer", () => {
     const request = last();
     expect(request).toMatchObject({ method: "POST", path: "/rpp/domainNames/example.test/processes/transferProcesses" });
     expect(request.headers.get("RPP-Authorization")).toBe(`authinfo value=${btoa("My Secret")}`);
-    expect(request.body).toEqual({ "@type": "domainTransferProcess", transferPeriod: { "@type": "period", value: 1, unit: "y" } });
+    expect(request.body).toEqual({ "@type": "domainTransferProcess", transferDir: "pull", transferPeriod: { "@type": "period", value: 1, unit: "y" } });
     expect(JSON.stringify(request.body)).not.toContain("Secret");
+  });
+
+  it("pushes to a designated gaining client, with no password", async () => {
+    const { workflows, last } = setup({ "@type": "domainTransferProcess", trStatus: "pending", transferDir: "push" });
+    await workflows.transfer.push("example.test", { gainingClientId: "other-registrar", period: { value: 2, unit: "y" } });
+    const request = last();
+    expect(request).toMatchObject({ method: "POST", path: "/rpp/domainNames/example.test/processes/transferProcesses" });
+    expect(request.headers.get("RPP-Authorization")).toBeNull();
+    expect(request.body).toEqual({
+      "@type": "domainTransferProcess",
+      transferDir: "push",
+      gainingClientId: "other-registrar",
+      transferPeriod: { "@type": "period", value: 2, unit: "y" },
+    });
   });
 
   it("reads, cancels, approves and rejects the latest transfer", async () => {

@@ -10,7 +10,7 @@ import { Callout } from "@/components/ui/callout";
 import { t } from "@/i18n";
 import { ChangePanel } from "./ChangePanel";
 import { CheckPanel } from "./CheckPanel";
-import { CreatePanel } from "./CreatePanel";
+import { CreatePanel, type CreateClone } from "./CreatePanel";
 import { DeletePanel } from "./DeletePanel";
 import { InfoPanel } from "./InfoPanel";
 
@@ -24,6 +24,7 @@ export function HostsPage() {
   const [params] = useSearchParams();
   const [workflow, setWorkflow] = useState<WorkflowId>(() => WORKFLOW_IDS.find((id) => id === params.get("tab")) ?? "info");
   const [name, setName] = useState(() => params.get("name") ?? "");
+  const [clone, setClone] = useState<CreateClone>();
   const [lookUpAtOnce] = useState(() => params.get("run") === "1");
 
   const workflows = [
@@ -75,9 +76,19 @@ export function HostsPage() {
 
   const panelProps = { name, onNameChange: setName };
   const panels: Record<WorkflowId, ReactNode> = {
-    info: <InfoPanel {...panelProps} startNow={lookUpAtOnce} />,
+    info: (
+      <InfoPanel
+        {...panelProps}
+        startNow={lookUpAtOnce}
+        onClone={(host, values) => {
+          setClone((current) => ({ serial: (current?.serial ?? 0) + 1, from: host.hostName, values }));
+          setName("");
+          setWorkflow("create");
+        }}
+      />
+    ),
     check: <CheckPanel {...panelProps} onCreate={() => setWorkflow("create")} />,
-    create: <CreatePanel {...panelProps} />,
+    create: <CreatePanel {...panelProps} clone={clone} />,
     change: <ChangePanel {...panelProps} />,
     delete: <DeletePanel {...panelProps} />,
   };

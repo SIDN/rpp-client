@@ -217,10 +217,23 @@ export function createDomainWorkflows(client: RppClient) {
     transfer: {
       /** Asks for the domain to be transferred to this client; the password goes in `RPP-Authorization`, never the body. */
       async request(input: string, transfer: { authInfo: string; period?: PeriodInput }, options: Signal = {}): Promise<OperationSuccess<TransferProcess>> {
-        const body = { "@type": "domainTransferProcess", ...(transfer.period && { transferPeriod: periodOf(transfer.period) }) };
+        const body = { "@type": "domainTransferProcess", transferDir: "pull", ...(transfer.period && { transferPeriod: periodOf(transfer.period) }) };
         return typed(
           processOf("transfer").create(parseDomainName(input).name, body, { ...options, authorization: { value: transfer.authInfo } }),
         );
+      },
+      /**
+       * Push transfer (data objects §2.7.7, §10.1.1.1): the sponsoring client designates the gaining client. No password goes
+       * with it, because only the sponsoring client may start one; the gaining client then approves or rejects it.
+       */
+      async push(input: string, transfer: { gainingClientId: string; period?: PeriodInput }, options: Signal = {}): Promise<OperationSuccess<TransferProcess>> {
+        const body = {
+          "@type": "domainTransferProcess",
+          transferDir: "push",
+          gainingClientId: transfer.gainingClientId,
+          ...(transfer.period && { transferPeriod: periodOf(transfer.period) }),
+        };
+        return typed(processOf("transfer").create(parseDomainName(input).name, body, options));
       },
       async status(input: string, options: Signal = {}): Promise<OperationSuccess<TransferProcess>> {
         return typed(processOf("transfer").read(parseDomainName(input).name, "latest", options));
@@ -229,11 +242,11 @@ export function createDomainWorkflows(client: RppClient) {
       async cancel(input: string, options: Signal = {}): Promise<OperationSuccess<unknown>> {
         return processOf("transfer").delete(parseDomainName(input).name, "latest", options);
       },
-      /** The sponsoring client lets the transfer go ahead. */
+      /** The client that has to decide (the sponsoring client of a pull, the gaining client of a push) lets the transfer go ahead. */
       async approve(input: string, options: Signal = {}): Promise<OperationSuccess<unknown>> {
         return processOf("transfer").approve(parseDomainName(input).name, "latest", options);
       },
-      /** The sponsoring client refuses it. */
+      /** The same client refuses it. */
       async reject(input: string, options: Signal = {}): Promise<OperationSuccess<unknown>> {
         return processOf("transfer").reject(parseDomainName(input).name, "latest", undefined, options);
       },

@@ -5,12 +5,17 @@ import { Choice } from "@/components/ui/choice";
 import { OperationOutcome } from "../shared/OperationOutcome";
 import { SubmitButton } from "../shared/SubmitButton";
 import { useOperation } from "../shared/useOperation";
-import { useContactStore, useContactWorkflows } from "./contactHooks";
+import { useContactForm, useContactStore, useContactWorkflows } from "./contactHooks";
+import { CloneAction } from "../shared/CloneAction";
+import { dataOf } from "@/application/contacts/contactCard";
+import type { Contact } from "@/rpp/core/types/objects";
+import { toValues, type ContactValues } from "./formValues";
 import { ContactDetails } from "./ContactDetails";
 import { IdField, type PanelProps } from "./parts";
 
 /** `startNow` asks for the info of the identifier as soon as the panel is shown, as when a link leads here. */
-export function InfoPanel({ id, onIdChange, startNow = false }: PanelProps & { startNow?: boolean }) {
+export function InfoPanel({ id, onIdChange, onClone, startNow = false }: PanelProps & { startNow?: boolean; onClone(contact: Contact, values: ContactValues): void }) {
+  const shape = useContactForm();
   const workflows = useContactWorkflows();
   const store = useContactStore();
   const { register, handleSubmit } = useForm({ defaultValues: { authInfo: false } });
@@ -44,7 +49,16 @@ export function InfoPanel({ id, onIdChange, startNow = false }: PanelProps & { s
         </div>
       </form>
       <OperationOutcome operation={info} success={t("contacts.info.success", { contact: info.variables?.id.trim() || "the contact" })}>
-        {(contact) => <ContactDetails contact={contact} />}
+        {(contact) => (
+          <div className="flex flex-col gap-6">
+            <CloneAction
+              disabled={shape.status !== "ready"}
+              onClone={() => shape.status === "ready" && onClone(contact, toValues(dataOf(contact, shape.mode)))}
+              hint={t("contacts.info.cloneHint")}
+            />
+            <ContactDetails contact={contact} />
+          </div>
+        )}
       </OperationOutcome>
     </div>
   );

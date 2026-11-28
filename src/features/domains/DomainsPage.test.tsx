@@ -141,6 +141,29 @@ describe("domain names screen", () => {
     expect(calls[0]).toMatchObject({ method: "GET", path: "/domainNames/example.test" });
   });
 
+  it("clones a domain to the Register tab, without its name, and registers a new one from it", async () => {
+    const { calls } = renderPage((request) => (request.method === "GET" ? answer(DOMAIN) : answer({ ...DOMAIN, name: "other.test" }, { status: 201 })), undefined, "/domains?name=example.test&tab=info&run=1");
+    await waitFor(() => expect(panel().getByText("Found example.test")).toBeInTheDocument());
+    fireEvent.click(panel().getByRole("button", { name: "Clone" }));
+
+    expect(screen.getByRole("tab", { name: "Register" })).toHaveAttribute("aria-selected", "true");
+    expect(panel().getByText("Details copied from example.test")).toBeInTheDocument();
+    expect(panel().getByLabelText("Domain name")).toHaveValue("");
+    expect(panel().getByLabelText("Registrant")).toHaveValue("C-1");
+    expect(panel().getByLabelText("Name server 1")).toHaveValue("ns1.example.test");
+    expect(panel().getByLabelText("Identifier of contact 1")).toHaveValue("C-2");
+
+    typeName("other.test");
+    fireEvent.click(panel().getByRole("button", { name: "Register domain" }));
+    await waitFor(() => expect(calls).toHaveLength(2));
+    expect(calls[1]).toMatchObject({
+      method: "POST",
+      path: "/domainNames",
+      body: { name: "other.test", registrant: { id: "C-1" }, contacts: [{ label: "tech", object: { id: "C-2" } }], nameservers: [{ hostName: "ns1.example.test" }] },
+    });
+    expect(JSON.stringify(calls[1]?.body)).not.toContain("clientHold");
+  });
+
   it("looks a domain up and shows all of it", async () => {
     const { calls } = renderPage(() => answer(DOMAIN));
     typeName(" example.test ");
@@ -271,6 +294,19 @@ describe("check and register", () => {
         processes: { createProcess: [{ period: { value: 2, unit: "y" } }] },
       },
     });
+  });
+
+  it("fills in a generated transfer code of 20 characters when registering", async () => {
+    const { calls } = renderPage(() => answer(DOMAIN, { status: 201 }));
+    openTab("Register");
+    typeName("example.test");
+    fireEvent.click(panel().getByRole("button", { name: "Generate code" }));
+    const code = (panel().getByLabelText(/^Transfer password/) as HTMLInputElement).value;
+    expect(code).toHaveLength(20);
+    expect(panel().getByLabelText(/^Transfer password/)).toHaveAttribute("type", "text");
+    fireEvent.click(panel().getByRole("button", { name: "Register domain" }));
+    await waitFor(() => expect(calls).toHaveLength(1));
+    expect(calls[0]?.body).toMatchObject({ authInfo: { authdata: code } });
   });
 
   it("lets a contact's role be chosen from admin, billing and tech only, and asks for one", async () => {
@@ -522,11 +558,31 @@ describe("transfer", () => {
     expect(panel().getByText("THEM")).toBeInTheDocument();
   });
 
+  it("pushes the domain to a designated registrar, after asking, with no password", async () => {
+    const { calls } = renderPage(() => answer({ "@type": "domainTransferProcess", trStatus: "pending", transferDir: "push", gainingClientId: "other-registrar", reqClientId: "ME", requestDate: "2026-01-01T00:00:00Z", actClientId: "other-registrar", actionDate: "2026-01-06T00:00:00Z" }));
+    openTab("Transfer");
+    typeName("example.test");
+    fireEvent.click(panel().getByRole("radio", { name: /^Push the domain to another registrar/ }));
+    expect(panel().queryByLabelText("Transfer password")).not.toBeInTheDocument();
+    expect(panel().getByRole("button", { name: "Push the domain" })).toBeDisabled();
+
+    fireEvent.change(panel().getByLabelText("Receiving registrar"), { target: { value: " other-registrar " } });
+    fireEvent.click(panel().getByRole("button", { name: "Push the domain" }));
+    expect(calls).toHaveLength(0);
+    const confirm = panel().getByRole("group", { name: "Push example.test to other-registrar?" });
+    fireEvent.click(within(confirm).getByRole("button", { name: "Push example.test" }));
+
+    await waitFor(() => expect(panel().getByText("The registry took the push transfer")).toBeInTheDocument());
+    expect(calls[0]).toMatchObject({ method: "POST", path: "/domainNames/example.test/processes/transferProcesses", body: { "@type": "domainTransferProcess", transferDir: "push", gainingClientId: "other-registrar" } });
+    expect(calls[0]?.headers.get("RPP-Authorization")).toBeNull();
+    expect(panel().getAllByText("other-registrar").length).toBeGreaterThanOrEqual(1);
+  });
+
   it("asks before it approves, and then approves the latest transfer", async () => {
     const { calls } = renderPage(() => answer(undefined));
     openTab("Transfer");
     typeName("example.test");
-    fireEvent.click(panel().getByRole("radio", { name: /Approve a transfer away from you/ }));
+    fireEvent.click(panel().getByRole("radio", { name: /^Approve a transfer/ }));
     fireEvent.click(panel().getByRole("button", { name: "Approve the transfer" }));
     expect(calls).toHaveLength(0);
     const confirm = panel().getByRole("group", { name: "Approve the transfer of example.test?" });

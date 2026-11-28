@@ -172,6 +172,17 @@ describe("check and create", () => {
     expect(panel().getByLabelText("Host name")).toHaveValue("ns2.example.test");
   });
 
+  it("clones a host to the Create tab with its addresses and no name", async () => {
+    renderPage(() => answer(HOST), discoveryWith(["host"]), "/hosts?tab=info&name=ns1.example.test&run=1");
+    await panel().findByText("Found ns1.example.test");
+    press("Clone");
+    expect(screen.getByRole("tab", { name: "Create" })).toHaveAttribute("aria-selected", "true");
+    expect(panel().getByText("Details copied from ns1.example.test")).toBeInTheDocument();
+    expect(panel().getByLabelText("Host name")).toHaveValue("");
+    expect(panel().getByLabelText("IP address 1")).toHaveValue("192.0.2.1");
+    expect(panel().getByLabelText("IP address 2")).toHaveValue("2001:db8::1");
+  });
+
   it("creates a host with its ns record and a record for each address", async () => {
     const { calls } = renderPage(() => answer(HOST, { status: 201 }));
     openTab("Create");

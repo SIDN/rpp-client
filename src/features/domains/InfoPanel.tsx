@@ -5,6 +5,8 @@ import { HOSTS_FILTERS, type HostsFilter } from "@/application/domains/domainWor
 import { Choice } from "@/components/ui/choice";
 import { Field, Select } from "@/components/ui/field";
 import { useDomainStore } from "./domainCache";
+import { CloneAction } from "../shared/CloneAction";
+import type { DomainName } from "@/rpp/core/types/objects";
 import { DomainDetails } from "./DomainDetails";
 import { OperationOutcome } from "../shared/OperationOutcome";
 import { NameField, type PanelProps } from "./parts";
@@ -13,7 +15,7 @@ import { SubmitButton } from "../shared/SubmitButton";
 import { useOperation } from "../shared/useOperation";
 
 /** `startNow` asks for the info of the name as soon as the panel is shown, as when a link leads here. */
-export function InfoPanel({ name, onNameChange, startNow = false }: PanelProps & { startNow?: boolean }) {
+export function InfoPanel({ name, onNameChange, onClone, startNow = false }: PanelProps & { startNow?: boolean; onClone(domain: DomainName): void }) {
   const workflows = useDomainWorkflows();
   const store = useDomainStore();
   const { register, handleSubmit } = useForm<{ authInfo: boolean; hostsFilter: HostsFilter | "" }>({ defaultValues: { authInfo: false, hostsFilter: "" } });
@@ -60,7 +62,12 @@ export function InfoPanel({ name, onNameChange, startNow = false }: PanelProps &
         </div>
       </form>
       <OperationOutcome operation={info} success={t("domains.info.success", { name: info.variables?.name ?? t("domains.name.generic") })}>
-        {(domain) => <DomainDetails domain={domain} />}
+        {(domain) => (
+          <div className="flex flex-col gap-6">
+            <CloneAction onClone={() => onClone(domain)} hint={t("domains.info.cloneHint")} />
+            <DomainDetails domain={domain} />
+          </div>
+        )}
       </OperationOutcome>
     </div>
   );

@@ -1,4 +1,5 @@
 import { t } from "@/i18n";
+import { TransferCodeInput } from "../shared/TransferCodeInput";
 import { useEffect } from "react";
 import { FormProvider, useForm } from "react-hook-form";
 import { useDiscoveryState } from "@/app/discovery-context";
@@ -8,7 +9,8 @@ import { Field, Input, Select } from "@/components/ui/field";
 import { useDomainStore } from "./domainCache";
 import { DomainDetails } from "./DomainDetails";
 import { DnssecFields, DNSSEC_DEFAULTS, dnssecOf, type DnssecValues } from "./DnssecFields";
-import { domainDataOf, periodOf } from "./formValues";
+import { domainDataOf, periodOf, type CloneSource } from "./formValues";
+import { Callout } from "@/components/ui/callout";
 import { OperationOutcome } from "../shared/OperationOutcome";
 import { DomainDataFields, NameField, PeriodFields, type DomainDataValues, type PanelProps, type PeriodValues } from "./parts";
 import { useDomainWorkflows } from "./useDomainWorkflows";
@@ -22,9 +24,11 @@ interface RegisterValues extends PeriodValues, DomainDataValues, DnssecValues {
   lgr: string;
 }
 
+export type RegisterClone = CloneSource<Partial<RegisterValues>>;
+
 const DEFAULTS: RegisterValues = { periodValue: "", periodUnit: "y", registrant: "", contacts: [], nameservers: [], authInfo: "", uName: "", lgr: "", ...DNSSEC_DEFAULTS };
 
-export function RegisterPanel({ name, onNameChange }: PanelProps) {
+export function RegisterPanel({ name, onNameChange, clone }: PanelProps & { clone?: RegisterClone }) {
   const workflows = useDomainWorkflows();
   const store = useDomainStore();
   const form = useForm<RegisterValues>({ defaultValues: DEFAULTS });
@@ -37,6 +41,13 @@ export function RegisterPanel({ name, onNameChange }: PanelProps) {
   useEffect(() => {
     if (defaultLgr && !form.getValues("lgr")) form.setValue("lgr", defaultLgr);
   }, [defaultLgr, form]);
+
+  const serial = clone?.serial;
+  useEffect(() => {
+    if (clone) form.reset({ ...DEFAULTS, lgr: form.getValues("lgr"), ...clone.values });
+    // Only a new clone resets the form; edits made since must survive a re-render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [serial, form]);
 
   const register = useOperation(
     (input: RegisterInput, signal) => workflows.register(input, { signal }),
@@ -61,6 +72,11 @@ export function RegisterPanel({ name, onNameChange }: PanelProps) {
     <div className="flex flex-col gap-6">
       <FormProvider {...form}>
         <form onSubmit={submit} noValidate className="flex max-w-xl flex-col gap-6">
+          {clone && (
+            <Callout tone="info" title={t("domains.register.cloned", { name: clone.from })}>
+              {t("domains.register.clonedDetail")}
+            </Callout>
+          )}
           <NameField name={name} onNameChange={onNameChange} />
           <Field
             label={t("domains.register.unicodeName")}
@@ -88,7 +104,7 @@ export function RegisterPanel({ name, onNameChange }: PanelProps) {
           <DomainDataFields />
           <DnssecFields />
           <Field label={t("domains.register.transferPassword")} hint={t("domains.register.transferPasswordHint")}>
-            {(control) => <Input {...control} type="password" autoComplete="off" className="max-w-64" {...form.register("authInfo")} />}
+            {(control) => <TransferCodeInput name="authInfo" control={control} />}
           </Field>
           <div>
             <SubmitButton pending={register.pending}>{t("domains.register.submit")}</SubmitButton>

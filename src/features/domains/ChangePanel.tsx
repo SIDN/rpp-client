@@ -1,9 +1,10 @@
 import { t } from "@/i18n";
+import { TransferCodeInput } from "../shared/TransferCodeInput";
 import { FormProvider, useForm, useWatch, type DeepPartial } from "react-hook-form";
 import { buildDomainPatch, CLIENT_STATUSES, describePatchOperation, dnssecEditOf, editOf, type AuthInfoEdit } from "@/application/domains/domainPatch";
 import { Callout } from "@/components/ui/callout";
 import { Choice } from "@/components/ui/choice";
-import { Field, Input } from "@/components/ui/field";
+import { Field } from "@/components/ui/field";
 import { DnssecFields, type DnssecValues } from "./DnssecFields";
 import type { DomainName } from "@/rpp/core/types/objects";
 import type { PatchOperation } from "@/rpp/operations/patch";
@@ -89,7 +90,7 @@ function ChangeForm({ domain, change }: { domain: DomainName; change: Operation<
           <Choice type="radio" value="remove" label={t("domains.change.removePassword")} {...form.register("authAction")} />
           {values.authAction === "set" && (
             <Field label={t("domains.change.newTransferPassword")}>
-              {(control) => <Input {...control} type="password" autoComplete="off" className="max-w-64" {...form.register("authValue")} />}
+              {(control) => <TransferCodeInput name="authValue" control={control} />}
             </Field>
           )}
         </fieldset>

@@ -26,6 +26,7 @@ export function TransferResult({ data }: { data: unknown }) {
         </Badge>
       </DefinitionRow>
       <DefinitionRow term={t("shared.transferResult.direction")}>{code(data.transferDir)}</DefinitionRow>
+      {data.gainingClientId !== undefined && <DefinitionRow term={t("shared.transferResult.gainingRegistrar")}>{code(data.gainingClientId)}</DefinitionRow>}
       <DefinitionRow term={t("shared.transferResult.requestedBy")}>{code(data.reqClientId)}</DefinitionRow>
       <DefinitionRow term={t("shared.transferResult.requested")}>{code(data.requestDate)}</DefinitionRow>
       <DefinitionRow term={t("shared.transferResult.actingRegistrar")}>{code(data.actClientId)}</DefinitionRow>

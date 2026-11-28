@@ -14,18 +14,23 @@ import { useDomainWorkflows } from "./useDomainWorkflows";
 import { SubmitButton } from "../shared/SubmitButton";
 import { useOperation } from "../shared/useOperation";
 
-type TransferAction = "request" | "status" | "cancel" | "approve" | "reject";
+type TransferAction = "request" | "push" | "status" | "cancel" | "approve" | "reject";
 
 interface TransferValues extends PeriodValues {
   action: TransferAction;
   authInfo: string;
+  gainingClientId: string;
 }
 
-type TransferCommand = { kind: "request"; name: string; authInfo: string; period?: PeriodInput } | { kind: Exclude<TransferAction, "request">; name: string };
+type TransferCommand =
+  | { kind: "request"; name: string; authInfo: string; period?: PeriodInput }
+  | { kind: "push"; name: string; gainingClientId: string; period?: PeriodInput }
+  | { kind: Exclude<TransferAction, "request" | "push">; name: string };
 
 function transferSuccess(action: TransferAction): string {
   switch (action) {
     case "request": return t("domains.transfer.requestSuccess");
+    case "push": return t("domains.transfer.pushSuccess");
     case "status": return t("domains.transfer.statusSuccess");
     case "cancel": return t("domains.transfer.cancelSuccess");
     case "approve": return t("domains.transfer.approveSuccess");
@@ -36,8 +41,9 @@ function transferSuccess(action: TransferAction): string {
 export function TransferPanel({ name, onNameChange }: PanelProps) {
   const workflows = useDomainWorkflows();
   const store = useDomainStore();
-  const form = useForm<TransferValues>({ defaultValues: { action: "request", authInfo: "", periodValue: "", periodUnit: "y" } });
+  const form = useForm<TransferValues>({ defaultValues: { action: "request", authInfo: "", gainingClientId: "", periodValue: "", periodUnit: "y" } });
   const action = useWatch({ control: form.control, name: "action" });
+  const gainingClientId = useWatch({ control: form.control, name: "gainingClientId" }).trim();
   const target = name.trim();
 
   const transfer = useOperation(
@@ -45,6 +51,8 @@ export function TransferPanel({ name, onNameChange }: PanelProps) {
       switch (command.kind) {
         case "request":
           return workflows.transfer.request(command.name, { authInfo: command.authInfo, period: command.period }, { signal });
+        case "push":
+          return workflows.transfer.push(command.name, { gainingClientId: command.gainingClientId, period: command.period }, { signal });
         case "status":
           return workflows.transfer.status(command.name, { signal });
         case "cancel":
@@ -76,6 +84,7 @@ export function TransferPanel({ name, onNameChange }: PanelProps) {
           <fieldset className="flex flex-col gap-3">
             <legend className="mb-1 font-medium">{t("domains.transfer.whatToDo")}</legend>
             <Choice type="radio" value="request" label={t("domains.transfer.ask")} hint={t("domains.transfer.gainingHint")} {...form.register("action")} />
+            <Choice type="radio" value="push" label={t("domains.transfer.push")} hint={t("domains.transfer.pushHint")} {...form.register("action")} />
             <Choice type="radio" value="status" label={t("domains.transfer.checkStatus")} {...form.register("action")} />
             <Choice type="radio" value="cancel" label={t("domains.transfer.withdraw")} hint={t("domains.transfer.requestingHint")} {...form.register("action")} />
             <Choice type="radio" value="approve" label={t("domains.transfer.approveAway")} hint={t("domains.transfer.sponsoringHint")} {...form.register("action")} />
@@ -91,6 +100,15 @@ export function TransferPanel({ name, onNameChange }: PanelProps) {
             </div>
           )}
 
+          {action === "push" && (
+            <div className="flex flex-col gap-5 border-l-2 border-border pl-5">
+              <Field label={t("domains.transfer.gainingClient")} hint={t("domains.transfer.gainingClientHint")}>
+                {(control) => <Input {...control} autoComplete="off" autoCapitalize="none" spellCheck={false} className="max-w-64 font-mono" {...form.register("gainingClientId")} />}
+              </Field>
+              <PeriodFields label={t("domains.transfer.renewBy")} />
+            </div>
+          )}
+
           {(action === "request" || action === "status") && (
             <div>
               <SubmitButton pending={transfer.pending}>{action === "request" ? t("domains.transfer.submitRequest") : t("domains.transfer.submitStatus")}</SubmitButton>
@@ -98,6 +116,20 @@ export function TransferPanel({ name, onNameChange }: PanelProps) {
           )}
         </form>
       </FormProvider>
+
+      {action === "push" && (
+        <ConfirmAction
+          destructive
+          trigger={t("domains.transfer.pushTrigger")}
+          title={t("domains.transfer.pushTitle", { name: target, client: gainingClientId })}
+          confirmLabel={t("domains.transfer.pushConfirm", { name: target })}
+          disabled={gainingClientId === ""}
+          pending={transfer.pending}
+          onConfirm={() => transfer.start({ kind: "push", name, gainingClientId, period: periodOf(form.getValues()) })}
+        >
+          {t("domains.transfer.pushExplanation", { client: gainingClientId })}
+        </ConfirmAction>
+      )}
 
       {(action === "cancel" || action === "approve" || action === "reject") && (
         <ConfirmAction

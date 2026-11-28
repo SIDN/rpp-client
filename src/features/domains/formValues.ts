@@ -1,6 +1,30 @@
 import { t } from "@/i18n";
 import type { PeriodInput } from "@/application/domains/domainWorkflows";
+import { dnssecEditOf, editOf } from "@/application/domains/domainPatch";
+import type { DomainName } from "@/rpp/core/types/objects";
+import type { DnssecValues } from "./DnssecFields";
 import type { DomainDataValues, PeriodValues } from "./parts";
+
+/** What a new domain can take over from an existing one: its people, name servers and DNSSEC data, but not its name, password or locks. */
+export function cloneValuesOf(domain: DomainName): DomainDataValues & DnssecValues {
+  const edit = editOf(domain);
+  const dnssec = dnssecEditOf(domain);
+  return {
+    registrant: edit.registrant,
+    contacts: edit.contacts,
+    nameservers: edit.nameservers.map((host) => ({ host })),
+    dsRecords: dnssec.ds as unknown as DnssecValues["dsRecords"],
+    keyRecords: dnssec.keys as unknown as DnssecValues["keyRecords"],
+    maxSigLife: dnssec.maxSigLife,
+  };
+}
+
+export interface CloneSource<Values> {
+  /** Changes with every clone, so cloning the same object twice resets the form twice. */
+  serial: number;
+  from: string;
+  values: Values;
+}
 
 export function periodOf(values: PeriodValues): PeriodInput | undefined {
   const text = values.periodValue.trim();

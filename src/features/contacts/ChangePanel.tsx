@@ -1,9 +1,10 @@
 import { FormProvider, useForm, useWatch } from "react-hook-form";
+import { TransferCodeInput } from "../shared/TransferCodeInput";
 import { t } from "@/i18n";
 import { buildContactPatch, CONTACT_CLIENT_STATUSES, dataOf, describeContactOperation, editOf, type ContactEdit, type PostalMode } from "@/application/contacts/contactCard";
 import { Callout } from "@/components/ui/callout";
 import { Choice } from "@/components/ui/choice";
-import { Field, Input } from "@/components/ui/field";
+import { Field } from "@/components/ui/field";
 import type { Contact } from "@/rpp/core/types/objects";
 import type { PatchOperation } from "@/rpp/operations/patch";
 import { OperationOutcome } from "../shared/OperationOutcome";
@@ -82,7 +83,7 @@ function ChangeForm({ contact, change, mode, authInfo, note }: { contact: Contac
             <Choice type="radio" value="set" label={t("contacts.change.authInfoSet")} {...form.register("authAction")} />
             {values.authAction === "set" && (
               <Field label={t("contacts.change.newAuthInfo")} hint={t("contacts.change.newAuthInfoHint")}>
-                {(control) => <Input {...control} type="password" autoComplete="off" className="max-w-64" {...form.register("authValue")} />}
+                {(control) => <TransferCodeInput name="authValue" control={control} />}
               </Field>
             )}
           </fieldset>

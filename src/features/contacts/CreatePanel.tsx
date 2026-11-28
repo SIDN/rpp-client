@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useEffect } from "react";
+import { TransferCodeInput } from "../shared/TransferCodeInput";
 import { t } from "@/i18n";
 import { FormProvider, useForm } from "react-hook-form";
 import { toData, EMPTY_VALUES, type ContactValues } from "./formValues";
-import { Button } from "@/components/ui/button";
+import type { CloneSource } from "../domains/formValues";
 import { Callout } from "@/components/ui/callout";
-import { Field, Input } from "@/components/ui/field";
+import { Field } from "@/components/ui/field";
 import { OperationOutcome } from "../shared/OperationOutcome";
 import { SubmitButton } from "../shared/SubmitButton";
 import { useOperation } from "../shared/useOperation";
@@ -16,14 +17,22 @@ import { IdField, SchemaLoading, SchemaNote, type PanelProps } from "./parts";
 
 type CreateValues = ContactValues & { authInfo: string };
 
+export type CreateClone = CloneSource<ContactValues>;
+
 const ADDRESSES = { both: "both", "card-only": "international", "localized-only": "localized" } as const;
 
-export function CreatePanel({ id, onIdChange }: PanelProps) {
+export function CreatePanel({ id, onIdChange, clone }: PanelProps & { clone?: CreateClone }) {
   const workflows = useContactWorkflows();
   const store = useContactStore();
   const form = useForm<CreateValues>({ defaultValues: { ...EMPTY_VALUES, authInfo: "" } });
   const shape = useContactForm();
-  const [authInfoShown, setAuthInfoShown] = useState(false);
+
+  const serial = clone?.serial;
+  useEffect(() => {
+    if (clone) form.reset({ ...EMPTY_VALUES, authInfo: "", ...clone.values });
+    // Only a new clone resets the form; edits made since must survive a re-render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [serial, form]);
 
   const create = useOperation(
     (input: CreateContactInput, signal) => workflows.create(input, { signal }),
@@ -41,6 +50,11 @@ export function CreatePanel({ id, onIdChange }: PanelProps) {
     <div className="flex flex-col gap-6">
       <FormProvider {...form}>
         <form onSubmit={submit} noValidate className="flex max-w-xl flex-col gap-8">
+          {clone && (
+            <Callout tone="info" title={t("contacts.create.cloned", { id: clone.from })}>
+              {t("contacts.create.clonedDetail")}
+            </Callout>
+          )}
           <IdField id={id} onIdChange={onIdChange} />
           {shape.status === "loading" ? (
             <SchemaLoading />
@@ -50,14 +64,7 @@ export function CreatePanel({ id, onIdChange }: PanelProps) {
               <ContactFields withKind addresses={ADDRESSES[shape.mode]} />
               {shape.authInfo && (
                 <Field label={t("contacts.create.authInfo")} hint={t("contacts.create.authInfoHint")}>
-                  {(control) => (
-                    <div className="flex items-center gap-2">
-                      <Input {...control} type={authInfoShown ? "text" : "password"} autoComplete="off" className="max-w-64" {...form.register("authInfo")} />
-                      <Button variant="ghost" size="sm" aria-pressed={authInfoShown} onClick={() => setAuthInfoShown((current) => !current)}>
-                        {authInfoShown ? t("contacts.create.hide") : t("contacts.create.show")}
-                      </Button>
-                    </div>
-                  )}
+                  {(control) => <TransferCodeInput name="authInfo" control={control} />}
                 </Field>
               )}
               <Callout tone="info" title={t("contacts.create.requirementsVary")}>

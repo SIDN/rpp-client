@@ -238,6 +238,21 @@ describe("check and create", () => {
     expect(calls).toHaveLength(0);
   });
 
+  it("clones a contact to the Create tab with its details and no identifier", async () => {
+    renderPage(() => answer(CONTACT), discoveryWith(["contact"]), "none", "/contacts?tab=info&name=FO-1&run=1");
+    await panel().findByText("Found FO-1");
+    fireEvent.click(await waitFor(() => {
+      const button = panel().getByRole("button", { name: "Clone" });
+      expect(button).toBeEnabled();
+      return button;
+    }));
+    expect(screen.getByRole("tab", { name: "Create" })).toHaveAttribute("aria-selected", "true");
+    expect(await panel().findByText("Details copied from FO-1")).toBeInTheDocument();
+    expect(panel().getByLabelText("Contact identifier")).toHaveValue("");
+    expect(panel().getByLabelText("Name")).toHaveValue("John Doe");
+    expect(panel().getByLabelText("Email")).toHaveValue("jdoe@example.test");
+  });
+
   it("shows the international and the localized address together on Create, each with its own country", async () => {
     renderPage(() => answer(CONTACT, { status: 201 }));
     await openForm("Create");

@@ -14,25 +14,26 @@ const renderPage = () =>
 describe("settings screen", () => {
   beforeEach(() => localStorage.clear());
 
-  it("has Synthesize data, off to begin with", () => {
+  it("has one Synthesize data option, on to begin with and with a warning", () => {
     renderPage();
     expect(screen.getByRole("heading", { level: 1, name: "Settings" })).toBeInTheDocument();
-    expect(screen.getByRole("checkbox", { name: /Synthesize data/ })).not.toBeChecked();
-    expect(screen.queryByText("Synthesized data is on")).toBeNull();
-  });
-
-  it("turns it on with a warning, keeps it for the next visit, and turns it off again", () => {
-    const { unmount } = renderPage();
-    fireEvent.click(screen.getByRole("checkbox", { name: /Synthesize data/ }));
+    expect(screen.getAllByRole("checkbox", { name: /Synthesize/ })).toHaveLength(1);
     expect(screen.getByRole("checkbox", { name: /Synthesize data/ })).toBeChecked();
     expect(screen.getByText("Synthesized data is on")).toBeInTheDocument();
-    expect(JSON.parse(localStorage.getItem("rpp-client.settings") ?? "{}")).toMatchObject({ synthesizeData: true });
+  });
+
+  it("turns it off, keeps that for the next visit, and turns it on again", () => {
+    const { unmount } = renderPage();
+    fireEvent.click(screen.getByRole("checkbox", { name: /Synthesize data/ }));
+    expect(screen.getByRole("checkbox", { name: /Synthesize data/ })).not.toBeChecked();
+    expect(screen.queryByText("Synthesized data is on")).toBeNull();
+    expect(JSON.parse(localStorage.getItem("rpp-client.settings") ?? "{}")).toMatchObject({ synthesizeData: false });
     unmount();
 
     renderPage();
-    expect(screen.getByRole("checkbox", { name: /Synthesize data/ })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: /Synthesize data/ })).not.toBeChecked();
     fireEvent.click(screen.getByRole("checkbox", { name: /Synthesize data/ }));
-    expect(JSON.parse(localStorage.getItem("rpp-client.settings") ?? "{}")).toMatchObject({ synthesizeData: false });
-    expect(screen.queryByText("Synthesized data is on")).toBeNull();
+    expect(JSON.parse(localStorage.getItem("rpp-client.settings") ?? "{}")).toMatchObject({ synthesizeData: true });
+    expect(screen.getByText("Synthesized data is on")).toBeInTheDocument();
   });
 });

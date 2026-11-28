@@ -7,6 +7,7 @@ import { Choice } from "@/components/ui/choice";
 import { Field, Input } from "@/components/ui/field";
 import type { RestoreProcess } from "@/rpp/core/types/objects";
 import { useDomainStore } from "./domainCache";
+import { RgpFlow } from "./RgpFlow";
 import { reportOf, validateReport, type RestoreReportValues } from "./formValues";
 import { OperationOutcome } from "../shared/OperationOutcome";
 import { NameField, type PanelProps } from "./parts";
@@ -176,7 +177,12 @@ export function RestorePanel({ name, onNameChange }: PanelProps) {
         </form>
       </FormProvider>
       <OperationOutcome operation={restore} success={restore.variables?.kind === "status" ? t("domains.restore.statusSuccess") : t("domains.restore.requestSuccess")}>
-        {(process) => <RestoreResult process={process} />}
+        {(process) => (
+          <div className="flex flex-col gap-6">
+            {restore.variables?.kind === "status" && <RgpFlow process={process} />}
+            <RestoreResult process={process} />
+          </div>
+        )}
       </OperationOutcome>
     </div>
   );

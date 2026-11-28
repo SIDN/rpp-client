@@ -2,6 +2,7 @@ import { DefinitionList, DefinitionRow, Nothing } from "@/components/common/defi
 import { Badge } from "@/components/ui/badge";
 import type { TransferProcess } from "@/rpp/core/types/objects";
 import { t } from "@/i18n";
+import { TransferFlow } from "./TransferFlow";
 
 const isProcess = (data: unknown): data is TransferProcess =>
   typeof data === "object" && data !== null && typeof (data as { trStatus?: unknown }).trStatus === "string";
@@ -19,19 +20,22 @@ export function TransferResult({ data }: { data: unknown }) {
   }
   const code = (value: string | undefined) => (value ? <code>{value}</code> : <Nothing>{t("common.notGiven")}</Nothing>);
   return (
-    <DefinitionList>
-      <DefinitionRow term={t("shared.transferResult.status")}>
-        <Badge tone={statusTone(data.trStatus)} dot>
-          <code>{data.trStatus}</code>
-        </Badge>
-      </DefinitionRow>
-      <DefinitionRow term={t("shared.transferResult.direction")}>{code(data.transferDir)}</DefinitionRow>
-      {data.gainingClientId !== undefined && <DefinitionRow term={t("shared.transferResult.gainingRegistrar")}>{code(data.gainingClientId)}</DefinitionRow>}
-      <DefinitionRow term={t("shared.transferResult.requestedBy")}>{code(data.reqClientId)}</DefinitionRow>
-      <DefinitionRow term={t("shared.transferResult.requested")}>{code(data.requestDate)}</DefinitionRow>
-      <DefinitionRow term={t("shared.transferResult.actingRegistrar")}>{code(data.actClientId)}</DefinitionRow>
-      <DefinitionRow term={t("shared.transferResult.actionDate")}>{code(data.actionDate)}</DefinitionRow>
-      {"expiryDate" in data && <DefinitionRow term={t("shared.transferResult.expiryDate")}>{code(data.expiryDate)}</DefinitionRow>}
-    </DefinitionList>
+    <div className="flex flex-col gap-6">
+      <TransferFlow process={data} />
+      <DefinitionList>
+        <DefinitionRow term={t("shared.transferResult.status")}>
+          <Badge tone={statusTone(data.trStatus)} dot>
+            <code>{data.trStatus}</code>
+          </Badge>
+        </DefinitionRow>
+        <DefinitionRow term={t("shared.transferResult.direction")}>{code(data.transferDir)}</DefinitionRow>
+        {data.gainingClientId !== undefined && <DefinitionRow term={t("shared.transferResult.gainingRegistrar")}>{code(data.gainingClientId)}</DefinitionRow>}
+        <DefinitionRow term={t("shared.transferResult.requestedBy")}>{code(data.reqClientId)}</DefinitionRow>
+        <DefinitionRow term={t("shared.transferResult.requested")}>{code(data.requestDate)}</DefinitionRow>
+        <DefinitionRow term={t("shared.transferResult.actingRegistrar")}>{code(data.actClientId)}</DefinitionRow>
+        <DefinitionRow term={t("shared.transferResult.actionDate")}>{code(data.actionDate)}</DefinitionRow>
+        {"expiryDate" in data && <DefinitionRow term={t("shared.transferResult.expiryDate")}>{code(data.expiryDate)}</DefinitionRow>}
+      </DefinitionList>
+    </div>
   );
 }

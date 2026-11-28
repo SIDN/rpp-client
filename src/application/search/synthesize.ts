@@ -1,6 +1,6 @@
 import { STATUS_VOCABULARIES } from "@/rpp/core/status/statuses";
 import type { RppObject } from "@/rpp/core/types/objects";
-import { isCondition, type QueryCondition, type QueryExpression, type QueryObject, type QueryResults } from "@/rpp/query/queryObject";
+import { isCondition, type QueryCondition, type QueryExpression, type QueryObject, type QueryResults, type QueryScalar } from "@/rpp/query/queryObject";
 import { INCLUDABLE_ELEMENTS, searchableElement, type SearchableElement, type SearchableObjectType } from "@/rpp/query/searchable";
 import { SYNTHETIC_PREFIX } from "../messages/synthesize";
 import { matches, sortKeyCompare } from "./evaluate";
@@ -228,6 +228,28 @@ function conditionsFor(expression: QueryExpression | undefined, shape: number): 
   return [];
 }
 
+const timestampOf = (value: QueryScalar): number | undefined => (typeof value === "string" ? Date.parse(value) : Number.NaN) || undefined;
+
+/**
+ * Timestamps for elements that have both a lower and an upper bound, such as `expiryDate` between two dates: spread
+ * over the range across the shaped objects, where one bound at a time would put them all near the other bound.
+ */
+function rangeValues(objectType: SearchableObjectType, conditions: QueryCondition[], shape: number): Map<string, string> {
+  const values = new Map<string, string>();
+  for (const lower of conditions) {
+    if ((lower.op !== "gt" && lower.op !== "ge") || searchableElement(objectType, lower.element)?.type !== "timestamp") continue;
+    const upper = conditions.find((condition) => condition.element === lower.element && (condition.op === "lt" || condition.op === "le"));
+    if (!upper || !("value" in upper) || Array.isArray(upper.value)) continue;
+    const from = timestampOf(lower.value);
+    const to = timestampOf(upper.value);
+    if (from === undefined || to === undefined || to - from < 2000) continue;
+    const fraction = (((shape * 7) % SHAPED) + 0.5) / SHAPED;
+    const at = Math.floor((from + (to - from) * fraction) / 1000) * 1000;
+    values.set(lower.element, new Date(Math.min(Math.max(at, from + 1000), to - 1000)).toISOString().replace(/\.\d{3}Z$/, "Z"));
+  }
+  return values;
+}
+
 export interface SynthesizeOptions {
   now?: Date;
   /** The top-level domain of synthesized names; default `test`. */
@@ -260,9 +282,11 @@ export function synthesizeSearchResults(
   const pool = Array.from({ length: POOL_SIZE }, (_, index) => {
     const object = BUILDERS[objectType](index, context);
     if (index < SHAPED) {
-      for (const condition of conditionsFor(query.filter, index)) {
+      const conditions = conditionsFor(query.filter, index);
+      const ranged = rangeValues(objectType, conditions, index);
+      for (const condition of conditions) {
         const element = searchableElement(objectType, condition.element);
-        const value = element && satisfying(condition, element, index, context);
+        const value = ranged.has(condition.element) ? ranged.get(condition.element) : element && satisfying(condition, element, index, context);
         if (element && value !== undefined) setAt(object, element, value);
       }
     }

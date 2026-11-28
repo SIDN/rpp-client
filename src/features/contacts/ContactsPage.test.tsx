@@ -544,11 +544,43 @@ describe("transfer and delete", () => {
     expect(panel().getByText("pending")).toBeInTheDocument();
   });
 
+  it("pushes the contact to a designated registrar, after asking, with no password", async () => {
+    const { calls } = renderPage(() => answer({ "@type": "transferProcess", trStatus: "pending", transferDir: "push", gainingClientId: "other-registrar", reqClientId: "ME", requestDate: "2026-01-01T00:00:00Z", actClientId: "other-registrar", actionDate: "2026-01-06T00:00:00Z" }));
+    openTab("Transfer");
+    typeId("FO-1");
+    fireEvent.click(panel().getByRole("radio", { name: /^Push the contact to another registrar/ }));
+    expect(panel().queryByLabelText("Transfer password")).not.toBeInTheDocument();
+    expect(panel().getByRole("button", { name: "Push the contact" })).toBeDisabled();
+
+    fill("Receiving registrar", " other-registrar ");
+    fireEvent.click(panel().getByRole("button", { name: "Push the contact" }));
+    expect(calls).toHaveLength(0);
+    const confirm = panel().getByRole("group", { name: "Push FO-1 to other-registrar?" });
+    fireEvent.click(within(confirm).getByRole("button", { name: "Push FO-1" }));
+
+    await waitFor(() => expect(panel().getByText("The registry took the push transfer")).toBeInTheDocument());
+    expect(calls[0]).toMatchObject({ method: "POST", path: "/contacts/FO-1/processes/transferProcesses", body: { "@type": "transferProcess", transferDir: "push", gainingClientId: "other-registrar" } });
+    expect(calls[0]?.headers.get("RPP-Authorization")).toBeNull();
+    expect(panel().getByRole("region", { name: "Transfer process (push)" })).toBeInTheDocument();
+  });
+
+  it("draws where an approved transfer ended", async () => {
+    renderPage(() => answer({ "@type": "transferProcess", trStatus: "clientApproved", transferDir: "pull", reqClientId: "ME", requestDate: "2026-01-01T00:00:00Z", actClientId: "THEM", actionDate: "2026-01-03T00:00:00Z" }));
+    openTab("Transfer");
+    typeId("FO-1");
+    fireEvent.click(panel().getByRole("radio", { name: /^Check the transfer status/ }));
+    fireEvent.click(panel().getByRole("button", { name: "Check the status" }));
+    const flow = await panel().findByRole("region", { name: "Transfer process (pull)" });
+    const current = within(flow).getAllByRole("listitem").find((item) => item.getAttribute("aria-current") === "step");
+    expect(current).toHaveTextContent("Transferred");
+    expect(current).toHaveTextContent("By registrar THEM");
+  });
+
   it("asks before it approves", async () => {
     const { calls } = renderPage(() => answer(undefined));
     openTab("Transfer");
     typeId("FO-1");
-    fireEvent.click(panel().getByRole("radio", { name: /Approve a transfer away from you/ }));
+    fireEvent.click(panel().getByRole("radio", { name: /^Approve a transfer/ }));
     fireEvent.click(panel().getByRole("button", { name: "Approve the transfer" }));
     expect(calls).toHaveLength(0);
     const confirm = panel().getByRole("group", { name: "Approve the transfer of FO-1?" });

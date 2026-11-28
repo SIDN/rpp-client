@@ -161,6 +161,20 @@ describe("synthesizeSearchResults", () => {
     for (const object of results) expect(matches("domainName", object, query.filter)).toBe(true);
   });
 
+  it("spreads a timestamp with both a lower and an upper bound over the range", () => {
+    const filter: QueryExpression = {
+      and: [
+        { element: "expiryDate", op: "ge", value: "2026-02-01T00:00:00Z" },
+        { element: "expiryDate", op: "lt", value: "2026-03-03T00:00:00Z" },
+      ],
+    };
+    const { results } = synthesizeSearchResults("domainName", { filter, limit: 60 }, { now: NOW });
+    const days = results.map((object) => (Date.parse(object.expiryDate as string) - Date.parse("2026-02-01T00:00:00Z")) / 86400000);
+    expect(results.length).toBeGreaterThanOrEqual(16);
+    expect(Math.min(...days)).toBeLessThan(5);
+    expect(Math.max(...days)).toBeGreaterThan(25);
+  });
+
   it("sorts, pages and is the same every time", () => {
     const query: QueryObject = { sort: [{ element: "expiryDate", direction: "desc" }], limit: 5 };
     const first = synthesizeSearchResults("domainName", query, { now: NOW });

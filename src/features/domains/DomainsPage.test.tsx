@@ -496,6 +496,32 @@ describe("hosts filter", () => {
 });
 
 describe("restore", () => {
+  it("shows where the domain is in the RGP flow when the status is read", async () => {
+    renderPage(() => answer({ "@type": "restoreProcess", restoreStatus: "pendingRestore", requestDate: "2026-01-20T15:30:00Z", reportDueDate: "2026-01-27T15:30:00Z" }));
+    openTab("Restore");
+    typeName("example.test");
+    fireEvent.click(panel().getByRole("radio", { name: "Check the restore status" }));
+    fireEvent.click(panel().getByRole("button", { name: "Check the status" }));
+    const flow = await panel().findByRole("region", { name: "Redemption Grace Period" });
+    const current = within(flow).getAllByRole("listitem").filter((item) => item.getAttribute("aria-current") === "step");
+    expect(current).toHaveLength(1);
+    expect(current[0]).toHaveTextContent("Current position");
+    expect(current[0]).toHaveTextContent("Restore requested");
+    expect(current[0]).toHaveTextContent("Report due by");
+    expect(within(flow).getByText("If the report does not reach the registry in time, the domain goes back to the redemption period.")).toBeInTheDocument();
+  });
+
+  it("says so when the restore status is one it does not know, and marks no position", async () => {
+    renderPage(() => answer({ "@type": "restoreProcess", restoreStatus: "somethingNew" }));
+    openTab("Restore");
+    typeName("example.test");
+    fireEvent.click(panel().getByRole("radio", { name: "Check the restore status" }));
+    fireEvent.click(panel().getByRole("button", { name: "Check the status" }));
+    const flow = await panel().findByRole("region", { name: "Redemption Grace Period" });
+    expect(within(flow).getByText("Unknown restore status somethingNew")).toBeInTheDocument();
+    expect(within(flow).getAllByRole("listitem").some((item) => item.hasAttribute("aria-current"))).toBe(false);
+  });
+
   it("asks for a restore, then sends the report, then reads the status", async () => {
     const { calls } = renderPage(() => answer({ "@type": "restoreProcess", restoreStatus: "pendingRestore" }));
     openTab("Restore");
@@ -576,6 +602,40 @@ describe("transfer", () => {
     expect(calls[0]).toMatchObject({ method: "POST", path: "/domainNames/example.test/processes/transferProcesses", body: { "@type": "domainTransferProcess", transferDir: "push", gainingClientId: "other-registrar" } });
     expect(calls[0]?.headers.get("RPP-Authorization")).toBeNull();
     expect(panel().getAllByText("other-registrar").length).toBeGreaterThanOrEqual(1);
+  });
+
+  const checkStatus = async (process: Record<string, unknown>) => {
+    renderPage(() => answer({ "@type": "domainTransferProcess", reqClientId: "ME", requestDate: "2026-01-01T00:00:00Z", actClientId: "THEM", actionDate: "2026-01-06T00:00:00Z", ...process }));
+    openTab("Transfer");
+    typeName("example.test");
+    fireEvent.click(panel().getByRole("radio", { name: /^Check the transfer status/ }));
+    fireEvent.click(panel().getByRole("button", { name: "Check the status" }));
+    return panel().findByRole("region", { name: /^Transfer process/ });
+  };
+
+  it("draws a pending pull transfer at the decision, with who must act and by when", async () => {
+    const flow = await checkStatus({ trStatus: "pending", transferDir: "pull" });
+    expect(within(flow).getByRole("heading", { name: "Transfer process (pull)" })).toBeInTheDocument();
+    const current = within(flow).getAllByRole("listitem").filter((item) => item.getAttribute("aria-current") === "step");
+    expect(current).toHaveLength(1);
+    expect(current[0]).toHaveTextContent("Awaiting decision");
+    expect(current[0]).toHaveTextContent("Waiting for THEM");
+    expect(current[0]).toHaveTextContent("Decision due by");
+    expect(within(flow).getByText("ME asked to take over the object.")).toBeInTheDocument();
+  });
+
+  it("draws a transfer the registry cancelled as an outcome that ended it", async () => {
+    const flow = await checkStatus({ trStatus: "serverCancelled", transferDir: "push", gainingClientId: "THEM" });
+    const current = within(flow).getAllByRole("listitem").find((item) => item.getAttribute("aria-current") === "step");
+    expect(current).toHaveTextContent("Cancelled");
+    expect(current).toHaveTextContent("By the registry");
+    expect(within(flow).getByText("ME offered the object to THEM.")).toBeInTheDocument();
+  });
+
+  it("names an unknown transfer status and marks no position", async () => {
+    const flow = await checkStatus({ trStatus: "clientEscalated" });
+    expect(within(flow).getByText("Unknown transfer status clientEscalated")).toBeInTheDocument();
+    expect(within(flow).getAllByRole("listitem").filter((item) => item.getAttribute("aria-current") === "step")).toHaveLength(0);
   });
 
   it("asks before it approves, and then approves the latest transfer", async () => {

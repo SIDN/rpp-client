@@ -11,18 +11,23 @@ import { useOperation } from "../shared/useOperation";
 import { useContactStore, useContactWorkflows } from "./contactHooks";
 import { IdField, type PanelProps } from "./parts";
 
-type TransferAction = "request" | "status" | "cancel" | "approve" | "reject";
+type TransferAction = "request" | "push" | "status" | "cancel" | "approve" | "reject";
 
 interface TransferValues {
   action: TransferAction;
   authInfo: string;
+  gainingClientId: string;
 }
 
-type TransferCommand = { kind: "request"; id: string; authInfo: string } | { kind: Exclude<TransferAction, "request">; id: string };
+type TransferCommand =
+  | { kind: "request"; id: string; authInfo: string }
+  | { kind: "push"; id: string; gainingClientId: string }
+  | { kind: Exclude<TransferAction, "request" | "push">; id: string };
 
 function transferSuccess(action: TransferAction): string {
   switch (action) {
     case "request": return t("contacts.transfer.success.request");
+    case "push": return t("contacts.transfer.success.push");
     case "status": return t("contacts.transfer.success.status");
     case "cancel": return t("contacts.transfer.success.cancel");
     case "approve": return t("contacts.transfer.success.approve");
@@ -33,8 +38,9 @@ function transferSuccess(action: TransferAction): string {
 export function TransferPanel({ id, onIdChange }: PanelProps) {
   const workflows = useContactWorkflows();
   const store = useContactStore();
-  const form = useForm<TransferValues>({ defaultValues: { action: "request", authInfo: "" } });
+  const form = useForm<TransferValues>({ defaultValues: { action: "request", authInfo: "", gainingClientId: "" } });
   const action = useWatch({ control: form.control, name: "action" });
+  const gainingClientId = useWatch({ control: form.control, name: "gainingClientId" }).trim();
   const target = id.trim();
 
   const transfer = useOperation(
@@ -42,6 +48,8 @@ export function TransferPanel({ id, onIdChange }: PanelProps) {
       switch (command.kind) {
         case "request":
           return workflows.transfer.request(command.id, { authInfo: command.authInfo }, { signal });
+        case "push":
+          return workflows.transfer.push(command.id, { gainingClientId: command.gainingClientId }, { signal });
         case "status":
           return workflows.transfer.status(command.id, { signal });
         case "cancel":
@@ -73,16 +81,25 @@ export function TransferPanel({ id, onIdChange }: PanelProps) {
           <fieldset className="flex flex-col gap-3">
             <legend className="mb-1 font-medium">{t("contacts.transfer.actionLegend")}</legend>
             <Choice type="radio" value="request" label={t("contacts.transfer.requestLabel")} hint={t("contacts.transfer.requestHint")} {...form.register("action")} />
+            <Choice type="radio" value="push" label={t("contacts.transfer.pushLabel")} hint={t("contacts.transfer.pushHint")} {...form.register("action")} />
             <Choice type="radio" value="status" label={t("contacts.transfer.statusLabel")} {...form.register("action")} />
             <Choice type="radio" value="cancel" label={t("contacts.transfer.cancelLabel")} hint={t("contacts.transfer.cancelHint")} {...form.register("action")} />
-            <Choice type="radio" value="approve" label={t("contacts.transfer.approveLabel")} hint={t("contacts.transfer.sponsoringHint")} {...form.register("action")} />
-            <Choice type="radio" value="reject" label={t("contacts.transfer.rejectLabel")} hint={t("contacts.transfer.sponsoringHint")} {...form.register("action")} />
+            <Choice type="radio" value="approve" label={t("contacts.transfer.approveLabel")} hint={t("contacts.transfer.decidingHint")} {...form.register("action")} />
+            <Choice type="radio" value="reject" label={t("contacts.transfer.rejectLabel")} hint={t("contacts.transfer.decidingHint")} {...form.register("action")} />
           </fieldset>
 
           {action === "request" && (
             <div className="border-l-2 border-border pl-5">
               <Field label={t("contacts.transfer.authInfo")} hint={t("contacts.transfer.authInfoHint")} error={form.formState.errors.authInfo?.message}>
                 {(control) => <Input {...control} type="password" autoComplete="off" className="max-w-64" {...form.register("authInfo")} />}
+              </Field>
+            </div>
+          )}
+
+          {action === "push" && (
+            <div className="border-l-2 border-border pl-5">
+              <Field label={t("contacts.transfer.gainingClient")} hint={t("contacts.transfer.gainingClientHint")}>
+                {(control) => <Input {...control} autoComplete="off" autoCapitalize="none" spellCheck={false} className="max-w-64 font-mono" {...form.register("gainingClientId")} />}
               </Field>
             </div>
           )}
@@ -94,6 +111,20 @@ export function TransferPanel({ id, onIdChange }: PanelProps) {
           )}
         </form>
       </FormProvider>
+
+      {action === "push" && (
+        <ConfirmAction
+          destructive
+          trigger={t("contacts.transfer.pushTrigger")}
+          title={t("contacts.transfer.pushTitle", { target, client: gainingClientId })}
+          confirmLabel={t("contacts.transfer.pushConfirm", { target })}
+          disabled={gainingClientId === ""}
+          pending={transfer.pending}
+          onConfirm={() => transfer.start({ kind: "push", id, gainingClientId })}
+        >
+          {t("contacts.transfer.pushDescription", { client: gainingClientId })}
+        </ConfirmAction>
+      )}
 
       {(action === "cancel" || action === "approve" || action === "reject") && (
         <ConfirmAction

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatDateTime } from "./dateTime";
+import { formatDate, formatDateTime } from "./dateTime";
 
 describe("formatDateTime", () => {
   it("shows UTC when asked to", () => {
@@ -12,5 +12,12 @@ describe("formatDateTime", () => {
 
   it("returns what is not a date as it is", () => {
     expect(formatDateTime("soon", "utc")).toBe("soon");
+  });
+});
+
+describe("formatDate", () => {
+  it("shows the UTC date without the time", () => {
+    expect(formatDate("2025-03-04T23:30:00-02:00", "utc")).toBe("2025-03-05 UTC");
+    expect(formatDate("later")).toBe("later");
   });
 });

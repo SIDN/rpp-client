@@ -104,6 +104,15 @@ describe("transfer", () => {
     expect(JSON.stringify(request.body)).not.toContain("Secret");
   });
 
+  it("pushes to a designated gaining client, with no password", async () => {
+    const { workflows, last } = setup({ "@type": "transferProcess", trStatus: "pending", transferDir: "push" });
+    await workflows.transfer.push("C-1", { gainingClientId: "other-registrar" });
+    const request = last();
+    expect(request).toMatchObject({ method: "POST", path: "/rpp/contacts/C-1/processes/transferProcesses" });
+    expect(request.body).toEqual({ "@type": "transferProcess", transferDir: "push", gainingClientId: "other-registrar" });
+    expect(request.headers.get("RPP-Authorization")).toBeNull();
+  });
+
   it("reads, cancels, approves and rejects the latest transfer", async () => {
     const { workflows, last } = setup({ "@type": "transferProcess", trStatus: "pending" });
     const base = "/rpp/contacts/C-1/processes/transferProcesses/latest";

@@ -4,13 +4,13 @@ import { DEFAULT_SETTINGS, loadSettings, saveSettings } from "./appSettings";
 const storageWith = (value: string | null) => ({ getItem: () => value });
 
 describe("app settings", () => {
-  it("does not synthesize data unless told to", () => {
-    expect(DEFAULT_SETTINGS.synthesizeData).toBe(false);
+  it("synthesizes data unless told not to, as the server cannot search or list yet", () => {
+    expect(DEFAULT_SETTINGS.synthesizeData).toBe(true);
     expect(loadSettings(storageWith(null))).toEqual(DEFAULT_SETTINGS);
   });
 
   it("reads what was stored", () => {
-    const stored = { ...DEFAULT_SETTINGS, synthesizeData: true, defaultBookmarkId: "bm-1", autoConnect: true, messageLimit: 50, processPageSize: 10, timeDisplay: "utc" };
+    const stored = { ...DEFAULT_SETTINGS, synthesizeData: false, defaultBookmarkId: "bm-1", autoConnect: true, messageLimit: 50, processPageSize: 10, timeDisplay: "utc" };
     expect(loadSettings(storageWith(JSON.stringify(stored)))).toEqual(stored);
   });
 
@@ -24,9 +24,9 @@ describe("app settings", () => {
 
   it("falls back per option, keeping the ones that are fine", () => {
     const loaded = loadSettings(
-      storageWith(JSON.stringify({ synthesizeData: true, messageLimit: -3, processPageSize: "many", timeDisplay: "mars", autoConnect: 1, defaultBookmarkId: 4 })),
+      storageWith(JSON.stringify({ synthesizeData: false, messageLimit: -3, processPageSize: "many", timeDisplay: "mars", autoConnect: 1, defaultBookmarkId: 4 })),
     );
-    expect(loaded).toEqual({ ...DEFAULT_SETTINGS, synthesizeData: true });
+    expect(loaded).toEqual({ ...DEFAULT_SETTINGS, synthesizeData: false });
   });
 
   it("waits 5 seconds for a request unless told otherwise, and takes whole seconds from 1 to 300", () => {

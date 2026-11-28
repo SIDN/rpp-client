@@ -5,7 +5,7 @@ export type TimeDisplay = "local" | "utc";
 
 /** What the person has chosen for this client as a whole, not for one connection. Nothing in it is secret. */
 export interface AppSettings {
-  /** Screens show examples this client makes up, instead of asking the server. */
+  /** Screens that support it (Overview, Messages) show examples this client makes up, instead of asking the server. */
   synthesizeData: boolean;
   /** The bookmark the connection screen starts with; undefined when there is none. */
   defaultBookmarkId: string | undefined;
@@ -26,7 +26,8 @@ export interface AppSettings {
 export const TIMEOUT_SECONDS = { min: 1, max: 300 } as const;
 
 export const DEFAULT_SETTINGS: AppSettings = {
-  synthesizeData: false,
+  // On, as the server cannot search or list yet.
+  synthesizeData: true,
   defaultBookmarkId: undefined,
   autoConnect: false,
   messageLimit: 25,

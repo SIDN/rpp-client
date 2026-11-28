@@ -73,6 +73,14 @@ export function createContactWorkflows(client: RppClient) {
         const body = { "@type": "transferProcess", transferDir: "pull" };
         return typed(transferOf().create(parseContactId(id), body, { ...options, authorization: { value: transfer.authInfo } }));
       },
+      /**
+       * Push transfer (data objects §2.7.7, §10.1.1.1): the sponsoring client designates the gaining client. No password goes
+       * with it, because only the sponsoring client may start one; the gaining client then approves or rejects it.
+       */
+      async push(id: string, transfer: { gainingClientId: string }, options: Signal = {}): Promise<OperationSuccess<TransferProcess>> {
+        const body = { "@type": "transferProcess", transferDir: "push", gainingClientId: transfer.gainingClientId };
+        return typed(transferOf().create(parseContactId(id), body, options));
+      },
       async status(id: string, options: Signal = {}): Promise<OperationSuccess<TransferProcess>> {
         return typed(transferOf().read(parseContactId(id), "latest", options));
       },
@@ -80,11 +88,11 @@ export function createContactWorkflows(client: RppClient) {
       async cancel(id: string, options: Signal = {}): Promise<OperationSuccess<unknown>> {
         return transferOf().delete(parseContactId(id), "latest", options);
       },
-      /** The sponsoring client lets the transfer go ahead. */
+      /** The client that has to decide (the sponsoring client of a pull, the gaining client of a push) lets the transfer go ahead. */
       async approve(id: string, options: Signal = {}): Promise<OperationSuccess<unknown>> {
         return transferOf().approve(parseContactId(id), "latest", options);
       },
-      /** The sponsoring client refuses it. */
+      /** The same client refuses it. */
       async reject(id: string, options: Signal = {}): Promise<OperationSuccess<unknown>> {
         return transferOf().reject(parseContactId(id), "latest", undefined, options);
       },

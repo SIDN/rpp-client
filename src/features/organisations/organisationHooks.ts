@@ -1,6 +1,6 @@
 import { skipToken, useQuery, useQueryClient } from "@tanstack/react-query";
 import { t } from "@/i18n";
-import { useMemo, useSyncExternalStore } from "react";
+import { useCallback, useMemo, useSyncExternalStore } from "react";
 import { useConnection } from "@/app/connection-context";
 import { createOrganisationWorkflows, type OrganisationWorkflows } from "@/application/organisations/organisationWorkflows";
 import { userLinksOf, type UserLink } from "@/application/organisations/organisationData";
@@ -92,4 +92,38 @@ export function useOrganisationStore() {
       });
     },
   };
+}
+
+/** Every user of the organisation this session has read, created or changed, by identifier. */
+export function useCachedUsers(organisationInput: string): ReadonlyMap<string, User> {
+  const { session } = useConnection();
+  const cache = useQueryClient().getQueryCache();
+  const organisationId = organisationInput.trim();
+  const sessionId = session?.id;
+  const find = useCallback(
+    () => cache.findAll({ predicate: (query) => query.queryKey[0] === "user" && query.queryKey[1] === sessionId && query.queryKey[2] === organisationId && query.state.data !== undefined }),
+    [cache, sessionId, organisationId],
+  );
+  // A string of identifiers and update times, so that an unchanged set of users is an unchanged snapshot.
+  const version = useSyncExternalStore(
+    (listener) => cache.subscribe(listener),
+    () => find().map((query) => `${String(query.queryKey[3])}@${query.state.dataUpdatedAt}`).sort().join("\n"),
+  );
+  return useMemo(() => (version === "" ? new Map() : new Map(find().map((query) => [String(query.queryKey[3]), query.state.data as User]))), [find, version]);
+}
+
+/** Every organisation this session has read, listed, created or changed, by identifier. */
+export function useCachedOrganisations(): ReadonlyMap<string, Organisation> {
+  const { session } = useConnection();
+  const cache = useQueryClient().getQueryCache();
+  const sessionId = session?.id;
+  const find = useCallback(
+    () => cache.findAll({ predicate: (query) => query.queryKey[0] === "organisation" && query.queryKey[1] === sessionId && query.state.data !== undefined }),
+    [cache, sessionId],
+  );
+  const version = useSyncExternalStore(
+    (listener) => cache.subscribe(listener),
+    () => find().map((query) => `${String(query.queryKey[2])}@${query.state.dataUpdatedAt}`).sort().join("\n"),
+  );
+  return useMemo(() => (version === "" ? new Map() : new Map(find().map((query) => [String(query.queryKey[2]), query.state.data as Organisation]))), [find, version]);
 }

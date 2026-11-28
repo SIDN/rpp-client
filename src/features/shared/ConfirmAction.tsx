@@ -17,6 +17,8 @@ export function ConfirmAction({
   pending = false,
   destructive = false,
   disabled = false,
+  startOpen = false,
+  onCancel,
 }: {
   trigger: string;
   title: string;
@@ -29,8 +31,11 @@ export function ConfirmAction({
   destructive?: boolean;
   /** The trigger is shown but cannot be used, for example while there is nothing yet to act on. */
   disabled?: boolean;
+  /** Asks at once, for an action already chosen elsewhere, such as a Delete button in a table row. */
+  startOpen?: boolean;
+  onCancel?(): void;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(startOpen);
   const [typed, setTyped] = useState("");
   const id = useId();
 
@@ -72,7 +77,13 @@ export function ConfirmAction({
         >
           {confirmLabel}
         </Button>
-        <Button variant="secondary" onClick={close}>
+        <Button
+          variant="secondary"
+          onClick={() => {
+            close();
+            onCancel?.();
+          }}
+        >
           {t("shared.confirm.cancel")}
         </Button>
       </div>

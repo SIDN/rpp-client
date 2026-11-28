@@ -13,7 +13,7 @@ import { ClientPage } from "./ClientPage";
 const profile = (auth: object) => ({ baseUrl: "https://rpp.example/rpp", allowInsecureHttp: false, auth, preset: DEFAULT_PRESET_SETTINGS });
 const bookmarks = [
   { id: "a", name: "Test registry", profile: profile({ type: "none" }) },
-  { id: "b", name: "Production", profile: profile({ type: "basic", username: "reg" }) },
+  { id: "b", name: "Production", profile: profile({ type: "basic", username: "reg", organisation: "ORG-1" }) },
 ];
 
 const stored = () => JSON.parse(localStorage.getItem("rpp-client.settings") ?? "{}") as Record<string, unknown>;
@@ -89,7 +89,7 @@ describe("client screen", () => {
 describe("client icon", () => {
   beforeEach(() => localStorage.clear());
 
-  it("is in the header and opens the client screen", async () => {
+  it("is in the account menu of the header and opens the client screen", async () => {
     render(
       <Providers>
         <SettingsProvider>
@@ -99,7 +99,8 @@ describe("client icon", () => {
         </SettingsProvider>
       </Providers>,
     );
-    fireEvent.click(screen.getByRole("link", { name: "Client settings" }));
+    fireEvent.click(screen.getByRole("button", { name: "Account" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Client settings" }));
     expect(await screen.findByRole("heading", { level: 1, name: "Client" })).toBeInTheDocument();
   });
 });

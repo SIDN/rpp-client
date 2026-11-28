@@ -50,7 +50,8 @@ function generator(seed: number): () => number {
   };
 }
 
-function distinctNumbers(seed: number, count: number): number[] {
+/** `count` different numbers from 1 to 9999, the same for the same seed. */
+export function distinctNumbers(seed: number, count: number): number[] {
   const random = generator(seed);
   const numbers = new Set<number>();
   while (numbers.size < count) numbers.add(1 + Math.floor(random() * NUMBER_RANGE));

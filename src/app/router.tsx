@@ -6,6 +6,7 @@ import { DomainsPage } from "@/features/domains/DomainsPage";
 import { ContactsPage } from "@/features/contacts/ContactsPage";
 import { HostsPage } from "@/features/hosts/HostsPage";
 import { OrganisationsPage } from "@/features/organisations/OrganisationsPage";
+import { UsersPage } from "@/features/organisations/UsersPage";
 import { ProcessesPage } from "@/features/processes/ProcessesPage";
 import { SearchPage } from "@/features/search/SearchPage";
 import { ConnectionPage } from "@/features/connection/ConnectionPage";
@@ -28,6 +29,7 @@ const screens: Record<string, ReactElement> = {
   "/contacts": <ContactsPage />,
   "/hosts": <HostsPage />,
   "/organisations": <OrganisationsPage />,
+  "/organisations/users": <UsersPage />,
   "/messages": <MessagesPage />,
   "/processes": <ProcessesPage />,
   "/search": <SearchPage />,

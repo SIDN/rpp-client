@@ -9,23 +9,25 @@ import { cn } from "@/lib/utils";
 import { t } from "@/i18n";
 
 /** Collapsing only applies on a wide screen: the drawer of a narrow one always shows the labels. */
-function SidebarLink({ item, collapsed }: { item: NavItem; collapsed: boolean }) {
+function SidebarLink({ item, collapsed, child = false }: { item: NavItem; collapsed: boolean; child?: boolean }) {
   const discovery = useDiscoveryState();
   const Icon = item.icon;
   return (
     <NavLink
       to={item.to}
-      end={item.to === "/"}
+      // A screen with children is only the current one on its own path, not on theirs.
+      end={item.to === "/" || item.children !== undefined}
       title={collapsed ? t(item.labelKey) : undefined}
       className={({ isActive }) =>
         cn(
           "relative flex h-9 items-center gap-3 rounded-md px-3 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-active focus-visible:outline-accent",
+          child && "h-8 pl-10",
           collapsed && "lg:justify-center lg:px-0",
           isActive && "bg-sidebar-active text-white shadow-[inset_3px_0_0_var(--accent)]",
         )
       }
     >
-      <Icon aria-hidden className={cn("size-4 shrink-0", collapsed && "lg:size-5")} />
+      <Icon aria-hidden className={cn("size-4 shrink-0", collapsed && (child ? "lg:size-4" : "lg:size-5"))} />
       <span className={cn("flex-1 truncate", collapsed && "lg:sr-only")}>{t(item.labelKey)}</span>
       {item.requires && (
         <CapabilityMark support={objectSupport(discovery, item.requires)} className={cn("text-sidebar-muted", collapsed && "lg:absolute lg:top-1 lg:right-1.5")} />
@@ -56,9 +58,22 @@ export function Sidebar({ id, className, collapsed, onToggleCollapsed }: { id: s
                 {t(group.labelKey)}
               </p>
             )}
-            {group.items.map((item) => (
-              <SidebarLink key={item.to} item={item} collapsed={collapsed} />
-            ))}
+            {group.items.map((item) =>
+              item.children ? (
+                <div key={item.to} className="flex flex-col gap-0.5">
+                  <SidebarLink item={item} collapsed={collapsed} />
+                  <ul aria-label={t(item.labelKey)} className={cn("relative flex flex-col gap-0.5 before:absolute before:inset-y-1 before:left-5 before:w-px before:bg-sidebar-border", collapsed && "lg:before:hidden")}>
+                    {item.children.map((child) => (
+                      <li key={child.to}>
+                        <SidebarLink item={child} collapsed={collapsed} child />
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : (
+                <SidebarLink key={item.to} item={item} collapsed={collapsed} />
+              ),
+            )}
           </div>
         ))}
       </nav>

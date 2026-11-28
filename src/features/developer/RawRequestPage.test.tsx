@@ -7,7 +7,7 @@ import { createSession } from "@/application/connection/session";
 import { DEFAULT_PRESET_SETTINGS } from "@/config/connectionProfile";
 import { RawRequestPage } from "./RawRequestPage";
 
-const PROFILE = { baseUrl: "https://rpp.example.test/rpp", allowInsecureHttp: false, auth: { type: "basic", username: "u" }, preset: DEFAULT_PRESET_SETTINGS } as const;
+const PROFILE = { baseUrl: "https://rpp.example.test/rpp", allowInsecureHttp: false, auth: { type: "basic", username: "u", organisation: "ORG-1" }, preset: DEFAULT_PRESET_SETTINGS } as const;
 
 function renderPage(respond: (request: Request) => Response | Promise<Response>, withSession = true) {
   const calls: Request[] = [];

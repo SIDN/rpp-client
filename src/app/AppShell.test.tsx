@@ -61,10 +61,24 @@ describe("application shell", () => {
     expect(screen.getByRole("main")).toHaveFocus();
     expect(within(nav).getByRole("link", { name: /Domain names/ })).toHaveAttribute("aria-current", "page");
 
-    for (const label of ["Contacts", "Hosts", "Organisations", "Messages", "Processes", "Capabilities", "Exchanges", "Schemas", "Settings", "Connection"]) {
+    for (const label of ["Contacts", "Hosts", "Organisations", "Users", "Messages", "Processes", "Capabilities", "Exchanges", "Schemas", "Settings", "Connection"]) {
       fireEvent.click(screen.getByRole("link", { name: new RegExp(`^${label}`) }));
       expect(screen.getByRole("heading", { level: 1, name: label })).toBeInTheDocument();
     }
+  });
+
+  it("lists Users below Organisations, each the current screen only on its own address", () => {
+    renderAt("/organisations/users");
+    const nav = screen.getByRole("navigation", { name: "Primary" });
+    const children = within(nav).getByRole("list", { name: "Organisations" });
+    expect(within(children).getByRole("link", { name: /^Users/ })).toHaveAttribute("aria-current", "page");
+    expect(within(nav).getByRole("link", { name: /^Organisations/ })).not.toHaveAttribute("aria-current");
+    expect(screen.getByRole("heading", { level: 1, name: "Users" })).toBeInTheDocument();
+    expect(document.title).toBe("Users - RPP Client");
+
+    fireEvent.click(within(nav).getByRole("link", { name: /^Organisations/ }));
+    expect(screen.getByRole("heading", { level: 1, name: "Organisations" })).toBeInTheDocument();
+    expect(within(children).getByRole("link", { name: /^Users/ })).not.toHaveAttribute("aria-current");
   });
 
   it("shows an address without a screen as not found", () => {

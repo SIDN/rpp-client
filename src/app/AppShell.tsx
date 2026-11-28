@@ -1,12 +1,12 @@
-import { CircleUser, Menu } from "lucide-react";
+import { Menu } from "lucide-react";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
-import { Link, Outlet, useLocation, useMatches } from "react-router-dom";
+import { Outlet, useLocation, useMatches } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { buttonVariants } from "@/components/ui/button-variants";
 import { ThemeToggle } from "@/components/common/ThemeToggle";
 import { cn } from "@/lib/utils";
 import { t } from "@/i18n";
 import { useSidebarCollapsed } from "@/lib/sidebar";
+import { AccountMenu } from "./AccountMenu";
 import { ConnectionStatus } from "./ConnectionStatus";
 import { ErrorConsole } from "./ErrorConsole";
 import { MessageCounter } from "./MessageCounter";
@@ -107,14 +107,7 @@ export function AppShell() {
           <div className="ml-auto flex shrink-0 items-center gap-3">
             <MessageCounter />
             <ThemeToggle />
-            <Link
-              to="/client"
-              aria-label={t("app.shell.clientSettings")}
-              title={t("app.shell.clientSettings")}
-              className={buttonVariants({ variant: "ghost", size: "icon" })}
-            >
-              <CircleUser aria-hidden />
-            </Link>
+            <AccountMenu />
           </div>
         </header>
 

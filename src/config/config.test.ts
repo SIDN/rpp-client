@@ -18,6 +18,7 @@ const form = (overrides: Partial<ConnectionFormValues> = {}): ConnectionFormValu
   allowInsecureHttp: false,
   authType: "none",
   username: "",
+  organisation: "",
   password: "",
   ...overrides,
 });
@@ -62,16 +63,18 @@ describe("connection form", () => {
     expect(messages(form({ host: "localhost", port: "8000", allowInsecureHttp: true }))).toEqual({});
   });
 
-  it("requires a usable user name and a password for Basic", () => {
-    expect(messages(form({ authType: "basic" }))).toEqual({ username: "Enter the user name", password: "Enter the password" });
-    expect(messages(form({ authType: "basic", username: "a:b", password: "x" })).username).toContain("colon");
-    expect(messages(form({ authType: "basic", username: "ok", password: "x" }))).toEqual({});
+  it("requires a usable user name, an organisation and a password for Basic", () => {
+    expect(messages(form({ authType: "basic" }))).toEqual({ username: "Enter the user name", organisation: "Enter the organisation of the user", password: "Enter the password" });
+    expect(messages(form({ authType: "basic", username: "a:b", organisation: "ORG-1", password: "x" })).username).toContain("colon");
+    expect(messages(form({ authType: "basic", username: "ok", organisation: "  ", password: "x" })).organisation).toBe("Enter the organisation of the user");
+    expect(messages(form({ authType: "basic", username: "ok", organisation: "ORG/1", password: "x" })).organisation).toBe("An organisation identifier cannot contain /, ? or #");
+    expect(messages(form({ authType: "basic", username: "ok", organisation: "ORG-1", password: "x" }))).toEqual({});
     expect(messages(form({ username: "", password: "" }))).toEqual({});
   });
 
   it("separates what may be stored from the password", () => {
-    expect(toConnection(form({ host: "rpp.example.test", port: "8443", authType: "basic", username: "u", password: "secret" }))).toEqual({
-      profile: { baseUrl: "https://rpp.example.test:8443", allowInsecureHttp: false, auth: { type: "basic", username: "u" }, preset: DEFAULT_PRESET_SETTINGS },
+    expect(toConnection(form({ host: "rpp.example.test", port: "8443", authType: "basic", username: "u", organisation: " ORG-1 ", password: "secret" }))).toEqual({
+      profile: { baseUrl: "https://rpp.example.test:8443", allowInsecureHttp: false, auth: { type: "basic", username: "u", organisation: "ORG-1" }, preset: DEFAULT_PRESET_SETTINGS },
       credentials: { password: "secret" },
     });
     expect(toConnection(form({ host: "rpp.example.test" }))).toEqual({
@@ -82,7 +85,7 @@ describe("connection form", () => {
 });
 
 describe("stored profile", () => {
-  const profile: ConnectionProfile = { baseUrl: "https://rpp.example.test", allowInsecureHttp: false, auth: { type: "basic", username: "u" }, preset: DEFAULT_PRESET_SETTINGS };
+  const profile: ConnectionProfile = { baseUrl: "https://rpp.example.test", allowInsecureHttp: false, auth: { type: "basic", username: "u", organisation: "ORG-1" }, preset: DEFAULT_PRESET_SETTINGS };
 
   it("round-trips without any password", () => {
     const storage = memoryStorage();
@@ -98,6 +101,12 @@ describe("stored profile", () => {
     const chosen = { signalling: "media-type", selection: { id: "p", version: "1.0" } };
     expect(loadProfile(memoryStorage(JSON.stringify({ ...profile, preset: chosen })))?.preset).toEqual(chosen);
     expect(loadProfile(memoryStorage(JSON.stringify({ ...profile, preset: { signalling: "x", selection: "default" } })))).toBeUndefined();
+  });
+
+  it("loads a profile saved before the organisation was asked for, without one", () => {
+    const old = { ...profile, auth: { type: "basic", username: "u" } };
+    expect(loadProfile(memoryStorage(JSON.stringify(old)))?.auth).toEqual({ type: "basic", username: "u", organisation: "" });
+    expect(loadProfile(memoryStorage(JSON.stringify({ ...profile, auth: { type: "basic", username: "u", organisation: "a/b" } })))).toBeUndefined();
   });
 
   it("ignores anything that is not a valid profile", () => {

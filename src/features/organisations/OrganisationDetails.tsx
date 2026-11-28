@@ -84,7 +84,7 @@ export function OrganisationDetails({ organisation }: { organisation: Organisati
           )}
         </DefinitionRow>
         <DefinitionRow term={t("organisations.details.provisioning")}>
-          <Provisioning metadata={organisation.provMetadata} />
+          {organisation.provMetadata ? <Provisioning metadata={organisation.provMetadata} /> : <Nothing />}
         </DefinitionRow>
         <DefinitionRow term={t("organisations.details.processes")}>
           {processes.length === 0 ? (

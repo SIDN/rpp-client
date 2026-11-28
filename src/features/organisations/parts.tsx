@@ -6,50 +6,6 @@ import { StatusLabel } from "@/components/protocol/protocol-badges";
 import type { StatusType } from "@/rpp/core/status/statuses";
 import { Timestamp } from "../shared/objectParts";
 
-/** What every workflow panel receives: the organisation and the user being worked on, which the panels share. */
-export interface PanelProps {
-  organisationId: string;
-  onOrganisationChange(id: string): void;
-  userId: string;
-  onUserChange(id: string): void;
-}
-
-export function OrganisationField({ organisationId, onOrganisationChange, hint }: Pick<PanelProps, "organisationId" | "onOrganisationChange"> & { hint?: string }) {
-  return (
-    <Field label={t("organisations.field.organisationId")} hint={hint}>
-      {(control) => (
-        <Input
-          {...control}
-          value={organisationId}
-          onChange={(event) => onOrganisationChange(event.target.value)}
-          autoComplete="off"
-          autoCapitalize="none"
-          spellCheck={false}
-          className="max-w-96 font-mono"
-        />
-      )}
-    </Field>
-  );
-}
-
-export function UserField({ userId, onUserChange, hint }: Pick<PanelProps, "userId" | "onUserChange"> & { hint?: string }) {
-  return (
-    <Field label={t("organisations.field.userId")} hint={hint}>
-      {(control) => (
-        <Input
-          {...control}
-          value={userId}
-          onChange={(event) => onUserChange(event.target.value)}
-          autoComplete="off"
-          autoCapitalize="none"
-          spellCheck={false}
-          className="max-w-96 font-mono"
-        />
-      )}
-    </Field>
-  );
-}
-
 export interface CardValues {
   name: string;
   email: string;

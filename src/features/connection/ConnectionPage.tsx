@@ -142,7 +142,7 @@ export function ConnectionPage() {
     if (!result.success) {
       for (const issue of result.error.issues) {
         const field = issue.path[0];
-        if (field === "host" || field === "port" || field === "username") setError(field, { type: issue.code, message: issue.message });
+        if (field === "host" || field === "port" || field === "username" || field === "organisation") setError(field, { type: issue.code, message: issue.message });
       }
       return undefined;
     }
@@ -298,6 +298,9 @@ export function ConnectionPage() {
             <div className="flex flex-col gap-4 border-l-2 border-border pl-5">
               <Field label={t("connection.server.username")} error={errors.username?.message}>
                 {(control) => <Input {...control} autoComplete="off" spellCheck={false} {...register("username")} />}
+              </Field>
+              <Field label={t("connection.server.organisation")} hint={t("connection.server.organisationHint")} error={errors.organisation?.message}>
+                {(control) => <Input {...control} autoComplete="off" spellCheck={false} {...register("organisation")} />}
               </Field>
               <Field label={t("connection.server.password")} error={errors.password?.message}>
                 {(control) => <Input {...control} type="password" autoComplete="off" {...register("password")} />}

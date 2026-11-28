@@ -4,6 +4,8 @@ import type { PatchOperation } from "@/rpp/operations/patch";
 import { invalidRequest } from "@/rpp/operations/paths";
 import type { RppClient } from "@/rpp/operations/RppClient";
 import type { OperationSuccess } from "@/rpp/operations/types";
+import type { QueryResults } from "@/rpp/query/queryObject";
+import { childrenQuery } from "./childOrganisations";
 import { createBody as organisationBody, parseOrganisationId, userLinksOf, type CreateOrganisationInput } from "./organisationData";
 import { createBody as userBody, parseUserId, type CreateUserInput } from "./userData";
 
@@ -33,6 +35,11 @@ export function createOrganisationWorkflows(client: RppClient) {
   return {
     async info(id: string, options: Signal = {}): Promise<OperationSuccess<Organisation>> {
       return organisations.read(parseOrganisationId(id), options);
+    },
+
+    /** The first page of the organisations whose parent is `parentId`, found with the optional `query` operation. */
+    async children(parentId: string, options: Signal = {}): Promise<OperationSuccess<QueryResults<Organisation>>> {
+      return organisations.query(childrenQuery(parseOrganisationId(parentId)), options);
     },
 
     async create(input: CreateOrganisationInput, options: Signal = {}): Promise<OperationSuccess<Organisation>> {

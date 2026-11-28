@@ -13,6 +13,7 @@ import {
   Settings,
   Terminal,
   UserRound,
+  UsersRound,
   type LucideIcon,
 } from "lucide-react";
 import type { ResourceType } from "@/rpp/core/types/resources";
@@ -28,6 +29,8 @@ export interface NavItem {
   requires?: ResourceType;
   /** What the screen is for, shown while it is not built yet. */
   purposeKey: string;
+  /** Screens that belong to this one, shown below it in the menu; their paths start with its path. */
+  children?: readonly NavItem[];
 }
 
 export interface NavGroup {
@@ -56,7 +59,14 @@ export const NAVIGATION: readonly NavGroup[] = [
       { to: "/domains", labelKey: "nav.domainNames.label", icon: Globe, requires: "domainName", purposeKey: "nav.domainNames.purpose" },
       { to: "/contacts", labelKey: "nav.contacts.label", icon: UserRound, requires: "contact", purposeKey: "nav.contacts.purpose" },
       { to: "/hosts", labelKey: "nav.hosts.label", icon: Server, requires: "host", purposeKey: "nav.hosts.purpose" },
-      { to: "/organisations", labelKey: "nav.organisations.label", icon: Building2, requires: "organisation", purposeKey: "nav.organisations.purpose" },
+      {
+        to: "/organisations",
+        labelKey: "nav.organisations.label",
+        icon: Building2,
+        requires: "organisation",
+        purposeKey: "nav.organisations.purpose",
+        children: [{ to: "/organisations/users", labelKey: "nav.users.label", icon: UsersRound, requires: "user", purposeKey: "nav.users.purpose" }],
+      },
       { to: "/messages", labelKey: "nav.messages.label", icon: Inbox, requires: "message", purposeKey: "nav.messages.purpose" },
       { to: "/processes", labelKey: "nav.processes.label", icon: ListChecks, purposeKey: "nav.processes.purpose" },
       { to: "/search", labelKey: "nav.search.label", icon: Search, purposeKey: "nav.search.purpose" },
@@ -82,4 +92,7 @@ export const CONNECTION_ITEM: NavItem = {
   purposeKey: "nav.connection.purpose",
 };
 
-export const ALL_ITEMS: readonly NavItem[] = [...NAVIGATION.flatMap((group) => group.items), CONNECTION_ITEM];
+const withChildren = (item: NavItem): NavItem[] => [item, ...(item.children ?? []).flatMap(withChildren)];
+
+/** Every screen of the menu, children included. */
+export const ALL_ITEMS: readonly NavItem[] = [...NAVIGATION.flatMap((group) => group.items.flatMap(withChildren)), CONNECTION_ITEM];

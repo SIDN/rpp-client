@@ -103,16 +103,19 @@ describe("connection screen", () => {
     type("Server hostname or TLD", "rpp.example.test");
     connect();
     expect(await screen.findByText("Enter the user name")).toBeInTheDocument();
+    expect(screen.getByText("Enter the organisation of the user")).toBeInTheDocument();
     expect(screen.getByText("Enter the password")).toBeInTheDocument();
     expect(fetchMock).not.toHaveBeenCalled();
 
     type("User name", "registrar");
+    type("Organisation", " ORG-1 ");
     type("Password", "hunter2");
     connect();
     expect(await screen.findByText(/Signing in as registrar/)).toBeInTheDocument();
     expect(screen.getByLabelText("Password")).toHaveValue("");
     expect(screen.getByLabelText("Password")).toHaveAttribute("type", "password");
     expect(localStorage.getItem("rpp-client.connection")).toContain("registrar");
+    expect(JSON.parse(localStorage.getItem("rpp-client.connection") ?? "{}")).toMatchObject({ auth: { type: "basic", username: "registrar", organisation: "ORG-1" } });
     expect(localStorage.getItem("rpp-client.connection")).not.toContain("hunter2");
     expect(JSON.stringify(Object.entries(localStorage))).not.toContain("hunter2");
   });
@@ -283,7 +286,7 @@ describe("bookmarks", () => {
     profile: {
       baseUrl: "https://rpp.example.test",
       allowInsecureHttp: false,
-      auth: { type: "basic", username: "registrar" },
+      auth: { type: "basic", username: "registrar", organisation: "ORG-1" },
       preset: { signalling: "media-type", selection: { id: PRESET_ID, version: "1.0" } },
     },
   };
@@ -304,13 +307,14 @@ describe("bookmarks", () => {
     fireEvent.click(screen.getByRole("radio", { name: /User name and password/ }));
     type("Server hostname or TLD", "rpp.example.test");
     type("User name", "registrar");
+    type("Organisation", "ORG-1");
     type("Password", "hunter2");
     type("Connection name", "  Registry A ");
     save();
 
     await waitFor(() => expect(names()).toEqual(["Registry A"]));
     expect(select()).toHaveValue(stored()[0]?.id);
-    expect(stored()).toEqual([expect.objectContaining({ name: "Registry A", profile: expect.objectContaining({ baseUrl: "https://rpp.example.test", auth: { type: "basic", username: "registrar" } }) })]);
+    expect(stored()).toEqual([expect.objectContaining({ name: "Registry A", profile: expect.objectContaining({ baseUrl: "https://rpp.example.test", auth: { type: "basic", username: "registrar", organisation: "ORG-1" } }) })]);
     expect(JSON.stringify(Object.entries(localStorage))).not.toContain("hunter2");
     expect(fetchMock).not.toHaveBeenCalled();
   });
@@ -328,6 +332,18 @@ describe("bookmarks", () => {
     expect(screen.queryByText("Enter a connection name to save a bookmark")).not.toBeInTheDocument();
   });
 
+  it("asks for the organisation of a bookmark saved before it was asked for, before it connects", async () => {
+    seed({ ...BOOKMARK, profile: { ...BOOKMARK.profile, auth: { type: "basic", username: "registrar" } } });
+    renderConnection();
+    pick("Registry A");
+    press("Use");
+    await waitFor(() => expect(screen.getByLabelText("Organisation")).toHaveValue(""));
+    type("Password", "hunter2");
+    connect();
+    expect(await screen.findByText("Enter the organisation of the user")).toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it("fills the form from a bookmark so that only the password is left to enter", async () => {
     seed(BOOKMARK);
     renderConnection();
@@ -339,6 +355,7 @@ describe("bookmarks", () => {
     await waitFor(() => expect(screen.getByLabelText("Password")).toHaveFocus());
     expect(address()).toHaveValue("rpp.example.test");
     expect(screen.getByLabelText("User name")).toHaveValue("registrar");
+    expect(screen.getByLabelText("Organisation")).toHaveValue("ORG-1");
     expect(screen.getByLabelText("Password")).toHaveValue("");
     expect(screen.getByLabelText("Connection name")).toHaveValue("Registry A");
 

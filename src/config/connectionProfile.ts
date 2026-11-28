@@ -21,7 +21,13 @@ export interface ConnectionProfile {
   /** The RPP base URL: https, or http in development mode. */
   baseUrl: string;
   allowInsecureHttp: boolean;
-  auth: { type: "none" } | { type: "basic"; username: string };
+  /**
+   * With Basic authentication, `organisation` is the identifier of the organisation of the logged-in user, in which its
+   * users are managed. The drafts do not say how a client learns it (draft-ietf-rpp-data-objects 7.2 leaves open how a
+   * client identifier relates to an organisation) and discovery does not tell, so the person enters it. Empty only in a
+   * profile stored before it was asked for.
+   */
+  auth: { type: "none" } | { type: "basic"; username: string; organisation: string };
   preset: PresetSettings;
 }
 
@@ -76,6 +82,7 @@ export const connectionFormSchema = z
     allowInsecureHttp: z.boolean(),
     authType: z.enum(["none", "basic"]),
     username: z.string(),
+    organisation: z.string(),
     password: z.string(),
   })
   .superRefine((form, ctx) => {
@@ -85,6 +92,9 @@ export const connectionFormSchema = z
     if (form.username === "") ctx.addIssue({ code: "custom", path: ["username"], message: t("config.connection.usernameRequired") });
     else if (form.username.includes(":")) ctx.addIssue({ code: "custom", path: ["username"], message: t("config.connection.usernameColon") });
     else if (CONTROL.test(form.username)) ctx.addIssue({ code: "custom", path: ["username"], message: t("config.connection.removeControls") });
+    const organisation = form.organisation.trim();
+    if (organisation === "") ctx.addIssue({ code: "custom", path: ["organisation"], message: t("config.connection.organisationRequired") });
+    else if (CONTROL.test(organisation) || /[/?#]/.test(organisation)) ctx.addIssue({ code: "custom", path: ["organisation"], message: t("config.connection.organisationCharacters") });
     if (form.password === "") ctx.addIssue({ code: "custom", path: ["password"], message: t("config.connection.passwordRequired") });
     else if (CONTROL.test(form.password)) ctx.addIssue({ code: "custom", path: ["password"], message: t("config.connection.removeControls") });
   });
@@ -99,7 +109,7 @@ export function toConnection(
   const baseUrl = new URL(buildBaseUrl(form.host, form.port, form.allowInsecureHttp)).origin;
   if (form.authType === "basic") {
     return {
-      profile: { baseUrl, allowInsecureHttp: form.allowInsecureHttp, auth: { type: "basic", username: form.username }, preset },
+      profile: { baseUrl, allowInsecureHttp: form.allowInsecureHttp, auth: { type: "basic", username: form.username, organisation: form.organisation.trim() }, preset },
       credentials: { password: form.password },
     };
   }
@@ -125,6 +135,7 @@ export function toFormValues(profile: ConnectionProfile | undefined, defaultBase
     allowInsecureHttp: profile?.allowInsecureHttp ?? false,
     authType: profile?.auth.type ?? "none",
     username: profile?.auth.type === "basic" ? profile.auth.username : "",
+    organisation: profile?.auth.type === "basic" ? profile.auth.organisation : "",
     password: "",
   };
 }
@@ -134,7 +145,8 @@ const storedProfileSchema = z.object({
   allowInsecureHttp: z.boolean(),
   auth: z.discriminatedUnion("type", [
     z.object({ type: z.literal("none") }),
-    z.object({ type: z.literal("basic"), username: z.string().min(1) }),
+    // Profiles saved before the organisation was asked for have none; the form asks for it before connecting.
+    z.object({ type: z.literal("basic"), username: z.string().min(1), organisation: z.string().default("") }),
   ]),
   // Profiles saved before presets existed have none.
   preset: z
@@ -152,7 +164,8 @@ export function parseProfile(value: unknown): ConnectionProfile | undefined {
   const parsed = storedProfileSchema.safeParse(value);
   if (!parsed.success) return undefined;
   if (/^http:/i.test(parsed.data.baseUrl) && !parsed.data.allowInsecureHttp) return undefined;
-  const check = connectionFormSchema.safeParse({ ...toFormValues(parsed.data), password: "x" });
+  const values = toFormValues(parsed.data);
+  const check = connectionFormSchema.safeParse({ ...values, organisation: values.organisation || "x", password: "x" });
   return check.success ? parsed.data : undefined;
 }
 

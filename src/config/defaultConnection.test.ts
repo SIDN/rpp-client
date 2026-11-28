@@ -8,7 +8,7 @@ const open: Bookmark = {
   name: "Open",
   profile: { baseUrl: "https://rpp.example/rpp", allowInsecureHttp: false, auth: { type: "none" }, preset: DEFAULT_PRESET_SETTINGS },
 };
-const signedIn: Bookmark = { id: "b", name: "Signed in", profile: { ...open.profile, auth: { type: "basic", username: "me" } } };
+const signedIn: Bookmark = { id: "b", name: "Signed in", profile: { ...open.profile, auth: { type: "basic", username: "me", organisation: "ORG-1" } } };
 
 describe("default connection", () => {
   it("finds the default bookmark, if it still exists", () => {

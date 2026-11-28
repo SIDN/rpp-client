@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Shuffle } from "lucide-react";
 import { applyPatch } from "@/application/organisations/applyPatch";
-import { createSyntheticOrganisation, synthesizeChildren } from "@/application/organisations/syntheticOrganisations";
+import { createSyntheticOrganisation, synthesizeDescendants } from "@/application/organisations/syntheticOrganisations";
 import { Button } from "@/components/ui/button";
 import { Callout } from "@/components/ui/callout";
 import type { Organisation } from "@/rpp/core/types/objects";
@@ -39,7 +39,7 @@ function noticeTitle(notice: Exclude<Notice, undefined>): string {
  * list here, and nothing is sent.
  */
 export function SyntheticOrganisations({ parentId }: { parentId: string }) {
-  const [organisations, setOrganisations] = useState<Organisation[]>(() => synthesizeChildren(parentId, { seed: randomSeed() }));
+  const [organisations, setOrganisations] = useState<Organisation[]>(() => synthesizeDescendants(parentId, { seed: randomSeed() }));
   const [selection, setSelection] = useState<Selection>();
   const [notice, setNotice] = useState<Notice>();
   const [problem, setProblem] = useState<string>();
@@ -73,7 +73,7 @@ export function SyntheticOrganisations({ parentId }: { parentId: string }) {
           variant="secondary"
           onClick={() => {
             choose(undefined);
-            setOrganisations(synthesizeChildren(parentId, { seed: randomSeed() }));
+            setOrganisations(synthesizeDescendants(parentId, { seed: randomSeed() }));
           }}
         >
           <Shuffle aria-hidden />

@@ -3,6 +3,7 @@ import { useState, type ReactNode } from "react";
 import { FormProvider, useForm, useWatch } from "react-hook-form";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { cardDataOf } from "@/application/organisations/card";
+import { organisationTree, type TreeRow } from "@/application/organisations/organisationTree";
 import {
   buildOrganisationPatch,
   describeOrganisationOperation,
@@ -39,7 +40,43 @@ function Unknown({ children }: { children: ReactNode }) {
   return <span className="text-muted-foreground">{children}</span>;
 }
 
-/** The child organisations, one to a row: the identifier shows the organisation, and each row can be edited or deleted. */
+/** Horizontal geometry of the tree lines, in pixels: the cell padding and the width of one level. */
+const PAD = 12;
+const STEP = 20;
+const lineAt = (level: number) => PAD + (level - 1) * STEP + 8;
+const LINE = "pointer-events-none absolute bg-muted-foreground/40";
+
+/**
+ * The lines in front of an identifier: one for each level above that goes on to a later sibling, the elbow to this row,
+ * and a stub down to its first child. A detached row gets a dashed stub instead of an elbow.
+ */
+function TreeLines({ row, hasChildren }: { row: TreeRow; hasChildren: boolean }) {
+  const x = lineAt(row.depth);
+  return (
+    <span aria-hidden>
+      {row.guides.map((goesOn, index) => (goesOn ? <span key={index} className={`${LINE} inset-y-0 w-px`} style={{ left: lineAt(index + 1) }} /> : null))}
+      {row.attached ? (
+        <>
+          <span className={`${LINE} top-0 w-px`} style={{ left: x, bottom: row.last ? "50%" : 0 }} />
+          <span className={`${LINE} top-1/2 h-px w-2.5`} style={{ left: x }} />
+        </>
+      ) : (
+        <span className="pointer-events-none absolute top-1/2 w-2.5 border-t border-dashed border-muted-foreground/60" style={{ left: x }} />
+      )}
+      {hasChildren && <span className={`${LINE} bottom-0 w-px`} style={{ left: lineAt(row.depth + 1), top: "calc(50% + 0.625rem)" }} />}
+    </span>
+  );
+}
+
+function placeOf(row: TreeRow, rootId: string): string {
+  if (row.attached) return t("organisations.tree.under", { level: row.depth, parent: row.parentId ?? rootId });
+  return row.parentId === undefined || row.parentId === row.organisation.id ? t("organisations.tree.noParent") : t("organisations.tree.detached", { parent: row.parentId });
+}
+
+/**
+ * The organisations under `parentId`, one to a row and drawn as a tree: each directly below its parent, indented one
+ * level further and joined to it by a line. The identifier shows the organisation, and each row can be edited or deleted.
+ */
 export function OrganisationsTable({ parentId, organisations, selection, busy, onSelect }: { parentId: string; organisations: readonly Organisation[]; selection: Selection; busy: boolean; onSelect(selection: Selection): void }) {
   if (organisations.length === 0) {
     return (
@@ -49,6 +86,8 @@ export function OrganisationsTable({ parentId, organisations, selection, busy, o
     );
   }
   const current = selectedId(selection);
+  const rows = organisationTree(parentId, organisations);
+  const rootHasChildren = rows.some((row) => row.attached && row.depth === 1);
   return (
     <div className="overflow-x-auto rounded-md border border-border bg-surface">
       <table className="w-full text-sm">
@@ -66,14 +105,28 @@ export function OrganisationsTable({ parentId, organisations, selection, busy, o
           </tr>
         </thead>
         <tbody className="divide-y divide-border">
-          {organisations.map((organisation) => {
+          <tr data-root="" className="bg-muted/20">
+            <th scope="row" className="relative py-2.5 text-left font-normal whitespace-nowrap" style={{ paddingLeft: PAD + STEP + 4, paddingRight: PAD }}>
+              <span aria-hidden className="absolute top-1/2 size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary" style={{ left: lineAt(1) + 0.5 }} />
+              {rootHasChildren && <span aria-hidden className={`${LINE} bottom-0 w-px`} style={{ left: lineAt(1), top: "50%" }} />}
+              <span className="font-mono font-semibold">{parentId}</span>
+            </th>
+            <td colSpan={5} className="px-3 py-2.5 text-muted-foreground">
+              {t("organisations.tree.root")}
+            </td>
+          </tr>
+          {rows.map((row, index) => {
+            const { organisation } = row;
             const chosen = organisation.id === current;
             const name = cardDataOf(organisation.contactInfo).name;
             const statuses = statusesOf(organisation);
             const roles = rolesOf(organisation).map((role) => role.name);
+            const next = rows[index + 1];
+            const hasChildren = next !== undefined && next.attached && next.depth > row.depth;
             return (
               <tr key={organisation.id} aria-current={chosen ? "true" : undefined} className={chosen ? "bg-muted/70 shadow-[inset_3px_0_0_var(--color-primary)]" : "hover:bg-muted/30"}>
-                <td className="px-3 py-2">
+                <td className="relative py-2 whitespace-nowrap" style={{ paddingLeft: PAD + row.depth * STEP + 4, paddingRight: PAD }}>
+                  <TreeLines row={row} hasChildren={hasChildren} />
                   <button
                     type="button"
                     className="rounded-sm font-mono text-primary underline decoration-muted-foreground/40 underline-offset-4 hover:decoration-current focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
@@ -81,6 +134,9 @@ export function OrganisationsTable({ parentId, organisations, selection, busy, o
                   >
                     {organisation.id}
                   </button>
+                  <span className={row.attached ? "sr-only" : "ml-2 text-xs text-muted-foreground"}>
+                    {row.attached ? `, ${placeOf(row, parentId)}` : placeOf(row, parentId)}
+                  </span>
                 </td>
                 <td className="px-3 py-2">{name || <Unknown>{t("organisations.value.notGiven")}</Unknown>}</td>
                 <td className="px-3 py-2">

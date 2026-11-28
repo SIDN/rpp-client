@@ -27,9 +27,9 @@ const serverWith = (byId: (id: string) => unknown = (id) => child(id), results: 
 
 const click = (name: string | RegExp) => fireEvent.click(screen.getByRole("button", { name }));
 const fill = (label: string, value: string) => fireEvent.change(screen.getByLabelText(label), { target: { value } });
-const table = () => screen.findByRole("table", { name: /^Child organisations of / });
-const rows = (of: HTMLElement) => within(of).getAllByRole<HTMLTableRowElement>("row").slice(1);
-const ids = (of: HTMLElement) => rows(of).map((row) => row.cells[0]?.textContent);
+const table = () => screen.findByRole("table", { name: /^Organisations under / });
+const rows = (of: HTMLElement) => within(of).getAllByRole<HTMLTableRowElement>("row").slice(1).filter((row) => !row.hasAttribute("data-root"));
+const ids = (of: HTMLElement) => rows(of).map((row) => row.cells[0]?.querySelector("button")?.textContent);
 const panel = () => within(screen.getByRole("region", { name: /^(Organisation |Change |Delete |Add an organisation)/ }));
 const sent = (calls: Call[]) => calls.map((call) => `${call.method} ${call.path}`);
 
@@ -63,7 +63,7 @@ describe("organisations screen", () => {
     renderPage(serverWith());
     await table();
     expect(screen.queryByRole("tab")).toBeNull();
-    expect(screen.getByTestId("organisations-parent")).toHaveTextContent("Child organisations of ORG-1, the organisation of jane.");
+    expect(screen.getByTestId("organisations-parent")).toHaveTextContent("Organisations under ORG-1, the organisation of jane.");
   });
 });
 
@@ -275,24 +275,54 @@ describe("synthesized child organisations", () => {
     const list = await table();
     expect(rows(list).length).toBeGreaterThan(3);
     for (const row of rows(list)) {
-      expect(row.cells[0]?.textContent).toMatch(/^org-\d+$/);
+      expect(row.cells[0]?.querySelector("button")?.textContent).toMatch(/^org-\d+$/);
       expect(row.cells[3]?.textContent).not.toContain("registrar");
     }
-    click(rows(list)[0]!.cells[0]!.textContent!);
+    click(ids(list)[0]!);
     expect(panel().getByText("ORG-1", { selector: "dd *, dd" })).toBeInTheDocument();
     expect(calls).toHaveLength(0);
   });
 
+  it("draws them as a tree under the user's organisation, each organisation below its parent and one level further in", async () => {
+    renderPage(() => answer({}), { synthesize: true });
+    const list = await table();
+    const root = within(list).getAllByRole("row")[1]!;
+    expect(root).toHaveTextContent("ORG-1Your organisation, the top of this tree");
+    const places = rows(list).map((row) => row.cells[0]?.querySelector(".sr-only")?.textContent ?? "");
+    expect(places[0]).toBe(", level 1, under ORG-1");
+    const [, second, third] = ids(list);
+    expect(places[1]).toBe(`, level 2, under ${ids(list)[0]}`);
+    expect(places[2]).toBe(`, level 3, under ${second}`);
+    expect(places[3]).toBe(`, level 4, under ${third}`);
+  });
+
+  it("moves an organisation in the tree when its parent is changed", async () => {
+    renderPage(() => answer({}), { synthesize: true });
+    const before = ids(await table());
+    const deepest = before[3]!;
+    click(`Edit ${deepest}`);
+    fill("Parent organisation", "ORG-1");
+    click("Save changes");
+    await screen.findByText(`Changed ${deepest} in this list`);
+    const row = rows(await table()).find((candidate) => candidate.cells[0]?.querySelector("button")?.textContent === deepest)!;
+    expect(row).toHaveTextContent(`${deepest}, level 1, under ORG-1`);
+
+    click(`Edit ${deepest}`);
+    fill("Parent organisation", "ORG-5");
+    click("Save changes");
+    await screen.findByText(`Changed ${deepest} in this list`);
+    expect(screen.getByText("under ORG-5, which is not in this list")).toBeVisible();
+  });
+
   it("uses an example organisation when no profile names one", async () => {
     renderPage(() => answer({}), { discovery: { status: "not-started" }, profile: PROFILE, synthesize: true });
-    expect(screen.getByTestId("organisations-parent")).toHaveTextContent("Child organisations of ORG-EXAMPLE.");
+    expect(screen.getByTestId("organisations-parent")).toHaveTextContent("Organisations under ORG-EXAMPLE.");
     expect(await table()).toBeInTheDocument();
   });
 
   it("edits, adds and deletes in the list only", async () => {
     const { calls } = renderPage(() => answer({}), { synthesize: true });
-    const first = rows(await table())[0]!;
-    const id = first.cells[0]!.textContent!;
+    const id = ids(await table())[0]!;
 
     click(`Edit ${id}`);
     fill("Name", "Noordzee Domeinen");

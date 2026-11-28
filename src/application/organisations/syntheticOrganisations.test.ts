@@ -2,8 +2,9 @@ import { describe, expect, it } from "vitest";
 import type { Organisation } from "@/rpp/core/types/objects";
 import { applyPatch } from "./applyPatch";
 import { CHILDREN_LIMIT, childrenOf, childrenQuery } from "./childOrganisations";
+import { organisationTree } from "./organisationTree";
 import { EMPTY_ORGANISATION, buildOrganisationPatch, organisationEditOf } from "./organisationData";
-import { createSyntheticOrganisation, synthesizeChildren, SYNTHETIC_CHILD_COUNT } from "./syntheticOrganisations";
+import { createSyntheticOrganisation, synthesizeDescendants, SYNTHETIC_ORGANISATION_COUNT } from "./syntheticOrganisations";
 
 describe("child organisations", () => {
   it("asks for the children of one organisation, in identifier order, one page at most", () => {
@@ -18,28 +19,31 @@ describe("child organisations", () => {
 });
 
 describe("synthesized child organisations", () => {
-  it("makes up children of the parent with random identifiers, none of them a registrar, the same for the same seed", () => {
-    const children = synthesizeChildren("ORG-1", { seed: 3 });
-    expect(children).toHaveLength(SYNTHETIC_CHILD_COUNT);
-    expect(new Set(children.map((child) => child.id)).size).toBe(SYNTHETIC_CHILD_COUNT);
-    for (const child of children) {
-      expect(child.id).toMatch(/^org-\d+$/);
-      expect(child.parent).toEqual({ "@type": "organisation", id: "ORG-1" });
-      expect(Object.keys(child.roles ?? {})).not.toContain("registrar");
-      expect(child).not.toHaveProperty("provMetadata");
+  it("makes up organisations several levels below the root with random identifiers, none of them a registrar, the same for the same seed", () => {
+    const made = synthesizeDescendants("ORG-1", { seed: 3 });
+    expect(made).toHaveLength(SYNTHETIC_ORGANISATION_COUNT);
+    expect(new Set(made.map((organisation) => organisation.id)).size).toBe(SYNTHETIC_ORGANISATION_COUNT);
+    for (const organisation of made) {
+      expect(organisation.id).toMatch(/^org-\d+$/);
+      expect(Object.keys(organisation.roles ?? {})).not.toContain("registrar");
+      expect(organisation).not.toHaveProperty("provMetadata");
     }
-    expect(synthesizeChildren("ORG-1", { seed: 3 })).toEqual(children);
+    const tree = organisationTree("ORG-1", made);
+    expect(tree.every((row) => row.attached)).toBe(true);
+    expect(tree.filter((row) => row.depth === 1).every((row) => row.parentId === "ORG-1")).toBe(true);
+    expect(Math.max(...tree.map((row) => row.depth))).toBeGreaterThanOrEqual(3);
+    expect(synthesizeDescendants("ORG-1", { seed: 3 })).toEqual(made);
   });
 
   it("creates one with an ok status unless chosen, and refuses an identifier in the list", () => {
-    const children = synthesizeChildren("ORG-1");
+    const children = synthesizeDescendants("ORG-1");
     const data = { ...EMPTY_ORGANISATION, roles: [{ name: "reseller", roleId: "", linkProhibited: false }], parent: "ORG-1" };
     expect(createSyntheticOrganisation({ id: "org-new", data }, children)).toMatchObject({ id: "org-new", parent: { id: "ORG-1" }, status: [{ label: "ok" }] });
     expect(() => createSyntheticOrganisation({ id: children[0]!.id, data }, children)).toThrow(/already/);
   });
 
   it("takes the patch the edit form sends, so an edit shows in the list", () => {
-    const [child] = synthesizeChildren("ORG-1", { seed: 1 });
+    const [child] = synthesizeDescendants("ORG-1", { seed: 1 });
     const edit = organisationEditOf(child!);
     const changed = { ...edit, parent: "ORG-5", roles: [...edit.roles, { name: "dns-operator", roleId: "", linkProhibited: false }] };
     const patched = applyPatch(child!, buildOrganisationPatch(child!, changed));

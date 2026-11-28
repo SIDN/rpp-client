@@ -5,38 +5,48 @@ import { distinctNumbers } from "../search/synthesize";
 import { cardOf } from "./card";
 import { createBody, type CreateOrganisationInput } from "./organisationData";
 
-const COMPANIES = ["Noordzee Hosting", "Polder Domeinen", "Grachtweb", "Duinhost", "Kade Digitaal", "Molenaar Privacy"] as const;
-/** Role types from the IANA registry the draft points to; never `registrar`, which is the parent's. */
-const ROLES = [["reseller"], ["reseller"], ["reseller", "dns-operator"], ["dns-operator"], ["reseller"], ["privacyproxy"]] as const;
-/** A mix of what a server and a client set, so that several statuses show up. */
-const STATUSES = [["ok"], ["linked"], ["clientUpdateProhibited", "clientDeleteProhibited"], ["ok"], ["hold"], ["pendingCreate"]] as const;
-/** How many users each made-up organisation lists, so that deleting one with users can be tried. */
-const USERS = [2, 0, 1, 0, 3, 0] as const;
+/**
+ * The made-up organisations below the root, each with the index of its parent in this list (`root` for the root itself),
+ * so that the tree is several levels deep: registrar → Noordzee Hosting → Polder Domeinen → Grachtweb → Zeeland Sites.
+ * Roles are from the IANA registry the draft points to; never `registrar`, which is the root's.
+ */
+const ORGANISATIONS: readonly { company: string; parent: number | "root"; roles: readonly string[]; statuses: readonly string[]; users: number }[] = [
+  { company: "Noordzee Hosting", parent: "root", roles: ["reseller"], statuses: ["ok"], users: 2 },
+  { company: "Polder Domeinen", parent: 0, roles: ["reseller"], statuses: ["linked"], users: 0 },
+  { company: "Grachtweb", parent: 1, roles: ["reseller", "dns-operator"], statuses: ["clientUpdateProhibited", "clientDeleteProhibited"], users: 1 },
+  { company: "Zeeland Sites", parent: 2, roles: ["reseller"], statuses: ["ok"], users: 0 },
+  { company: "Dijkstra Webdiensten", parent: 0, roles: ["reseller"], statuses: ["ok"], users: 1 },
+  { company: "Duinhost", parent: "root", roles: ["dns-operator"], statuses: ["ok"], users: 0 },
+  { company: "Kade Digitaal", parent: "root", roles: ["reseller"], statuses: ["hold"], users: 3 },
+  { company: "Molenaar Privacy", parent: 6, roles: ["privacyproxy"], statuses: ["pendingCreate"], users: 0 },
+];
 
-export const SYNTHETIC_CHILD_COUNT = COMPANIES.length;
+export const SYNTHETIC_ORGANISATION_COUNT = ORGANISATIONS.length;
 
 const organisationRef = (id: string) => ({ "@type": "organisation" as const, id });
 const domainOf = (company: string) => company.toLowerCase().replace(/\s+/g, "-") + ".example";
 
 /**
- * The child organisations of `parentId`, made up by this client: identifiers with random numbers (`org-4821`), a role
- * other than registrar, a Card, statuses, a contact and some users. Nothing names a registrar or its client identifiers.
+ * The organisations below `rootId`, made up by this client: children, grandchildren and further down, each referring
+ * to its parent. Identifiers carry random numbers (`org-4821`); each has a role other than registrar, a Card, statuses,
+ * a contact and some users. Nothing names a registrar or its client identifiers.
  */
-export function synthesizeChildren(parentId: string, options: { seed?: number } = {}): Organisation[] {
-  const numbers = distinctNumbers(options.seed ?? 1, SYNTHETIC_CHILD_COUNT * 6);
-  let next = SYNTHETIC_CHILD_COUNT;
+export function synthesizeDescendants(rootId: string, options: { seed?: number } = {}): Organisation[] {
+  const numbers = distinctNumbers(options.seed ?? 1, SYNTHETIC_ORGANISATION_COUNT * 6);
+  let next = SYNTHETIC_ORGANISATION_COUNT;
   const take = () => numbers[next++] ?? next;
-  return COMPANIES.map((company, index) => {
-    const users = Array.from({ length: USERS[index] ?? 0 }, (_, user) => ({
+  const idOf = (index: number) => `org-${numbers[index]}`;
+  return ORGANISATIONS.map(({ company, parent, roles, statuses, users: count }, index) => {
+    const users = Array.from({ length: count }, (_, user) => ({
       label: user === 0 ? "admin" : "tech",
       object: { "@type": "user", id: `user-${take()}` },
     }));
     return {
       "@type": "organisation",
-      id: `org-${numbers[index]}`,
-      status: (STATUSES[index] ?? ["ok"]).map((label) => ({ "@type": "organisationStatus", label })),
-      roles: Object.fromEntries((ROLES[index] ?? ["reseller"]).map((name) => [name, { "@type": "organisationRole" }])),
-      parent: organisationRef(parentId),
+      id: idOf(index),
+      status: statuses.map((label) => ({ "@type": "organisationStatus", label })),
+      roles: Object.fromEntries(roles.map((name) => [name, { "@type": "organisationRole" }])),
+      parent: organisationRef(parent === "root" ? rootId : idOf(parent)),
       contactInfo: cardOf({ name: company, email: `info@${domainOf(company)}`, voice: `+31.20${String(5550100 + index * 11).padStart(7, "0")}` }),
       contacts: [{ label: "admin", object: { "@type": "contact", id: `contact-${take()}` } }],
       ...(users.length > 0 && { users }),
